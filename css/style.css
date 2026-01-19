@@ -18,6 +18,8 @@ body {
     padding: 1em;
     font-size: 1.25em;
     width: 100%;
+    background-color: rgb(255, 255, 255);
+    color: black;
   }
 
     header nav a {
@@ -29,9 +31,17 @@ body {
         text-decoration: underline;
       }
 
+  .centered {
+    text-align: center;
+    padding: 0;
+    margin: 0;
+  }
+
 main div {
-  padding: 0 1em;
+  padding: 0.5em 1em 0 1em;
   width: 100%;
+  background-color: black;
+  color: white;
 }
 
   center {
@@ -91,10 +101,17 @@ main div {
     height: 100%;
   }
 
+  div.visitors {
+    /* background-color: #0f0f0f;
+    color: #f0f0f0; */
+  }
+
   footer {
     padding: 1em;
     text-align: center;
     margin-top: solid 1px #e8e8e8;
+    background-color: rgb(255, 255, 255);
+    color: black;
   }
     footer nav {
       display: inline;
@@ -109,3 +126,30 @@ main div {
     width: 100%;
   }
 
+/* #sketch-container {
+  width: 500px;
+  height: 500px;
+  border: 2px solid #ccc;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+} */
+
+@media (min-width: 1440px){
+  .piece-img {
+    width: 95%;
+    height: auto;
+  }
+}
+
+@media (max-width: 1439px and min-width: 993px){
+  .piece-img {
+    width: 45%;
+    height: auto;
+  }
+}
+
+@media (max-width: 992px){
+  .piece-img {
+    width: 70%;
+    height: auto;
+  }
+}

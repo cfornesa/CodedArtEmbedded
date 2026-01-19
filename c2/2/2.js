@@ -97,7 +97,7 @@ function resizeCanvas(canvas, renderer) {
   } else if (windowWidth <= 1200) {
     newSize = windowWidth / 4;
   } else {
-    newSize = windowWidth / 4;
+    newSize = windowWidth / 8;
   }
 
   canvas.width = newSize;

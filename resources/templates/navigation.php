@@ -6,5 +6,7 @@
       <a href="/p5">P5</a>
       <a href="/three-js">Three.js</a>
       <a href="/c2">c2.js</a>
+      <a href="/blog.php">Blog</a>
+      <a href="/guestbook.php">Guestbook</a>
   ';
 ?>

@@ -36,12 +36,12 @@ require('resources/templates/name.php');
       <div class="row">
         <div class="col-lg-6 col-md-12 col-sm-12 col-xs-12">
           <center>
-            <canvas id='1'/>
+            <canvas id='1' class='piece-img' />
           </center>
         </div>
         <div class="col-lg-6 col-md-12 col-sm-12 col-xs-12">
           <center>
-            <canvas id='2'/>
+            <canvas id='2' class='piece-img'/>
           </center>
         </div>
       </div>
@@ -56,7 +56,7 @@ require('resources/templates/name.php');
             </a>
           </center>
           <center>
-
+            <img src="./p5/piece/4-p5.js.png" class="piece-img" alt="p5.js piece 1">
           </center>
           <p>
             Elaborate digitally-rendered art pieces using an array of shapes,
@@ -81,6 +81,7 @@ require('resources/templates/name.php');
         </div>
       </div>
     </main>
+    <?php echo $counter; ?>
     <?php require("resources/templates/footer.php") ?>
     <script src="/js/c2.min.js"></script>
     <script src="/c2/1/1-1.js"></script>

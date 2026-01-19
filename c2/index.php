@@ -27,6 +27,7 @@ require('../resources/templates/name.php');
         <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12 c2js center">&nbsp;</div>
       </div>
     </main>
+    <?php echo $counter; ?>
     <?php require("../resources/templates/footer-level.php") ?>
     <script src="../js/c2.min.js"></script>
     <script src="/c2/1/1-1.js"></script>

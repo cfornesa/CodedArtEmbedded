@@ -39,6 +39,7 @@ require('../resources/templates/name.php');
         </div>
       </div>
     </main>
+    <?php echo $counter; ?>
     <?php require("../resources/templates/footer-level.php") ?>
   </body>
 </html>
