@@ -10,7 +10,7 @@
  */
 
 // Ensure config is loaded
-if (!defined('DB_HOST')) {
+if (!defined('DB_HOST') && !defined('DB_NAME')) {
     die('Configuration not loaded. Please ensure config.php is included before database.php');
 }
 
