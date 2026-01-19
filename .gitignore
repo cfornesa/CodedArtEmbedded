@@ -4,6 +4,12 @@
 # Sensitive configuration file with credentials
 /config/config.php
 
+# Database files
+codedart.db
+codedart_db
+*.db
+*.sqlite
+
 # Cache directories
 /cache/
 /cache/cors/
