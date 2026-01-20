@@ -29,13 +29,50 @@ function getDBConnection() {
     }
 
     try {
+        // Validate DB_TYPE is properly configured
+        if (!defined('DB_TYPE')) {
+            die('CONFIGURATION ERROR: DB_TYPE not defined in config.php. Please set DB_TYPE to "sqlite" or "mysql".');
+        }
+
         // Build DSN based on database type
-        if (defined('DB_TYPE') && DB_TYPE === 'sqlite') {
-            // SQLite connection (for development/testing)
-            $dsn = 'sqlite:' . DB_NAME;
+        if (DB_TYPE === 'sqlite') {
+            // SQLite connection (for Replit development)
+
+            // Safeguard: Warn if SQLite is used in production environment
+            if (defined('ENVIRONMENT') && ENVIRONMENT === 'production') {
+                error_log('WARNING: SQLite is being used in PRODUCTION environment. This should use MySQL instead!');
+                if (defined('FORCE_SQLITE_IN_PRODUCTION') && FORCE_SQLITE_IN_PRODUCTION === true) {
+                    error_log('FORCE_SQLITE_IN_PRODUCTION is enabled. Proceeding with SQLite.');
+                } else {
+                    die('CONFIGURATION ERROR: SQLite cannot be used in production. Please set DB_TYPE to "mysql" in config.php and configure MySQL credentials.');
+                }
+            }
+
+            // Use DB_PATH if defined, otherwise fall back to DB_NAME
+            $dbPath = defined('DB_PATH') ? DB_PATH : DB_NAME;
+
+            if (empty($dbPath)) {
+                die('CONFIGURATION ERROR: DB_PATH must be defined for SQLite. Example: DB_PATH = __DIR__ . "/../codedart.db"');
+            }
+
+            $dsn = 'sqlite:' . $dbPath;
             $pdo = new PDO($dsn);
-        } else {
-            // MySQL connection (default for production)
+
+            error_log('Database: Connected to SQLite at ' . $dbPath);
+
+        } elseif (DB_TYPE === 'mysql') {
+            // MySQL connection (for Hostinger production)
+
+            // Safeguard: Check required MySQL credentials are set
+            if (empty(DB_HOST) || empty(DB_NAME) || empty(DB_USER)) {
+                die('CONFIGURATION ERROR: MySQL requires DB_HOST, DB_NAME, DB_USER, and DB_PASS to be configured in config.php.');
+            }
+
+            // Safeguard: Warn if MySQL is used in development with default credentials
+            if (defined('ENVIRONMENT') && ENVIRONMENT === 'development') {
+                error_log('INFO: MySQL is being used in DEVELOPMENT environment. Normally Replit uses SQLite.');
+            }
+
             $dsn = sprintf(
                 'mysql:host=%s;dbname=%s;charset=%s',
                 DB_HOST,
@@ -56,6 +93,11 @@ function getDBConnection() {
             ];
 
             $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
+
+            error_log('Database: Connected to MySQL at ' . DB_HOST . '/' . DB_NAME);
+
+        } else {
+            die('CONFIGURATION ERROR: DB_TYPE must be either "sqlite" or "mysql". Current value: ' . DB_TYPE);
         }
 
         // Set additional PDO attributes

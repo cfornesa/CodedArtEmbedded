@@ -34,6 +34,28 @@ function createTable($tableName, $sql) {
 }
 
 output("🚀 Starting database initialization (SQLite)...", 'info');
+
+// SAFEGUARD: Prevent running SQLite init on MySQL configuration
+if (defined('DB_TYPE') && DB_TYPE !== 'sqlite') {
+    output("❌ CONFIGURATION ERROR!", 'error');
+    output("This script is for SQLite only, but DB_TYPE is set to: " . DB_TYPE, 'error');
+    output("", 'info');
+    output("Solutions:", 'info');
+    output("  - For Replit (SQLite): Set DB_TYPE='sqlite' in config.php", 'info');
+    output("  - For Hostinger (MySQL): Run init_db.php instead (NOT this script)", 'info');
+    exit(1);
+}
+
+// SAFEGUARD: Warn if running in production environment
+if (defined('ENVIRONMENT') && ENVIRONMENT === 'production') {
+    output("⚠️  WARNING: Running SQLite initialization in PRODUCTION environment!", 'warning');
+    output("SQLite is intended for Replit development only.", 'warning');
+    output("For Hostinger production, use MySQL with init_db.php instead.", 'warning');
+    output("", 'info');
+    output("Press Ctrl+C to cancel, or wait 5 seconds to continue...", 'warning');
+    sleep(5);
+}
+
 $pdo = getDBConnection();
 output("Database connection successful", 'success');
 

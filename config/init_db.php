@@ -83,9 +83,28 @@ if (PHP_SAPI !== 'cli') {
     echo "<div style='font-family: monospace; max-width: 800px; margin: 20px;'>";
 }
 
-output("🚀 Starting database initialization...", 'info');
+output("🚀 Starting database initialization (MySQL)...", 'info');
 output("Environment: " . getEnvironment(), 'info');
 output("Database: " . DB_NAME, 'info');
+
+// SAFEGUARD: Prevent running MySQL init on SQLite configuration
+if (defined('DB_TYPE') && DB_TYPE !== 'mysql') {
+    output("❌ CONFIGURATION ERROR!", 'error');
+    output("This script is for MySQL only, but DB_TYPE is set to: " . DB_TYPE, 'error');
+    output("", 'info');
+    output("Solutions:", 'info');
+    output("  - For Hostinger (MySQL): Set DB_TYPE='mysql' in config.php", 'info');
+    output("  - For Replit (SQLite): Run init_db_sqlite.php instead (NOT this script)", 'info');
+    exit(1);
+}
+
+// SAFEGUARD: Warn if running in development environment
+if (defined('ENVIRONMENT') && ENVIRONMENT === 'development') {
+    output("⚠️  INFO: Running MySQL initialization in DEVELOPMENT environment.", 'warning');
+    output("This is OK if you're testing MySQL locally on Replit.", 'warning');
+    output("For typical Replit development, use init_db_sqlite.php instead.", 'warning');
+    output("", 'info');
+}
 
 // Check system requirements
 $sysCheck = checkSystemRequirements();
