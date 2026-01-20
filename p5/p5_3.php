@@ -1,11 +1,13 @@
-<?php 
+<?php
 
 require('../resources/templates/name.php');
+require('../config/pages.php');
 
+// Get page variables from centralized registry
+$pageInfo = getPageInfo();
+extract($pageInfo); // Creates $page_name, $tagline, $section, $type
 
-  $page_name = "p5.js Exhibit: 3";
-  $tagline = "p5.js code-generated art by " . $site_link . ".";
-  require('../resources/templates/head.php');
+require('../resources/templates/head.php');
 ?>
   <body>
     <?php require("../resources/templates/header-level.php") ?>
