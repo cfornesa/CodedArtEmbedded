@@ -82,6 +82,28 @@ if (PHP_SAPI !== 'cli') {
 }
 
 output("🚀 Starting slug system migration (SQLite)...", 'info');
+
+// SAFEGUARD: Prevent running SQLite migration on MySQL configuration
+if (defined('DB_TYPE') && DB_TYPE !== 'sqlite') {
+    output("❌ CONFIGURATION ERROR!", 'error');
+    output("This migration is for SQLite only, but DB_TYPE is set to: " . DB_TYPE, 'error');
+    output("", 'info');
+    output("Solutions:", 'info');
+    output("  - For Replit (SQLite): Set DB_TYPE='sqlite' in config.php", 'info');
+    output("  - For Hostinger (MySQL): Run migrate_add_slugs.php instead (NOT this script)", 'info');
+    exit(1);
+}
+
+// SAFEGUARD: Warn if running in production environment
+if (defined('ENVIRONMENT') && ENVIRONMENT === 'production') {
+    output("⚠️  WARNING: Running SQLite migration in PRODUCTION environment!", 'warning');
+    output("SQLite is intended for Replit development only.", 'warning');
+    output("For Hostinger production, use MySQL with migrate_add_slugs.php instead.", 'warning');
+    output("", 'info');
+    output("Press Ctrl+C to cancel, or wait 5 seconds to continue...", 'warning');
+    sleep(5);
+}
+
 $pdo = getDBConnection();
 output("Database: " . ($pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'sqlite' ? 'SQLite' : 'Other'), 'info');
 output("", 'info');

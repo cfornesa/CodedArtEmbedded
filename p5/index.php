@@ -1,6 +1,7 @@
 <?php
 
 require('../resources/templates/name.php');
+require('../config/config.php');
 require('../config/pages.php');
 require('../config/database.php');
 

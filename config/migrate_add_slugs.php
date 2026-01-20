@@ -67,8 +67,20 @@ if (PHP_SAPI !== 'cli') {
     echo "<div style='font-family: monospace; max-width: 800px; margin: 20px;'>";
 }
 
-output("🚀 Starting slug system migration...", 'info');
+output("🚀 Starting slug system migration (MySQL)...", 'info');
 output("Database: " . DB_NAME, 'info');
+
+// SAFEGUARD: Prevent running MySQL migration on SQLite configuration
+if (defined('DB_TYPE') && DB_TYPE !== 'mysql') {
+    output("❌ CONFIGURATION ERROR!", 'error');
+    output("This migration is for MySQL only, but DB_TYPE is set to: " . DB_TYPE, 'error');
+    output("", 'info');
+    output("Solutions:", 'info');
+    output("  - For Hostinger (MySQL): Set DB_TYPE='mysql' in config.php", 'info');
+    output("  - For Replit (SQLite): Run migrate_add_slugs_sqlite.php instead", 'info');
+    exit(1);
+}
+
 output("", 'info');
 
 $success = true;
