@@ -1,15 +1,16 @@
-<?php 
+<?php
 
 require('../resources/templates/name.php');
+require('../config/pages.php');
 
+// Get page variables from centralized registry
+$pageInfo = getPageInfo();
+extract($pageInfo); // Creates $page_name, $piece_name, $tagline, $section, $type
 
-  $piece_name = "1 - C2";
-  $page_name = "c2.js Exhibit / " . $piece_name;
-  $tagline = "c2.js code-generated art by " . $site_link . ".";
-  require('../resources/templates/head.php');
+require('../resources/templates/head.php');
 ?>
   <body>
-    <?php require("../resources/templates/header-level.php") ?>
+    <?php require("../resources/templates/header.php") ?>
     <main class="container">
       <div class="row">
         <div class="col-lg-12 col-md-6 col-sm-12 col-xs-12">
@@ -57,7 +58,7 @@ require('../resources/templates/name.php');
         </div>
       </div>
     </main>
-    <?php require("../resources/templates/footer-level.php") ?>
+    <?php require("../resources/templates/footer.php") ?>
     <script src="../js/c2.min.js"></script>
     <script src="/c2/1/1.js"></script>
   </body>
