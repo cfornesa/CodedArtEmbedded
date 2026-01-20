@@ -9,6 +9,35 @@
 - Gallery pages load correctly (config.php loading fixed)
 - Slug system fully functional
 - All 11 art pieces seeded with auto-generated slugs
+- Domain-based database auto-detection enabled
+
+---
+
+## 🚀 NEW: Domain-Based Database Auto-Detection
+
+The system now **automatically detects** which database type to use based on your domain:
+
+| Domain | Database Type | Notes |
+|--------|---------------|-------|
+| `codedart.org` | MySQL | Production |
+| `www.codedart.org` | MySQL | Production |
+| `codedart.cfornesa.com` | MySQL | Production |
+| `codedart.fornesus.com` | MySQL | Production |
+| `localhost` | SQLite | Development |
+| Replit domains | SQLite | Development |
+| All other domains | SQLite | Development |
+
+**Benefits:**
+- ✅ No need to manually set `DB_TYPE` in config.php
+- ✅ Same config file works on both Replit and Hostinger
+- ✅ Automatic switching when domain changes
+- ✅ Can still manually override if needed
+
+**Manual Override (optional):**
+```php
+// Add this line to config.php to override auto-detection:
+define('DB_TYPE', 'mysql'); // or 'sqlite'
+```
 
 ---
 
@@ -42,7 +71,8 @@ Edit `config/config.php` with:
 define('ENVIRONMENT', 'development');
 
 // SQLite Database (Replit)
-define('DB_TYPE', 'sqlite');
+// DB_TYPE is auto-detected (will be 'sqlite' on Replit)
+// Uncomment to manually override: define('DB_TYPE', 'sqlite');
 define('DB_PATH', __DIR__ . '/../codedart.db');
 define('DB_HOST', '');
 define('DB_NAME', '');
@@ -267,7 +297,8 @@ Create `/public_html/config/config.php`:
 define('ENVIRONMENT', 'production');
 
 // MySQL Database (Hostinger)
-define('DB_TYPE', 'mysql');
+// DB_TYPE is auto-detected (will be 'mysql' on codedart.org)
+// Uncomment to manually override: define('DB_TYPE', 'mysql');
 define('DB_HOST', 'localhost');
 define('DB_NAME', 'u123456789_codedart');  // ← Your DB name
 define('DB_USER', 'u123456789_admin');     // ← Your DB user

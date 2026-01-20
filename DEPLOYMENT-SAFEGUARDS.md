@@ -25,30 +25,100 @@ When deploying the **exact same files** from Replit to Hostinger:
 
 ## Safeguard Layers
 
+### Layer 0: Domain-Based Auto-Detection (NEW)
+
+**Location:** `config/environment.php` → used by `config/database.php`
+
+**Purpose:** Automatically detect database type based on domain name
+
+**How It Works:**
+```php
+function autoDetectDatabaseType() {
+    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+
+    // Production domains use MySQL
+    $mysqlDomains = [
+        'codedart.org',
+        'www.codedart.org',
+        'codedart.cfornesa.com',
+        'codedart.fornesus.com'
+    ];
+
+    if (in_array($host, $mysqlDomains)) {
+        return 'mysql';
+    }
+
+    // Development/Replit/localhost use SQLite
+    return 'sqlite';
+}
+```
+
+**Detection Logic:**
+
+| Domain | Auto-Detected DB_TYPE | Rationale |
+|--------|----------------------|-----------|
+| `codedart.org` | `mysql` | Production domain |
+| `www.codedart.org` | `mysql` | Production domain |
+| `codedart.cfornesa.com` | `mysql` | Production domain |
+| `codedart.fornesus.com` | `mysql` | Production domain |
+| `localhost` | `sqlite` | Development |
+| `*.repl.co` | `sqlite` | Replit development |
+| Any other domain | `sqlite` | Default to safe option |
+
+**Benefits:**
+- ✅ **Automatic switching:** Same config.php works on both Replit and Hostinger
+- ✅ **No manual DB_TYPE setting:** Reduces configuration errors
+- ✅ **Overridable:** Can still manually set DB_TYPE if needed
+- ✅ **Safe default:** Defaults to SQLite (less risky than MySQL)
+
+**Usage in database.php:**
+```php
+// If DB_TYPE not defined, auto-detect based on domain
+if (!defined('DB_TYPE')) {
+    require_once __DIR__ . '/environment.php';
+    $detectedType = autoDetectDatabaseType();
+    define('DB_TYPE', $detectedType);
+    error_log('Auto-detected DB_TYPE: ' . $detectedType . ' for domain: ' . getCurrentDomain());
+}
+```
+
+**Safeguard:** This eliminates the most common deployment error (forgetting to change DB_TYPE) by making it automatic.
+
+---
+
 ### Layer 1: config.php Separation
 
 **Location:** `config/config.php` (NOT in Git)
 
 **Purpose:** Different configuration per environment
 
-**Replit config.php:**
+**Replit config.php (with auto-detection):**
 ```php
 define('ENVIRONMENT', 'development');
-define('DB_TYPE', 'sqlite');               // ← CRITICAL
+// DB_TYPE is optional - will auto-detect as 'sqlite' on Replit
 define('DB_PATH', __DIR__ . '/../codedart.db');
 ```
 
-**Hostinger config.php:**
+**Hostinger config.php (with auto-detection):**
 ```php
 define('ENVIRONMENT', 'production');
-define('DB_TYPE', 'mysql');                // ← CRITICAL
+// DB_TYPE is optional - will auto-detect as 'mysql' on codedart.org
 define('DB_HOST', 'localhost');
 define('DB_NAME', 'u123456789_codedart');
 define('DB_USER', 'u123456789_admin');
 define('DB_PASS', 'your_password');
 ```
 
-**Safeguard:** `config.php` is **excluded from Git** via `.gitignore`, so it must be created manually on each platform with correct values.
+**Manual Override (if needed):**
+```php
+// Add this line to manually override auto-detection:
+define('DB_TYPE', 'mysql'); // or 'sqlite'
+```
+
+**Safeguards:**
+1. `config.php` is **excluded from Git** via `.gitignore`, so it must be created manually on each platform with correct values.
+2. **DB_TYPE is optional** - it will be auto-detected based on domain if not manually set (see Layer 0).
+3. Manual override available if auto-detection needs to be bypassed.
 
 ---
 
@@ -58,16 +128,22 @@ define('DB_PASS', 'your_password');
 
 **Safeguards Implemented:**
 
-#### 1. DB_TYPE Validation
+#### 1. DB_TYPE Auto-Detection & Validation
 ```php
+// Auto-detect DB_TYPE based on domain if not explicitly set
 if (!defined('DB_TYPE')) {
-    die('CONFIGURATION ERROR: DB_TYPE not defined in config.php.');
+    require_once __DIR__ . '/environment.php';
+    $detectedType = autoDetectDatabaseType();
+    define('DB_TYPE', $detectedType);
+    error_log('Auto-detected DB_TYPE: ' . $detectedType . ' for domain: ' . getCurrentDomain());
 }
 
+// Validate DB_TYPE value
 if (DB_TYPE !== 'sqlite' && DB_TYPE !== 'mysql') {
     die('CONFIGURATION ERROR: DB_TYPE must be "sqlite" or "mysql". Current: ' . DB_TYPE);
 }
 ```
+**Note:** If `DB_TYPE` is not defined in `config.php`, it will be automatically detected based on the domain (see Layer 0).
 
 #### 2. Production SQLite Warning
 ```php

@@ -66,6 +66,39 @@ function isProduction() {
 }
 
 /**
+ * Auto-detect database type based on domain
+ *
+ * @return string 'mysql' for production domains, 'sqlite' for development
+ */
+function autoDetectDatabaseType() {
+    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+
+    // Production domains use MySQL
+    $mysqlDomains = [
+        'codedart.org',
+        'www.codedart.org',
+        'codedart.cfornesa.com',
+        'codedart.fornesus.com'
+    ];
+
+    if (in_array($host, $mysqlDomains)) {
+        return 'mysql';
+    }
+
+    // Development/Replit/localhost use SQLite
+    return 'sqlite';
+}
+
+/**
+ * Check if current domain should use MySQL
+ *
+ * @return bool True if domain should use MySQL
+ */
+function shouldUseMysql() {
+    return autoDetectDatabaseType() === 'mysql';
+}
+
+/**
  * Get current environment name
  *
  * @return string 'production', 'development', or 'replit'

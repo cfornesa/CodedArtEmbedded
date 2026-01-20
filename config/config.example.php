@@ -19,6 +19,25 @@ define('ENVIRONMENT', getenv('REPL_ID') ? 'development' : 'production');
 // ==========================================
 // DATABASE CONFIGURATION
 // ==========================================
+
+/**
+ * DATABASE TYPE AUTO-DETECTION:
+ *
+ * DB_TYPE is automatically detected based on your domain:
+ * - codedart.org (and www.codedart.org) → MySQL
+ * - codedart.cfornesa.com → MySQL
+ * - codedart.fornesus.com → MySQL
+ * - localhost, Replit, or any other domain → SQLite
+ *
+ * You can manually override auto-detection by uncommenting this line:
+ * define('DB_TYPE', 'mysql');  // or 'sqlite'
+ *
+ * Leave commented to use automatic domain-based detection (recommended).
+ */
+
+// Uncomment to manually set database type (overrides auto-detection):
+// define('DB_TYPE', 'mysql'); // or 'sqlite'
+
 if (ENVIRONMENT === 'production') {
     // Hostinger MySQL Credentials (FILL THESE IN)
     define('DB_HOST', 'localhost'); // Or your MySQL host from cPanel
@@ -27,6 +46,11 @@ if (ENVIRONMENT === 'production') {
     define('DB_PASS', 'your_database_password'); // Database password
     define('DB_PORT', 3306); // Default MySQL port
     define('DB_CHARSET', 'utf8mb4');
+
+    // For SQLite in production (NOT RECOMMENDED - only for testing):
+    // define('DB_PATH', __DIR__ . '/../codedart.db');
+    // define('FORCE_SQLITE_IN_PRODUCTION', true); // Required to use SQLite in production
+
 } else {
     // Replit Development Environment (FILL THESE IN)
     define('DB_HOST', 'localhost');
@@ -35,6 +59,9 @@ if (ENVIRONMENT === 'production') {
     define('DB_PASS', ''); // Replit MySQL password (usually empty)
     define('DB_PORT', 3306);
     define('DB_CHARSET', 'utf8mb4');
+
+    // For SQLite (recommended for Replit):
+    define('DB_PATH', __DIR__ . '/../codedart.db'); // SQLite database file path
 }
 
 // ==========================================

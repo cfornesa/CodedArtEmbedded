@@ -29,9 +29,16 @@ function getDBConnection() {
     }
 
     try {
-        // Validate DB_TYPE is properly configured
+        // Auto-detect DB_TYPE based on domain if not explicitly set
         if (!defined('DB_TYPE')) {
-            die('CONFIGURATION ERROR: DB_TYPE not defined in config.php. Please set DB_TYPE to "sqlite" or "mysql".');
+            // Load environment detection functions
+            require_once __DIR__ . '/environment.php';
+
+            // Auto-detect database type based on domain
+            $detectedType = autoDetectDatabaseType();
+            define('DB_TYPE', $detectedType);
+
+            error_log('Database: Auto-detected DB_TYPE as "' . $detectedType . '" based on domain: ' . getCurrentDomain());
         }
 
         // Build DSN based on database type
