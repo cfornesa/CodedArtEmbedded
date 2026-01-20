@@ -10,8 +10,8 @@ extract($pageInfo); // Creates $page_name, $tagline, $section, $type
 require('../resources/templates/head.php');
 ?>
   <body>
-    <?php require("../resources/templates/header-level.php") ?>
+    <?php require("../resources/templates/header.php") ?>
     <?php require('../resources/content/aframe/alt-view.php') ?>
-    <?php require("../resources/templates/footer-level.php") ?>
+    <?php require("../resources/templates/footer.php") ?>
   </body>
 </html>

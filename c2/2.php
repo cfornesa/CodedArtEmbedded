@@ -10,7 +10,7 @@ extract($pageInfo); // Creates $page_name, $piece_name, $tagline, $section, $typ
 require('../resources/templates/head.php');
 ?>
   <body>
-    <?php require("../resources/templates/header-level.php") ?>
+    <?php require("../resources/templates/header.php") ?>
     <main class="container">
       <div class="row">
         <div class="col-lg-12 col-md-6 col-sm-12 col-xs-12">
@@ -58,7 +58,7 @@ require('../resources/templates/head.php');
         </div>
       </div>
     </main>
-    <?php require("../resources/templates/footer-level.php") ?>
+    <?php require("../resources/templates/footer.php") ?>
     <script src="../js/c2.min.js"></script>
     <script src="/c2/2/2.js"></script>
   </body>

@@ -22,7 +22,7 @@ try {
 require('../resources/templates/head.php');
 ?>
   <body>
-    <?php require("../resources/templates/header-level.php") ?>
+    <?php require("../resources/templates/header.php") ?>
     <main class="container">
       <div class="row">
         <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
@@ -87,7 +87,7 @@ require('../resources/templates/head.php');
       <?php endif; ?>
     </main>
     <?php echo $counter; ?>
-    <?php require("../resources/templates/footer-level.php") ?>
+    <?php require("../resources/templates/footer.php") ?>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
     <script src="./js/portfolio.js"></script>
   </body>
