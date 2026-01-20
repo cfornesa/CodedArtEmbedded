@@ -5,8 +5,13 @@
  */
 
 require_once(__DIR__ . '/../config/config.php');
+require_once(__DIR__ . '/../config/database.php');
+require_once(__DIR__ . '/includes/db-check.php');
 require_once(__DIR__ . '/includes/auth.php');
 require_once(__DIR__ . '/includes/email-notifications.php');
+
+// Check if database is initialized (will show setup page if not)
+requireDatabaseInitialized();
 
 // Redirect if already logged in
 if (isLoggedIn()) {
