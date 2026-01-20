@@ -157,18 +157,29 @@ if (php_sapi_name() === 'cli') {
         output("==========================================", 'cyan');
         echo PHP_EOL;
 
-        // Run the init script
-        include($initScript);
+        // Run the init script as a separate process to avoid function conflicts
+        $command = 'php ' . escapeshellarg($initScript);
+        passthru($command, $exitCode);
 
-        echo PHP_EOL;
-        output("==========================================", 'green');
-        output("✓ Database initialization complete!", 'green');
-        output("==========================================", 'green');
-        echo PHP_EOL;
+        if ($exitCode === 0) {
+            echo PHP_EOL;
+            output("==========================================", 'green');
+            output("✓ Database initialization complete!", 'green');
+            output("==========================================", 'green');
+            echo PHP_EOL;
 
-        output("Next steps:", 'cyan');
-        output("  1. Visit /admin/register.php to create your first admin account", 'blue');
-        output("  2. Or run: php setup-database.php (to verify setup)", 'blue');
+            output("Next steps:", 'cyan');
+            output("  1. Visit /admin/register.php to create your first admin account", 'blue');
+            output("  2. Or run: php setup-database.php (to verify setup)", 'blue');
+        } else {
+            echo PHP_EOL;
+            output("==========================================", 'red');
+            output("✗ Database initialization failed!", 'red');
+            output("==========================================", 'red');
+            echo PHP_EOL;
+            output("Please check the error messages above.", 'yellow');
+            exit(1);
+        }
 
     } else {
         echo PHP_EOL;
