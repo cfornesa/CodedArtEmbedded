@@ -6,6 +6,7 @@
 
 require_once(__DIR__ . '/../config/config.php');
 require_once(__DIR__ . '/includes/functions.php');
+require_once(__DIR__ . '/includes/slug_functions.php');
 
 $page_title = 'A-Frame Art Management';
 
@@ -15,9 +16,10 @@ $pieceId = $_GET['id'] ?? null;
 $error = '';
 $success = '';
 
-// Handle delete action
+// Handle delete action (soft delete by default)
 if ($action === 'delete' && $pieceId) {
-    $result = deleteArtPiece('aframe', $pieceId);
+    $permanent = isset($_GET['permanent']) && $_GET['permanent'] === '1';
+    $result = deleteArtPieceWithSlug('aframe', $pieceId, $permanent);
     if ($result['success']) {
         $success = $result['message'];
         $action = 'list';
@@ -35,6 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array($action, ['create', 'edit'
         // Prepare data
         $data = [
             'title' => $_POST['title'] ?? '',
+            'slug' => $_POST['slug'] ?? '',  // Optional: auto-generated if empty
             'description' => $_POST['description'] ?? '',
             'file_path' => $_POST['file_path'] ?? '',
             'thumbnail_url' => $_POST['thumbnail_url'] ?? '',
@@ -58,9 +61,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array($action, ['create', 'edit'
         }
 
         if ($action === 'create') {
-            $result = createArtPiece('aframe', $data);
+            $result = createArtPieceWithSlug('aframe', $data);
         } else {
-            $result = updateArtPiece('aframe', $pieceId, $data);
+            $result = updateArtPieceWithSlug('aframe', $pieceId, $data);
         }
 
         if ($result['success']) {
@@ -72,8 +75,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array($action, ['create', 'edit'
     }
 }
 
-// Get art pieces for listing
-$artPieces = getArtPieces('aframe');
+// Get active art pieces for listing (excludes soft-deleted)
+$artPieces = getActiveArtPieces('aframe', 'all');
 
 // Get single piece for editing
 $editPiece = null;
@@ -109,9 +112,14 @@ require_once(__DIR__ . '/includes/header.php');
     <div class="card">
         <div class="card-header d-flex justify-between align-center">
             <h2>A-Frame Art Pieces</h2>
-            <a href="<?php echo url('admin/aframe.php?action=create'); ?>" class="btn btn-success">
-                + Add New Piece
-            </a>
+            <div>
+                <a href="<?php echo url('admin/deleted.php?type=aframe'); ?>" class="btn btn-secondary" style="margin-right: 10px;">
+                    🗑️ Deleted Items
+                </a>
+                <a href="<?php echo url('admin/aframe.php?action=create'); ?>" class="btn btn-success">
+                    + Add New Piece
+                </a>
+            </div>
         </div>
 
         <?php if (empty($artPieces)): ?>
@@ -128,6 +136,7 @@ require_once(__DIR__ . '/includes/header.php');
                     <tr>
                         <th>Thumbnail</th>
                         <th>Title</th>
+                        <th>Slug</th>
                         <th>Scene Type</th>
                         <th>Status</th>
                         <th>Sort Order</th>
@@ -154,6 +163,9 @@ require_once(__DIR__ . '/includes/header.php');
                             <strong><?php echo htmlspecialchars($piece['title']); ?></strong>
                             <br>
                             <small><?php echo htmlspecialchars(substr($piece['description'], 0, 100)) . (strlen($piece['description']) > 100 ? '...' : ''); ?></small>
+                        </td>
+                        <td>
+                            <code style="font-size: 0.85em;"><?php echo htmlspecialchars($piece['slug'] ?? 'N/A'); ?></code>
                         </td>
                         <td>
                             <span class="badge badge-secondary">
@@ -219,7 +231,29 @@ require_once(__DIR__ . '/includes/header.php');
                     class="form-control"
                     required
                     value="<?php echo $editPiece ? htmlspecialchars($editPiece['title']) : ''; ?>"
+                    onkeyup="updateSlugPreview()"
                 >
+            </div>
+
+            <div class="form-group">
+                <label for="slug" class="form-label">URL Slug</label>
+                <input
+                    type="text"
+                    id="slug"
+                    name="slug"
+                    class="form-control"
+                    placeholder="auto-generated-from-title"
+                    value="<?php echo $editPiece ? htmlspecialchars($editPiece['slug']) : ''; ?>"
+                    pattern="[a-z0-9-]+"
+                    title="Only lowercase letters, numbers, and hyphens"
+                >
+                <small class="form-help">
+                    Leave empty to auto-generate from title.
+                    <span id="slug-preview" style="display: none;">Preview: <code></code></span>
+                    <?php if ($editPiece && !empty($editPiece['slug'])): ?>
+                    <br><strong>Note:</strong> Changing the slug will create a redirect from the old URL.
+                    <?php endif; ?>
+                </small>
             </div>
 
             <div class="form-group">
@@ -355,6 +389,42 @@ require_once(__DIR__ . '/includes/header.php');
         input.placeholder = 'https://example.com/texture.png';
         container.appendChild(input);
     }
+
+    function updateSlugPreview() {
+        const titleInput = document.getElementById('title');
+        const slugInput = document.getElementById('slug');
+        const slugPreview = document.getElementById('slug-preview');
+
+        if (!titleInput.value) {
+            slugPreview.style.display = 'none';
+            return;
+        }
+
+        // Only show preview if slug field is empty (auto-generation mode)
+        if (!slugInput.value) {
+            const previewSlug = titleInput.value
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/^-+|-+$/g, '')
+                .substring(0, 200);
+
+            if (previewSlug) {
+                slugPreview.style.display = 'inline';
+                slugPreview.querySelector('code').textContent = previewSlug;
+            } else {
+                slugPreview.style.display = 'none';
+            }
+        } else {
+            slugPreview.style.display = 'none';
+        }
+    }
+
+    // Initialize slug preview on page load if creating new piece
+    <?php if ($action === 'create'): ?>
+    document.addEventListener('DOMContentLoaded', function() {
+        updateSlugPreview();
+    });
+    <?php endif; ?>
     </script>
 
 <?php endif; ?>
