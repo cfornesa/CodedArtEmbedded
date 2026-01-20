@@ -23,23 +23,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!isset($_POST['csrf_token']) || !verifyCsrfToken($_POST['csrf_token'])) {
         $error = 'Invalid request. Please try again.';
     } else {
-        // Verify RECAPTCHA if enabled
+        // Verify RECAPTCHA v3 if enabled
         $recaptchaValid = true;
         if (defined('RECAPTCHA_SECRET_KEY') && !empty(RECAPTCHA_SECRET_KEY)) {
-            $recaptchaResponse = $_POST['g-recaptcha-response'] ?? '';
+            $recaptchaToken = $_POST['recaptcha_token'] ?? '';
 
-            if (empty($recaptchaResponse)) {
-                $error = 'Please complete the RECAPTCHA verification.';
+            if (empty($recaptchaToken)) {
+                $error = 'RECAPTCHA verification failed. Please try again.';
                 $recaptchaValid = false;
             } else {
-                // Verify with Google
+                // Verify with Google reCAPTCHA v3 API
                 $verifyUrl = 'https://www.google.com/recaptcha/api/siteverify';
-                $response = file_get_contents($verifyUrl . '?secret=' . RECAPTCHA_SECRET_KEY . '&response=' . $recaptchaResponse);
+                $data = [
+                    'secret' => RECAPTCHA_SECRET_KEY,
+                    'response' => $recaptchaToken,
+                    'remoteip' => $_SERVER['REMOTE_ADDR'] ?? ''
+                ];
+
+                $options = [
+                    'http' => [
+                        'method' => 'POST',
+                        'header' => 'Content-type: application/x-www-form-urlencoded',
+                        'content' => http_build_query($data)
+                    ]
+                ];
+
+                $context = stream_context_create($options);
+                $response = file_get_contents($verifyUrl, false, $context);
                 $responseData = json_decode($response, true);
+
+                // reCAPTCHA v3 returns a score (0.0 to 1.0)
+                // 1.0 is very likely a good interaction, 0.0 is very likely a bot
+                $minScore = defined('RECAPTCHA_MIN_SCORE') ? RECAPTCHA_MIN_SCORE : 0.5;
 
                 if (!$responseData['success']) {
                     $error = 'RECAPTCHA verification failed. Please try again.';
                     $recaptchaValid = false;
+                    error_log('reCAPTCHA v3 verification failed: ' . json_encode($responseData));
+                } elseif ($responseData['score'] < $minScore) {
+                    $error = 'Registration blocked. If you believe this is an error, please contact support.';
+                    $recaptchaValid = false;
+                    error_log('reCAPTCHA v3 score too low: ' . $responseData['score'] . ' (minimum: ' . $minScore . ')');
+                } elseif ($responseData['action'] !== 'register') {
+                    $error = 'RECAPTCHA verification failed. Invalid action.';
+                    $recaptchaValid = false;
+                    error_log('reCAPTCHA v3 action mismatch: ' . $responseData['action']);
                 }
             }
         }
@@ -101,7 +129,7 @@ $recaptchaEnabled = !empty($recaptchaSiteKey);
     <title>Register - CodedArt Admin</title>
     <link rel="stylesheet" href="<?php echo url('admin/assets/admin.css'); ?>">
     <?php if ($recaptchaEnabled): ?>
-    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+    <script src="https://www.google.com/recaptcha/api.js?render=<?php echo htmlspecialchars($recaptchaSiteKey); ?>"></script>
     <?php endif; ?>
 </head>
 <body>
@@ -125,7 +153,7 @@ $recaptchaEnabled = !empty($recaptchaSiteKey);
             <?php endif; ?>
 
             <?php if (!$success): ?>
-            <form method="POST" action="" data-validate>
+            <form method="POST" action="" id="registration-form" data-validate>
                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
 
                 <div class="form-group">
@@ -196,13 +224,12 @@ $recaptchaEnabled = !empty($recaptchaSiteKey);
                 </div>
 
                 <?php if ($recaptchaEnabled): ?>
-                <div class="form-group">
-                    <div class="g-recaptcha" data-sitekey="<?php echo htmlspecialchars($recaptchaSiteKey); ?>"></div>
-                </div>
+                <!-- reCAPTCHA v3 hidden token field -->
+                <input type="hidden" name="recaptcha_token" id="recaptcha_token">
                 <?php endif; ?>
 
                 <div class="form-group">
-                    <button type="submit" class="btn btn-primary btn-block btn-lg">
+                    <button type="submit" class="btn btn-primary btn-block btn-lg" id="submit-btn">
                         Create Account
                     </button>
                 </div>
@@ -226,5 +253,26 @@ $recaptchaEnabled = !empty($recaptchaSiteKey);
     </div>
 
     <script src="<?php echo url('admin/assets/admin.js'); ?>"></script>
+
+    <?php if ($recaptchaEnabled): ?>
+    <script>
+        // reCAPTCHA v3 - Execute on form submission
+        document.getElementById('registration-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            grecaptcha.ready(function() {
+                grecaptcha.execute('<?php echo htmlspecialchars($recaptchaSiteKey); ?>', {action: 'register'})
+                    .then(function(token) {
+                        document.getElementById('recaptcha_token').value = token;
+                        document.getElementById('registration-form').submit();
+                    })
+                    .catch(function(error) {
+                        console.error('reCAPTCHA error:', error);
+                        alert('reCAPTCHA verification failed. Please try again.');
+                    });
+            });
+        });
+    </script>
+    <?php endif; ?>
 </body>
 </html>
