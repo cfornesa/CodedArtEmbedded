@@ -17,6 +17,7 @@
 if (!defined('DB_HOST') && !defined('DB_NAME')) {
     require_once(__DIR__ . '/../../config/config.php');
 }
+require_once(__DIR__ . '/../../config/environment.php');
 require_once(__DIR__ . '/../../config/helpers.php');
 require_once(__DIR__ . '/../../config/database.php');
 
