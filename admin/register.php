@@ -57,14 +57,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $minScore = defined('RECAPTCHA_MIN_SCORE') ? RECAPTCHA_MIN_SCORE : 0.5;
 
                 if (!$responseData['success']) {
-                    $error = 'RECAPTCHA verification failed. Please try again.';
-                    $recaptchaValid = false;
+                    // Log full response for debugging
                     error_log('reCAPTCHA v3 verification failed: ' . json_encode($responseData));
+
+                    // Get error codes from Google's response
+                    $errorCodes = $responseData['error-codes'] ?? ['unknown-error'];
+                    $errorDetails = implode(', ', $errorCodes);
+
+                    // Show detailed error in development, generic in production
+                    if (defined('ENVIRONMENT') && ENVIRONMENT === 'development') {
+                        $error = 'RECAPTCHA verification failed: ' . $errorDetails;
+                    } else {
+                        $error = 'RECAPTCHA verification failed. Please try again.';
+                    }
+                    $recaptchaValid = false;
+                } elseif (!isset($responseData['score'])) {
+                    // v3 should always return a score
+                    error_log('reCAPTCHA v3 response missing score: ' . json_encode($responseData));
+                    $error = 'RECAPTCHA verification failed. Response missing score (are you using v3 keys?).';
+                    $recaptchaValid = false;
                 } elseif ($responseData['score'] < $minScore) {
                     $error = 'Registration blocked. If you believe this is an error, please contact support.';
                     $recaptchaValid = false;
                     error_log('reCAPTCHA v3 score too low: ' . $responseData['score'] . ' (minimum: ' . $minScore . ')');
-                } elseif ($responseData['action'] !== 'register') {
+                } elseif (isset($responseData['action']) && $responseData['action'] !== 'register') {
                     $error = 'RECAPTCHA verification failed. Invalid action.';
                     $recaptchaValid = false;
                     error_log('reCAPTCHA v3 action mismatch: ' . $responseData['action']);
