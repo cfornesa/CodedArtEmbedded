@@ -20,7 +20,7 @@ require('../resources/templates/head.php');
                   </a>
                 </center>
                 <center>
-      <?php require("piece/4.php") ?>
+      <?php require("piece/3.php") ?>
                 </center>
                 <p>
                   Elaborate digitally-rendered art pieces using an array of shapes,
