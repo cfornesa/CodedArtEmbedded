@@ -52,37 +52,41 @@ if (ENVIRONMENT === 'production') {
     // define('FORCE_SQLITE_IN_PRODUCTION', true); // Required to use SQLite in production
 
 } else {
-    // Replit Development Environment (FILL THESE IN)
+    // Replit Development Environment
+    // For SQLite (recommended and auto-detected on Replit/localhost):
+    define('DB_PATH', __DIR__ . '/../codedart.db'); // SQLite database file path
+
+    // MySQL credentials (OPTIONAL - only needed if manually forcing MySQL in development)
+    // Leave these as-is if using SQLite (they won't be used)
     define('DB_HOST', 'localhost');
-    define('DB_NAME', 'codedart_db'); // Your dev database name
-    define('DB_USER', 'root'); // Replit MySQL user (usually root)
-    define('DB_PASS', ''); // Replit MySQL password (usually empty)
+    define('DB_NAME', 'codedart_db');
+    define('DB_USER', 'root');
+    define('DB_PASS', '');
     define('DB_PORT', 3306);
     define('DB_CHARSET', 'utf8mb4');
-
-    // For SQLite (recommended for Replit):
-    define('DB_PATH', __DIR__ . '/../codedart.db'); // SQLite database file path
 }
 
 // ==========================================
 // SMTP / EMAIL CONFIGURATION
 // ==========================================
 // Get these from your Hostinger email settings or external SMTP provider
-define('SMTP_HOST', 'mail.codedart.org'); // Your SMTP server hostname
-define('SMTP_PORT', 587); // 587 for TLS, 465 for SSL
-define('SMTP_SECURE', 'tls'); // 'tls' or 'ssl'
-define('SMTP_USERNAME', 'admin@codedart.org'); // Your email address
+// Hostinger SMTP supports both TLS (port 587) and SSL (port 465)
+define('SMTP_HOST', 'mail.augmenthumankind.com'); // Your SMTP server hostname
+define('SMTP_PORT', 587); // 587 for TLS (recommended), 465 for SSL
+define('SMTP_SECURE', 'tls'); // 'tls' (recommended) or 'ssl'
+define('SMTP_USERNAME', 'contact@augmenthumankind.com'); // Your email address
 define('SMTP_PASSWORD', 'your_email_password_here'); // Your email password
-define('SMTP_FROM_EMAIL', 'admin@codedart.org'); // Email address for "From" field
+define('SMTP_FROM_EMAIL', 'contact@augmenthumankind.com'); // Email address for "From" field
 define('SMTP_FROM_NAME', 'CodedArt Admin'); // Name for "From" field
 
 // ==========================================
 // GOOGLE RECAPTCHA CONFIGURATION
 // ==========================================
 // Get these from https://www.google.com/recaptcha/admin
-// Use reCAPTCHA v3 for invisible verification
-define('RECAPTCHA_SITE_KEY', 'your_recaptcha_site_key_here'); // Public site key
-define('RECAPTCHA_SECRET_KEY', 'your_recaptcha_secret_key_here'); // Secret key
+// IMPORTANT: Create reCAPTCHA v3 keys (NOT v2) - Select "Score based (v3)" during setup
+define('RECAPTCHA_SITE_KEY', 'your_recaptcha_site_key_here'); // Public site key (v3)
+define('RECAPTCHA_SECRET_KEY', 'your_recaptcha_secret_key_here'); // Secret key (v3)
+define('RECAPTCHA_MIN_SCORE', 0.5); // Minimum score (0.0-1.0): 0.0 = likely bot, 1.0 = likely human
 
 // ==========================================
 // SECURITY SETTINGS
@@ -130,7 +134,7 @@ define('TIMEZONE', 'America/New_York'); // Your timezone (see: https://www.php.n
 // NOTIFICATION SETTINGS
 // ==========================================
 define('SEND_EMAIL_NOTIFICATIONS', true); // Enable/disable email notifications
-define('ADMIN_EMAIL', 'admin@codedart.org'); // Admin email (receives all notifications)
+define('ADMIN_EMAIL', 'contact@augmenthumankind.com'); // Admin email (receives all notifications)
 define('NOTIFICATION_BCC', ''); // Optional BCC address for all emails
 define('EMAIL_TEMPLATE_DIR', __DIR__ . '/../resources/email-templates/'); // Email template directory
 
