@@ -53,14 +53,14 @@ require('../resources/templates/head.php');
 
           <div class="col-lg-6 col-md-12 col-sm-12 col-xs-12">
             <center>
-              <a href="view.php?slug=<?php echo urlencode($piece['slug']); ?>">
+              <a href="/c2/view.php?slug=<?php echo urlencode($piece['slug']); ?>">
                 <h2><?php echo htmlspecialchars($piece['title']); ?></h2>
               </a>
             </center>
 
             <?php if (!empty($piece['thumbnail_url'])): ?>
               <center>
-                <a href="view.php?slug=<?php echo urlencode($piece['slug']); ?>">
+                <a href="/c2/view.php?slug=<?php echo urlencode($piece['slug']); ?>">
                   <img
                     src="<?php echo htmlspecialchars($piece['thumbnail_url']); ?>"
                     alt="<?php echo htmlspecialchars($piece['title']); ?>"

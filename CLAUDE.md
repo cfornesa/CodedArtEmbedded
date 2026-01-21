@@ -2,7 +2,7 @@
 
 ## Project Status: ✅ PRODUCTION READY
 
-**Last Updated:** 2026-01-21
+**Last Updated:** 2026-01-21 (v1.0.3)
 **Agent:** Claude (Sonnet 4.5)
 **Environment:** Replit Development / Hostinger Production
 
@@ -858,6 +858,23 @@ CodedArtEmbedded/
 **Verification:** Run `php config/check_sky_ground_columns.php` to verify columns exist
 **Fix Applied:** Lines 411-419 in admin/includes/functions.php now properly prepare all sky/ground fields for database insertion
 
+### Piece View Links Return 404 Error
+**Status:** ✅ FIXED
+**Solution:** Changed relative links to absolute paths in all gallery index.php files
+**Root Cause:** Gallery index pages used relative links `view.php?slug=...` instead of absolute paths `/[art-type]/view.php?slug=...`
+**Error Message:** "The requested resource /view.php?slug=piece-1 was not found on this server."
+**Details:** All four gallery index pages (a-frame, c2, p5, three-js) were using relative links which broke when accessed from different directory contexts
+**Fix Applied:** Updated all links to use absolute paths:
+  - A-Frame: `/a-frame/view.php?slug=...`
+  - C2.js: `/c2/view.php?slug=...`
+  - P5.js: `/p5/view.php?slug=...`
+  - Three.js: `/three-js/view.php?slug=...`
+**Files Modified:**
+  - `/a-frame/index.php` - Lines 56, 63, 74
+  - `/c2/index.php` - Lines 56, 63
+  - `/p5/index.php` - Lines 57, 68
+  - `/three-js/index.php` - Lines 48, 54
+
 ### Database Connection Error
 **Check:**
 1. Is `config.php` present with correct credentials?
@@ -909,6 +926,13 @@ mysqldump -u username -p codedart_db > backup_$(date +%Y%m%d).sql
 ---
 
 ## Version History
+
+**v1.0.3** - 2026-01-21 (Night Update)
+- ✅ **CRITICAL FIX:** Fixed piece view routing - changed relative to absolute paths in all gallery index pages
+- ✅ Updated all gallery index.php files to use absolute paths: `/[art-type]/view.php?slug=...`
+- ✅ Resolved 404 errors when clicking piece links from gallery pages
+- ✅ Applied fix to all four art types: A-Frame, C2.js, P5.js, Three.js
+- ✅ Gallery navigation now works correctly from any directory context
 
 **v1.0.2** - 2026-01-21 (Late Evening Update)
 - ✅ Fixed PHP 8.1+ deprecation warnings for htmlspecialchars() receiving null
