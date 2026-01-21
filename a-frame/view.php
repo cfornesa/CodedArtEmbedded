@@ -87,9 +87,10 @@ require_once(__DIR__ . '/../resources/templates/head.php');
                 $attrs[] = 'color="' . htmlspecialchars($shape['color']) . '"';
             }
 
-            // Texture
+            // Texture (use CORS proxy for external images)
             if (!empty($shape['texture'])) {
-                $attrs[] = 'src="' . htmlspecialchars($shape['texture']) . '"';
+                $textureUrl = proxifyImageUrl($shape['texture']);
+                $attrs[] = 'src="' . htmlspecialchars($textureUrl) . '"';
             }
 
             // Type-specific dimensions
