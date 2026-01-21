@@ -384,7 +384,35 @@ require_once(__DIR__ . '/includes/header.php');
                 <small class="form-help">Lower numbers appear first</small>
             </div>
 
-            <div class="form-group">
+            <!-- Advanced Geometry Configuration Builder -->
+            <div class="card" style="margin-top: 30px; border: 2px solid #764ba2;">
+                <div class="card-header" style="background: linear-gradient(135deg, #764ba2 0%, #667eea 100%); color: white;">
+                    <h3 style="margin: 0; display: flex; align-items: center; justify-content: space-between;">
+                        <span>🎬 Three.js Geometry Builder</span>
+                        <small style="opacity: 0.9; font-weight: normal;">(Max: 40 geometries)</small>
+                    </h3>
+                    <p style="margin: 5px 0 0 0; font-size: 14px; opacity: 0.95;">
+                        Add and configure 3D geometries for your Three.js scene
+                    </p>
+                </div>
+
+                <div style="padding: 20px;">
+                    <div id="geometries-container"></div>
+
+                    <button type="button" class="btn btn-success" onclick="addGeometry()" id="add-geometry-btn">
+                        + Add New Geometry
+                    </button>
+
+                    <small class="form-help" style="display: block; margin-top: 10px;">
+                        <strong>Tip:</strong> Click "Add New Geometry" to add objects to your scene. Each geometry can be fully customized with position, rotation, material properties, and textures.
+                    </small>
+                </div>
+            </div>
+
+            <!-- Hidden field to store geometry configuration as JSON -->
+            <input type="hidden" name="configuration_json" id="configuration_json">
+
+            <div class="form-group" style="margin-top: 30px;">
                 <button type="submit" class="btn btn-primary btn-lg">
                     <?php echo $action === 'create' ? 'Create Piece' : 'Update Piece'; ?>
                 </button>
@@ -395,7 +423,555 @@ require_once(__DIR__ . '/includes/header.php');
         </form>
     </div>
 
+    <style>
+    .geometry-panel {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 15px;
+        position: relative;
+    }
+
+    .geometry-panel-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #764ba2;
+    }
+
+    .geometry-panel-title {
+        font-weight: bold;
+        color: #333;
+        font-size: 16px;
+    }
+
+    .geometry-remove-btn {
+        background: #dc3545;
+        color: white;
+        border: none;
+        padding: 6px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+    }
+
+    .geometry-remove-btn:hover {
+        background: #c82333;
+    }
+
+    .geometry-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin-bottom: 15px;
+    }
+
+    .geometry-field-group {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .geometry-field-label {
+        font-weight: 600;
+        margin-bottom: 5px;
+        color: #495057;
+        font-size: 14px;
+    }
+
+    .geometry-field-input {
+        padding: 8px 12px;
+        border: 1px solid #ced4da;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+
+    .geometry-field-input:focus {
+        outline: none;
+        border-color: #764ba2;
+        box-shadow: 0 0 0 0.2rem rgba(118, 75, 162, 0.25);
+    }
+
+    #geometries-container:empty::before {
+        content: 'No geometries added yet. Click "Add New Geometry" to get started.';
+        display: block;
+        padding: 40px;
+        text-align: center;
+        color: #6c757d;
+        background: #f8f9fa;
+        border: 2px dashed #dee2e6;
+        border-radius: 8px;
+        margin-bottom: 15px;
+    }
+    </style>
+
     <script>
+    let geometryCount = 0;
+    const MAX_GEOMETRIES = 40;
+    const geometries = [];
+
+    // Three.js geometry types
+    const geometryTypes = {
+        'BoxGeometry': { width: true, height: true, depth: true, label: 'Box' },
+        'SphereGeometry': { radius: true, widthSegments: true, heightSegments: true, label: 'Sphere' },
+        'CylinderGeometry': { radiusTop: true, radiusBottom: true, height: true, label: 'Cylinder' },
+        'ConeGeometry': { radius: true, height: true, label: 'Cone' },
+        'PlaneGeometry': { width: true, height: true, label: 'Plane' },
+        'TorusGeometry': { radius: true, tube: true, label: 'Torus' },
+        'TorusKnotGeometry': { radius: true, tube: true, label: 'Torus Knot' },
+        'DodecahedronGeometry': { radius: true, label: 'Dodecahedron' },
+        'IcosahedronGeometry': { radius: true, label: 'Icosahedron' },
+        'OctahedronGeometry': { radius: true, label: 'Octahedron' },
+        'TetrahedronGeometry': { radius: true, label: 'Tetrahedron' },
+        'RingGeometry': { innerRadius: true, outerRadius: true, label: 'Ring' }
+    };
+
+    // Add new geometry to the scene
+    function addGeometry() {
+        if (geometryCount >= MAX_GEOMETRIES) {
+            alert(`Maximum of ${MAX_GEOMETRIES} geometries reached!`);
+            return;
+        }
+
+        const id = Date.now();
+        geometryCount++;
+
+        const geometryData = {
+            id: id,
+            type: 'BoxGeometry',
+            position: { x: 0, y: 0, z: 0 },
+            rotation: { x: 0, y: 0, z: 0 },
+            scale: { x: 1, y: 1, z: 1 },
+            color: '#764ba2',
+            texture: '',
+            width: 1,
+            height: 1,
+            depth: 1,
+            radius: 1,
+            wireframe: false,
+            material: 'MeshStandardMaterial',
+            animation: {
+                enabled: false,
+                property: 'rotation.y',
+                speed: 0.01
+            }
+        };
+
+        geometries.push(geometryData);
+        renderGeometry(geometryData);
+        updateAddButtonState();
+        updateConfiguration();
+    }
+
+    // Render a geometry panel
+    function renderGeometry(geometryData) {
+        const container = document.getElementById('geometries-container');
+        const index = geometries.findIndex(g => g.id === geometryData.id);
+        const geometryNumber = index + 1;
+
+        const panel = document.createElement('div');
+        panel.className = 'geometry-panel';
+        panel.id = `geometry-${geometryData.id}`;
+        panel.innerHTML = `
+            <div class="geometry-panel-header">
+                <span class="geometry-panel-title">Geometry #${geometryNumber}</span>
+                <button type="button" class="geometry-remove-btn" onclick="removeGeometry(${geometryData.id})">
+                    Remove
+                </button>
+            </div>
+
+            <div class="geometry-row">
+                <div class="geometry-field-group">
+                    <label class="geometry-field-label">Geometry Type</label>
+                    <select class="geometry-field-input" onchange="updateGeometryType(${geometryData.id}, this.value)">
+                        ${Object.keys(geometryTypes).map(type =>
+                            `<option value="${type}" ${geometryData.type === type ? 'selected' : ''}>${geometryTypes[type].label}</option>`
+                        ).join('')}
+                    </select>
+                </div>
+
+                <div class="geometry-field-group">
+                    <label class="geometry-field-label">Material</label>
+                    <select class="geometry-field-input" onchange="updateGeometryProperty(${geometryData.id}, 'material', this.value)">
+                        <option value="MeshStandardMaterial" ${geometryData.material === 'MeshStandardMaterial' ? 'selected' : ''}>Standard</option>
+                        <option value="MeshBasicMaterial" ${geometryData.material === 'MeshBasicMaterial' ? 'selected' : ''}>Basic</option>
+                        <option value="MeshPhongMaterial" ${geometryData.material === 'MeshPhongMaterial' ? 'selected' : ''}>Phong</option>
+                        <option value="MeshLambertMaterial" ${geometryData.material === 'MeshLambertMaterial' ? 'selected' : ''}>Lambert</option>
+                    </select>
+                </div>
+
+                <div class="geometry-field-group">
+                    <label class="geometry-field-label">Color</label>
+                    <input type="color" class="geometry-field-input" value="${geometryData.color}"
+                           onchange="updateGeometryProperty(${geometryData.id}, 'color', this.value)">
+                </div>
+
+                <div class="geometry-field-group">
+                    <label class="geometry-field-label">
+                        <input type="checkbox" ${geometryData.wireframe ? 'checked' : ''}
+                               onchange="updateGeometryProperty(${geometryData.id}, 'wireframe', this.checked)">
+                        Wireframe
+                    </label>
+                </div>
+            </div>
+
+            <div class="geometry-row">
+                <div class="geometry-field-group">
+                    <label class="geometry-field-label">Texture URL (Optional)</label>
+                    <input type="url" class="geometry-field-input" value="${geometryData.texture}"
+                           placeholder="https://example.com/texture.png"
+                           onchange="updateGeometryProperty(${geometryData.id}, 'texture', this.value)">
+                </div>
+            </div>
+
+            <div id="dimensions-${geometryData.id}">
+                ${renderDimensions(geometryData)}
+            </div>
+
+            <div class="geometry-row">
+                <div class="geometry-field-group">
+                    <label class="geometry-field-label">Position (X, Y, Z)</label>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px;">
+                        <input type="number" step="0.1" class="geometry-field-input" value="${geometryData.position.x}"
+                               placeholder="X" onchange="updateGeometryXYZ(${geometryData.id}, 'position', 'x', this.value)">
+                        <input type="number" step="0.1" class="geometry-field-input" value="${geometryData.position.y}"
+                               placeholder="Y" onchange="updateGeometryXYZ(${geometryData.id}, 'position', 'y', this.value)">
+                        <input type="number" step="0.1" class="geometry-field-input" value="${geometryData.position.z}"
+                               placeholder="Z" onchange="updateGeometryXYZ(${geometryData.id}, 'position', 'z', this.value)">
+                    </div>
+                </div>
+            </div>
+
+            <div class="geometry-row">
+                <div class="geometry-field-group">
+                    <label class="geometry-field-label">Rotation (X, Y, Z) in radians</label>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px;">
+                        <input type="number" step="0.1" class="geometry-field-input" value="${geometryData.rotation.x}"
+                               placeholder="X" onchange="updateGeometryXYZ(${geometryData.id}, 'rotation', 'x', this.value)">
+                        <input type="number" step="0.1" class="geometry-field-input" value="${geometryData.rotation.y}"
+                               placeholder="Y" onchange="updateGeometryXYZ(${geometryData.id}, 'rotation', 'y', this.value)">
+                        <input type="number" step="0.1" class="geometry-field-input" value="${geometryData.rotation.z}"
+                               placeholder="Z" onchange="updateGeometryXYZ(${geometryData.id}, 'rotation', 'z', this.value)">
+                    </div>
+                </div>
+            </div>
+
+            <div class="geometry-row">
+                <div class="geometry-field-group">
+                    <label class="geometry-field-label">Scale (X, Y, Z)</label>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px;">
+                        <input type="number" step="0.1" class="geometry-field-input" value="${geometryData.scale.x}"
+                               placeholder="X" onchange="updateGeometryXYZ(${geometryData.id}, 'scale', 'x', this.value)">
+                        <input type="number" step="0.1" class="geometry-field-input" value="${geometryData.scale.y}"
+                               placeholder="Y" onchange="updateGeometryXYZ(${geometryData.id}, 'scale', 'y', this.value)">
+                        <input type="number" step="0.1" class="geometry-field-input" value="${geometryData.scale.z}"
+                               placeholder="Z" onchange="updateGeometryXYZ(${geometryData.id}, 'scale', 'z', this.value)">
+                    </div>
+                </div>
+            </div>
+
+            <details style="margin-top: 15px;">
+                <summary style="cursor: pointer; font-weight: 600; color: #764ba2;">Animation Settings</summary>
+                <div style="margin-top: 10px; padding: 15px; background: white; border-radius: 4px;">
+                    <div class="geometry-row">
+                        <div class="geometry-field-group">
+                            <label class="geometry-field-label">
+                                <input type="checkbox" ${geometryData.animation.enabled ? 'checked' : ''}
+                                       onchange="updateAnimationEnabled(${geometryData.id}, this.checked)">
+                                Enable Animation
+                            </label>
+                        </div>
+                    </div>
+                    <div class="geometry-row">
+                        <div class="geometry-field-group">
+                            <label class="geometry-field-label">Animate Property</label>
+                            <select class="geometry-field-input" onchange="updateAnimationProperty(${geometryData.id}, 'property', this.value)">
+                                <option value="rotation.x" ${geometryData.animation.property === 'rotation.x' ? 'selected' : ''}>Rotation X</option>
+                                <option value="rotation.y" ${geometryData.animation.property === 'rotation.y' ? 'selected' : ''}>Rotation Y</option>
+                                <option value="rotation.z" ${geometryData.animation.property === 'rotation.z' ? 'selected' : ''}>Rotation Z</option>
+                                <option value="position.y" ${geometryData.animation.property === 'position.y' ? 'selected' : ''}>Position Y (bounce)</option>
+                            </select>
+                        </div>
+                        <div class="geometry-field-group">
+                            <label class="geometry-field-label">Speed</label>
+                            <input type="number" step="0.001" class="geometry-field-input" value="${geometryData.animation.speed}"
+                                   onchange="updateAnimationProperty(${geometryData.id}, 'speed', this.value)">
+                        </div>
+                    </div>
+                </div>
+            </details>
+        `;
+
+        container.appendChild(panel);
+    }
+
+    // Render dimension fields based on geometry type
+    function renderDimensions(geometryData) {
+        const type = geometryTypes[geometryData.type];
+        let html = '<div class="geometry-row">';
+
+        if (type.width) {
+            html += `
+                <div class="geometry-field-group">
+                    <label class="geometry-field-label">Width</label>
+                    <input type="number" step="0.1" class="geometry-field-input" value="${geometryData.width || 1}"
+                           onchange="updateGeometryProperty(${geometryData.id}, 'width', this.value)">
+                </div>
+            `;
+        }
+
+        if (type.height) {
+            html += `
+                <div class="geometry-field-group">
+                    <label class="geometry-field-label">Height</label>
+                    <input type="number" step="0.1" class="geometry-field-input" value="${geometryData.height || 1}"
+                           onchange="updateGeometryProperty(${geometryData.id}, 'height', this.value)">
+                </div>
+            `;
+        }
+
+        if (type.depth) {
+            html += `
+                <div class="geometry-field-group">
+                    <label class="geometry-field-label">Depth</label>
+                    <input type="number" step="0.1" class="geometry-field-input" value="${geometryData.depth || 1}"
+                           onchange="updateGeometryProperty(${geometryData.id}, 'depth', this.value)">
+                </div>
+            `;
+        }
+
+        if (type.radius) {
+            html += `
+                <div class="geometry-field-group">
+                    <label class="geometry-field-label">Radius</label>
+                    <input type="number" step="0.1" class="geometry-field-input" value="${geometryData.radius || 1}"
+                           onchange="updateGeometryProperty(${geometryData.id}, 'radius', this.value)">
+                </div>
+            `;
+        }
+
+        if (type.tube) {
+            html += `
+                <div class="geometry-field-group">
+                    <label class="geometry-field-label">Tube Size</label>
+                    <input type="number" step="0.1" class="geometry-field-input" value="${geometryData.tube || 0.4}"
+                           onchange="updateGeometryProperty(${geometryData.id}, 'tube', this.value)">
+                </div>
+            `;
+        }
+
+        if (type.radiusTop) {
+            html += `
+                <div class="geometry-field-group">
+                    <label class="geometry-field-label">Top Radius</label>
+                    <input type="number" step="0.1" class="geometry-field-input" value="${geometryData.radiusTop || 1}"
+                           onchange="updateGeometryProperty(${geometryData.id}, 'radiusTop', this.value)">
+                </div>
+            `;
+        }
+
+        if (type.radiusBottom) {
+            html += `
+                <div class="geometry-field-group">
+                    <label class="geometry-field-label">Bottom Radius</label>
+                    <input type="number" step="0.1" class="geometry-field-input" value="${geometryData.radiusBottom || 1}"
+                           onchange="updateGeometryProperty(${geometryData.id}, 'radiusBottom', this.value)">
+                </div>
+            `;
+        }
+
+        if (type.innerRadius) {
+            html += `
+                <div class="geometry-field-group">
+                    <label class="geometry-field-label">Inner Radius</label>
+                    <input type="number" step="0.1" class="geometry-field-input" value="${geometryData.innerRadius || 0.5}"
+                           onchange="updateGeometryProperty(${geometryData.id}, 'innerRadius', this.value)">
+                </div>
+            `;
+        }
+
+        if (type.outerRadius) {
+            html += `
+                <div class="geometry-field-group">
+                    <label class="geometry-field-label">Outer Radius</label>
+                    <input type="number" step="0.1" class="geometry-field-input" value="${geometryData.outerRadius || 1}"
+                           onchange="updateGeometryProperty(${geometryData.id}, 'outerRadius', this.value)">
+                </div>
+            `;
+        }
+
+        if (type.widthSegments) {
+            html += `
+                <div class="geometry-field-group">
+                    <label class="geometry-field-label">Width Segments</label>
+                    <input type="number" step="1" class="geometry-field-input" value="${geometryData.widthSegments || 32}"
+                           onchange="updateGeometryProperty(${geometryData.id}, 'widthSegments', this.value)">
+                </div>
+            `;
+        }
+
+        if (type.heightSegments) {
+            html += `
+                <div class="geometry-field-group">
+                    <label class="geometry-field-label">Height Segments</label>
+                    <input type="number" step="1" class="geometry-field-input" value="${geometryData.heightSegments || 32}"
+                           onchange="updateGeometryProperty(${geometryData.id}, 'heightSegments', this.value)">
+                </div>
+            `;
+        }
+
+        html += '</div>';
+        return html;
+    }
+
+    // Update geometry type
+    function updateGeometryType(id, newType) {
+        const geometry = geometries.find(g => g.id === id);
+        if (geometry) {
+            geometry.type = newType;
+
+            // Re-render the dimensions section
+            const dimensionsContainer = document.getElementById(`dimensions-${id}`);
+            dimensionsContainer.innerHTML = renderDimensions(geometry);
+
+            updateConfiguration();
+        }
+    }
+
+    // Update geometry property
+    function updateGeometryProperty(id, property, value) {
+        const geometry = geometries.find(g => g.id === id);
+        if (geometry) {
+            // Convert to appropriate type
+            if (['width', 'height', 'depth', 'radius', 'tube', 'radiusTop', 'radiusBottom',
+                 'innerRadius', 'outerRadius', 'widthSegments', 'heightSegments'].includes(property)) {
+                geometry[property] = parseFloat(value);
+            } else if (property === 'wireframe') {
+                geometry[property] = Boolean(value);
+            } else {
+                geometry[property] = value;
+            }
+            updateConfiguration();
+        }
+    }
+
+    // Update XYZ values (position, rotation, scale)
+    function updateGeometryXYZ(id, type, axis, value) {
+        const geometry = geometries.find(g => g.id === id);
+        if (geometry) {
+            geometry[type][axis] = parseFloat(value);
+            updateConfiguration();
+        }
+    }
+
+    // Update animation enabled status
+    function updateAnimationEnabled(id, enabled) {
+        const geometry = geometries.find(g => g.id === id);
+        if (geometry) {
+            geometry.animation.enabled = enabled;
+            updateConfiguration();
+        }
+    }
+
+    // Update animation property
+    function updateAnimationProperty(id, property, value) {
+        const geometry = geometries.find(g => g.id === id);
+        if (geometry) {
+            if (property === 'speed') {
+                geometry.animation[property] = parseFloat(value);
+            } else {
+                geometry.animation[property] = value;
+            }
+            updateConfiguration();
+        }
+    }
+
+    // Remove a geometry
+    function removeGeometry(id) {
+        const index = geometries.findIndex(g => g.id === id);
+        if (index !== -1) {
+            geometries.splice(index, 1);
+            geometryCount--;
+
+            // Remove the panel from DOM
+            const panel = document.getElementById(`geometry-${id}`);
+            if (panel) {
+                panel.remove();
+            }
+
+            // Renumber remaining geometries
+            renumberGeometries();
+            updateAddButtonState();
+            updateConfiguration();
+        }
+    }
+
+    // Renumber geometry panels after deletion
+    function renumberGeometries() {
+        geometries.forEach((geometry, index) => {
+            const panel = document.getElementById(`geometry-${geometry.id}`);
+            if (panel) {
+                const title = panel.querySelector('.geometry-panel-title');
+                if (title) {
+                    title.textContent = `Geometry #${index + 1}`;
+                }
+            }
+        });
+    }
+
+    // Update the add button state based on geometry count
+    function updateAddButtonState() {
+        const btn = document.getElementById('add-geometry-btn');
+        if (geometryCount >= MAX_GEOMETRIES) {
+            btn.disabled = true;
+            btn.textContent = `Maximum ${MAX_GEOMETRIES} Geometries Reached`;
+            btn.style.opacity = '0.6';
+            btn.style.cursor = 'not-allowed';
+        } else {
+            btn.disabled = false;
+            btn.textContent = `+ Add New Geometry (${geometryCount}/${MAX_GEOMETRIES})`;
+            btn.style.opacity = '1';
+            btn.style.cursor = 'pointer';
+        }
+    }
+
+    // Update the hidden configuration field
+    function updateConfiguration() {
+        const config = {
+            geometries: geometries,
+            sceneSettings: {
+                background: '#000000',
+                lights: [
+                    { type: 'AmbientLight', color: '#ffffff', intensity: 0.5 },
+                    { type: 'DirectionalLight', color: '#ffffff', intensity: 0.8, position: { x: 5, y: 10, z: 7.5 } }
+                ]
+            }
+        };
+        document.getElementById('configuration_json').value = JSON.stringify(config, null, 2);
+    }
+
+    // Load existing geometry configuration when editing
+    <?php if ($editPiece && !empty($editPiece['configuration'])): ?>
+    document.addEventListener('DOMContentLoaded', function() {
+        try {
+            const config = <?php echo $editPiece['configuration']; ?>;
+            if (config && config.geometries) {
+                config.geometries.forEach(geometryData => {
+                    geometries.push(geometryData);
+                    geometryCount++;
+                    renderGeometry(geometryData);
+                });
+                updateAddButtonState();
+                updateConfiguration();
+            }
+        } catch (e) {
+            console.error('Error loading geometry configuration:', e);
+        }
+    });
+    <?php endif; ?>
+
     function addTextureUrl() {
         const container = document.getElementById('texture-urls-container');
         const input = document.createElement('input');
