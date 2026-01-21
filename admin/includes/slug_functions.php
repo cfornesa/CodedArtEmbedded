@@ -337,7 +337,7 @@ function deleteArtPieceWithSlug($type, $id, $permanent = false) {
  * Get art pieces excluding soft-deleted ones
  *
  * @param string $type Art type
- * @param string $status Filter by status (null for all active)
+ * @param string $status Filter by status (null or 'all' for all statuses, or specific status)
  * @return array List of art pieces
  */
 function getActiveArtPieces($type, $status = null) {
@@ -351,7 +351,8 @@ function getActiveArtPieces($type, $status = null) {
     $sql = "SELECT * FROM {$table} WHERE deleted_at IS NULL";
     $params = [];
 
-    if ($status !== null) {
+    // Handle status filtering - 'all' means no status filter
+    if ($status !== null && $status !== 'all') {
         $sql .= " AND status = ?";
         $params[] = $status;
     }
