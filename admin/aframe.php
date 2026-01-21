@@ -43,12 +43,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array($action, ['create', 'edit'
     if (!isset($_POST['csrf_token']) || !verifyCsrfToken($_POST['csrf_token'])) {
         $error = 'Invalid request. Please try again.';
     } else {
-        // Prepare data
+        // Prepare data (file_path will be auto-generated from slug)
         $data = [
             'title' => $_POST['title'] ?? '',
             'slug' => $_POST['slug'] ?? '',  // Optional: auto-generated if empty
             'description' => $_POST['description'] ?? '',
-            'file_path' => $_POST['file_path'] ?? '',
             'thumbnail_url' => $_POST['thumbnail_url'] ?? '',
             'scene_type' => $_POST['scene_type'] ?? 'custom',
             'tags' => $_POST['tags'] ?? '',
@@ -275,19 +274,7 @@ require_once(__DIR__ . '/includes/header.php');
                 ><?php echo $editPiece ? htmlspecialchars($editPiece['description']) : ''; ?></textarea>
             </div>
 
-            <div class="form-group">
-                <label for="file_path" class="form-label required">File Path</label>
-                <input
-                    type="text"
-                    id="file_path"
-                    name="file_path"
-                    class="form-control"
-                    required
-                    placeholder="/a-frame/piece-name.php"
-                    value="<?php echo $editPiece ? htmlspecialchars($editPiece['file_path']) : ''; ?>"
-                >
-                <small class="form-help">Relative path to the PHP file (e.g., /a-frame/alt-piece.php)</small>
-            </div>
+            <!-- File path is auto-generated from slug: /a-frame/view.php?slug=your-slug -->
 
             <div class="form-group">
                 <label for="thumbnail_url" class="form-label">Thumbnail URL</label>
