@@ -1,0 +1,399 @@
+<?php
+/**
+ * P5.js Dynamic Piece Viewer
+ * Renders P5.js art pieces from database configuration
+ */
+
+require_once(__DIR__ . '/../config/config.php');
+require_once(__DIR__ . '/../config/database.php');
+require_once(__DIR__ . '/../config/helpers.php');
+
+// Get slug from query parameter
+$slug = $_GET['slug'] ?? null;
+
+if (!$slug) {
+    http_response_code(404);
+    die('Art piece not found. No slug provided.');
+}
+
+// Query database for the piece
+try {
+    $piece = dbFetchOne(
+        "SELECT * FROM p5_art WHERE slug = ? AND status = 'active'",
+        [$slug]
+    );
+
+    if (!$piece) {
+        http_response_code(404);
+        die('Art piece not found.');
+    }
+
+    // Load configuration
+    $config = !empty($piece['configuration']) ? json_decode($piece['configuration'], true) : null;
+
+    // Set page metadata
+    $page_name = htmlspecialchars($piece['title']);
+    $tagline = htmlspecialchars($piece['description']);
+
+} catch (Exception $e) {
+    error_log('Error loading P5.js piece: ' . $e->getMessage());
+    http_response_code(500);
+    die('Error loading art piece.');
+}
+
+// Include header
+require_once(__DIR__ . '/../resources/templates/header.php');
+?>
+
+<div id="p5-container" style="display: flex; justify-content: center; align-items: center; min-height: 400px;"></div>
+
+<script src="<?php echo url('js/p5.min.js'); ?>"></script>
+<script>
+// P5.js Sketch Configuration
+const config = <?php echo json_encode($config); ?>;
+
+// P5.js sketch function
+const sketch = (p) => {
+    // Extract configuration
+    const canvasConfig = config.canvas || {};
+    const drawingConfig = config.drawing || {};
+    const colors = config.colors || ['#ED225D'];
+    const usePalette = config.usePalette || false;
+    const patternConfig = config.pattern || {};
+    const animationConfig = config.animation || {};
+    const interactionConfig = config.interaction || {};
+    const advancedConfig = config.advanced || {};
+
+    // Variables for animation
+    let time = 0;
+    let elements = [];
+
+    // Setup function
+    p.setup = function() {
+        // Create canvas
+        const width = canvasConfig.width || 800;
+        const height = canvasConfig.height || 600;
+        const renderer = canvasConfig.renderer === 'WEBGL' ? p.WEBGL : p.P2D;
+
+        const canvas = p.createCanvas(width, height, renderer);
+        canvas.parent('p5-container');
+
+        // Set color mode
+        if (canvasConfig.colorMode === 'HSB') {
+            p.colorMode(p.HSB, 360, 100, 100, 100);
+        } else {
+            p.colorMode(p.RGB, 255, 255, 255, 100);
+        }
+
+        // Set frame rate
+        p.frameRate(canvasConfig.frameRate || 60);
+
+        // Set angle mode
+        if (advancedConfig.angleMode === 'DEGREES') {
+            p.angleMode(p.DEGREES);
+        } else {
+            p.angleMode(p.RADIANS);
+        }
+
+        // Set rect and ellipse modes
+        if (advancedConfig.rectMode) {
+            p.rectMode(p[advancedConfig.rectMode]);
+        }
+        if (advancedConfig.ellipseMode) {
+            p.ellipseMode(p[advancedConfig.ellipseMode]);
+        }
+
+        // Set random seed
+        if (patternConfig.randomSeed) {
+            p.randomSeed(patternConfig.randomSeed);
+            p.noiseSeed(patternConfig.randomSeed);
+        }
+
+        // Noise detail
+        if (patternConfig.noiseDetail) {
+            p.noiseDetail(patternConfig.noiseDetail, 0.5);
+        }
+
+        // Initialize elements for pattern
+        initializePattern();
+
+        // Background
+        p.background(canvasConfig.background || '#FFFFFF');
+    };
+
+    // Draw function
+    p.draw = function() {
+        // Clear background if configured
+        if (!animationConfig.animated || animationConfig.clearBackground) {
+            p.background(canvasConfig.background || '#FFFFFF');
+        }
+
+        // Set blend mode
+        if (advancedConfig.blendMode) {
+            p.blendMode(p[advancedConfig.blendMode]);
+        }
+
+        // Set stroke
+        if (drawingConfig.noStroke) {
+            p.noStroke();
+        } else {
+            p.stroke(drawingConfig.strokeColor || '#000000');
+            p.strokeWeight(drawingConfig.strokeWeight || 1);
+        }
+
+        // Set fill
+        if (drawingConfig.noFill) {
+            p.noFill();
+        } else {
+            const fillColor = p.color(drawingConfig.fillColor || '#ED225D');
+            fillColor.setAlpha(drawingConfig.fillOpacity || 255);
+            p.fill(fillColor);
+        }
+
+        // Draw pattern
+        drawPattern();
+
+        // Update time
+        if (animationConfig.animated) {
+            time += animationConfig.speed || 1;
+
+            // Stop if not looping
+            if (!animationConfig.loop && p.frameCount > 60 * 10) {
+                p.noLoop();
+            }
+        } else {
+            p.noLoop();
+        }
+    };
+
+    function initializePattern() {
+        const shapeCount = drawingConfig.shapeCount || 100;
+        elements = [];
+
+        for (let i = 0; i < shapeCount; i++) {
+            elements.push({
+                x: p.random(p.width),
+                y: p.random(p.height),
+                vx: p.random(-2, 2),
+                vy: p.random(-2, 2),
+                size: drawingConfig.shapeSize || 20,
+                color: usePalette ? p.random(colors) : (drawingConfig.fillColor || '#ED225D'),
+                offset: p.random(1000)
+            });
+        }
+    }
+
+    function drawPattern() {
+        const patternType = patternConfig.type || 'grid';
+        const shapeType = drawingConfig.shapeType || 'ellipse';
+        const spacing = patternConfig.spacing || 30;
+
+        switch (patternType) {
+            case 'grid':
+                drawGridPattern(shapeType, spacing);
+                break;
+            case 'random':
+                drawRandomPattern(shapeType);
+                break;
+            case 'noise':
+                drawNoisePattern(shapeType);
+                break;
+            case 'spiral':
+                drawSpiralPattern(shapeType);
+                break;
+            case 'radial':
+                drawRadialPattern(shapeType);
+                break;
+            case 'flow':
+                drawFlowPattern(shapeType);
+                break;
+            default:
+                drawRandomPattern(shapeType);
+        }
+    }
+
+    function drawGridPattern(shapeType, spacing) {
+        const cols = Math.floor(p.width / spacing);
+        const rows = Math.floor(p.height / spacing);
+
+        for (let i = 0; i < rows; i++) {
+            for (let j = 0; j < cols; j++) {
+                const x = j * spacing + spacing / 2;
+                const y = i * spacing + spacing / 2;
+                const size = drawingConfig.shapeSize || 20;
+
+                if (usePalette) {
+                    p.fill(colors[(i * cols + j) % colors.length]);
+                }
+
+                drawShape(shapeType, x, y, size);
+            }
+        }
+    }
+
+    function drawRandomPattern(shapeType) {
+        elements.forEach((el, i) => {
+            if (usePalette) {
+                p.fill(el.color);
+            }
+
+            let x = el.x;
+            let y = el.y;
+
+            if (animationConfig.animated) {
+                x += el.vx;
+                y += el.vy;
+
+                // Wrap around edges
+                if (x < 0) x = p.width;
+                if (x > p.width) x = 0;
+                if (y < 0) y = p.height;
+                if (y > p.height) y = 0;
+
+                el.x = x;
+                el.y = y;
+            }
+
+            drawShape(shapeType, x, y, el.size);
+        });
+    }
+
+    function drawNoisePattern(shapeType) {
+        const scale = patternConfig.noiseScale || 0.01;
+
+        elements.forEach((el, i) => {
+            const noiseVal = p.noise(el.x * scale, el.y * scale, time * 0.01);
+            const size = el.size * (0.5 + noiseVal);
+
+            if (usePalette) {
+                const colorIndex = Math.floor(noiseVal * colors.length);
+                p.fill(colors[colorIndex % colors.length]);
+            }
+
+            drawShape(shapeType, el.x, el.y, size);
+        });
+    }
+
+    function drawSpiralPattern(shapeType) {
+        const centerX = p.width / 2;
+        const centerY = p.height / 2;
+        const count = drawingConfig.shapeCount || 100;
+        const maxRadius = Math.min(p.width, p.height) / 2;
+
+        for (let i = 0; i < count; i++) {
+            const t = i / count;
+            const angle = t * p.TWO_PI * 8 + time * 0.01;
+            const radius = t * maxRadius;
+            const x = centerX + p.cos(angle) * radius;
+            const y = centerY + p.sin(angle) * radius;
+            const size = drawingConfig.shapeSize || 10;
+
+            if (usePalette) {
+                p.fill(colors[i % colors.length]);
+            }
+
+            drawShape(shapeType, x, y, size);
+        }
+    }
+
+    function drawRadialPattern(shapeType) {
+        const centerX = p.width / 2;
+        const centerY = p.height / 2;
+        const count = drawingConfig.shapeCount || 100;
+        const maxRadius = Math.min(p.width, p.height) / 2;
+
+        for (let i = 0; i < count; i++) {
+            const angle = (i / count) * p.TWO_PI + time * 0.01;
+            const radius = maxRadius * 0.8;
+            const x = centerX + p.cos(angle) * radius;
+            const y = centerY + p.sin(angle) * radius;
+            const size = drawingConfig.shapeSize || 10;
+
+            if (usePalette) {
+                p.fill(colors[i % colors.length]);
+            }
+
+            drawShape(shapeType, x, y, size);
+        }
+    }
+
+    function drawFlowPattern(shapeType) {
+        const scale = patternConfig.noiseScale || 0.01;
+
+        elements.forEach((el) => {
+            const angle = p.noise(el.x * scale, el.y * scale, time * 0.01) * p.TWO_PI * 2;
+
+            if (animationConfig.animated) {
+                el.x += p.cos(angle) * 2;
+                el.y += p.sin(angle) * 2;
+
+                // Wrap
+                if (el.x < 0) el.x = p.width;
+                if (el.x > p.width) el.x = 0;
+                if (el.y < 0) el.y = p.height;
+                if (el.y > p.height) el.y = 0;
+            }
+
+            if (usePalette) {
+                p.fill(el.color);
+            }
+
+            drawShape(shapeType, el.x, el.y, el.size);
+        });
+    }
+
+    function drawShape(type, x, y, size) {
+        switch (type) {
+            case 'ellipse':
+                p.ellipse(x, y, size, size);
+                break;
+            case 'rect':
+                p.rect(x, y, size, size);
+                break;
+            case 'triangle':
+                p.triangle(x, y - size/2, x - size/2, y + size/2, x + size/2, y + size/2);
+                break;
+            case 'line':
+                p.line(x - size/2, y, x + size/2, y);
+                break;
+            case 'point':
+                p.point(x, y);
+                break;
+            default:
+                p.ellipse(x, y, size, size);
+        }
+    }
+
+    // Mouse interaction
+    if (interactionConfig.mouse) {
+        p.mouseMoved = function() {
+            // Simple mouse interaction
+            const interactionRadius = interactionConfig.radius || 100;
+
+            elements.forEach(el => {
+                const d = p.dist(p.mouseX, p.mouseY, el.x, el.y);
+
+                if (d < interactionRadius) {
+                    switch (interactionConfig.mouseType) {
+                        case 'repel':
+                            const angle = p.atan2(el.y - p.mouseY, el.x - p.mouseX);
+                            el.x += p.cos(angle) * 2;
+                            el.y += p.sin(angle) * 2;
+                            break;
+                        case 'attract':
+                            const attractAngle = p.atan2(p.mouseY - el.y, p.mouseX - el.x);
+                            el.x += p.cos(attractAngle) * 0.5;
+                            el.y += p.sin(attractAngle) * 0.5;
+                            break;
+                    }
+                }
+            });
+        };
+    }
+};
+
+// Create P5 instance
+new p5(sketch);
+</script>
+
+<?php require_once(__DIR__ . '/../resources/templates/footer.php'); ?>

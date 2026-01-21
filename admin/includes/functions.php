@@ -374,6 +374,20 @@ function validateArtPieceData($type, $data, $existingId = null) {
  * @return array Prepared data for database
  */
 function prepareArtPieceData($type, $data, $userId, $isUpdate = false) {
+    // Auto-generate file_path from slug if slug is provided
+    if (!empty($data['slug'])) {
+        // Map art type to directory name
+        $dirMap = [
+            'aframe' => 'a-frame',
+            'c2' => 'c2',
+            'p5' => 'p5',
+            'threejs' => 'three-js'
+        ];
+
+        $directory = $dirMap[$type] ?? $type;
+        $data['file_path'] = "/{$directory}/view.php?slug=" . $data['slug'];
+    }
+
     // Common fields for all types
     $prepared = [
         'title' => sanitize($data['title']),
@@ -385,6 +399,11 @@ function prepareArtPieceData($type, $data, $userId, $isUpdate = false) {
         'sort_order' => isset($data['sort_order']) ? (int)$data['sort_order'] : 0,
         'updated_at' => date('Y-m-d H:i:s')
     ];
+
+    // Add slug if provided (for slug-enabled operations)
+    if (!empty($data['slug'])) {
+        $prepared['slug'] = $data['slug'];
+    }
 
     // Add created_by and created_at for new pieces
     if (!$isUpdate) {
