@@ -55,8 +55,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array($action, ['create', 'edit'
             'scene_type' => $_POST['scene_type'] ?? 'custom',
             'sky_color' => $_POST['sky_color'] ?? '#ECECEC',
             'sky_texture' => $_POST['sky_texture'] ?? '',
+            'sky_opacity' => $_POST['sky_opacity'] ?? '1.0',
             'ground_color' => $_POST['ground_color'] ?? '#7BC8A4',
             'ground_texture' => $_POST['ground_texture'] ?? '',
+            'ground_opacity' => $_POST['ground_opacity'] ?? '1.0',
             'tags' => $_POST['tags'] ?? '',
             'status' => $_POST['status'] ?? 'active',
             'sort_order' => $_POST['sort_order'] ?? 0
@@ -361,6 +363,28 @@ require_once(__DIR__ . '/includes/header.php');
                     </div>
 
                     <div class="form-group">
+                        <label for="sky_opacity" class="form-label">Sky Color Opacity</label>
+                        <div style="display: flex; gap: 15px; align-items: center;">
+                            <input
+                                type="range"
+                                id="sky_opacity"
+                                name="sky_opacity"
+                                class="form-control"
+                                min="0"
+                                max="1"
+                                step="0.01"
+                                value="<?php echo $formData ? ($formData['sky_opacity'] ?? '1.0') : ($editPiece && isset($editPiece['sky_opacity']) ? $editPiece['sky_opacity'] : '1.0'); ?>"
+                                oninput="document.getElementById('sky_opacity_value').textContent = this.value"
+                                style="flex: 1;"
+                            >
+                            <span id="sky_opacity_value" style="min-width: 40px; font-weight: 600; color: #495057;">
+                                <?php echo $formData ? ($formData['sky_opacity'] ?? '1.0') : ($editPiece && isset($editPiece['sky_opacity']) ? $editPiece['sky_opacity'] : '1.0'); ?>
+                            </span>
+                        </div>
+                        <small class="form-help">0 = fully transparent, 1 = fully opaque (default: 1.0)</small>
+                    </div>
+
+                    <div class="form-group">
                         <label for="ground_color" class="form-label">Ground Color (Foreground)</label>
                         <div style="display: flex; gap: 10px; align-items: center;">
                             <input
@@ -394,6 +418,28 @@ require_once(__DIR__ . '/includes/header.php');
                             value="<?php echo $formData ? ($formData['ground_texture'] ?? '') : ($editPiece ? ($editPiece['ground_texture'] ?? '') : ''); ?>"
                         >
                         <small class="form-help">Optional: Apply a texture/image to the ground plane (tiling textures work best)</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="ground_opacity" class="form-label">Ground Color Opacity</label>
+                        <div style="display: flex; gap: 15px; align-items: center;">
+                            <input
+                                type="range"
+                                id="ground_opacity"
+                                name="ground_opacity"
+                                class="form-control"
+                                min="0"
+                                max="1"
+                                step="0.01"
+                                value="<?php echo $formData ? ($formData['ground_opacity'] ?? '1.0') : ($editPiece && isset($editPiece['ground_opacity']) ? $editPiece['ground_opacity'] : '1.0'); ?>"
+                                oninput="document.getElementById('ground_opacity_value').textContent = this.value"
+                                style="flex: 1;"
+                            >
+                            <span id="ground_opacity_value" style="min-width: 40px; font-weight: 600; color: #495057;">
+                                <?php echo $formData ? ($formData['ground_opacity'] ?? '1.0') : ($editPiece && isset($editPiece['ground_opacity']) ? $editPiece['ground_opacity'] : '1.0'); ?>
+                            </span>
+                        </div>
+                        <small class="form-help">0 = fully transparent, 1 = fully opaque (default: 1.0)</small>
                     </div>
                 </div>
             </div>
