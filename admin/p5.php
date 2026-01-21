@@ -385,7 +385,318 @@ require_once(__DIR__ . '/includes/header.php');
                 <small class="form-help">Lower numbers appear first</small>
             </div>
 
-            <div class="form-group">
+            <!-- Advanced P5.js Sketch Configurator -->
+            <div class="card" style="margin-top: 30px; border: 2px solid #ED225D;">
+                <div class="card-header" style="background: linear-gradient(135deg, #ED225D 0%, #F06292 100%); color: white;">
+                    <h3 style="margin: 0; display: flex; align-items: center; justify-content: space-between;">
+                        <span>🎨 P5.js Sketch Configurator</span>
+                        <small style="opacity: 0.9; font-weight: normal;">(Creative Coding Settings)</small>
+                    </h3>
+                    <p style="margin: 5px 0 0 0; font-size: 14px; opacity: 0.95;">
+                        Configure your P5.js sketch parameters for generative art
+                    </p>
+                </div>
+
+                <div style="padding: 20px;">
+                    <!-- Canvas Setup -->
+                    <div class="sketch-section">
+                        <h4 class="sketch-section-title">Canvas Setup</h4>
+
+                        <div class="sketch-row">
+                            <div class="sketch-field-group">
+                                <label class="sketch-field-label">Canvas Width (px)</label>
+                                <input type="number" id="p5-width" class="sketch-field-input" value="800" step="10">
+                            </div>
+                            <div class="sketch-field-group">
+                                <label class="sketch-field-label">Canvas Height (px)</label>
+                                <input type="number" id="p5-height" class="sketch-field-input" value="600" step="10">
+                            </div>
+                            <div class="sketch-field-group">
+                                <label class="sketch-field-label">Renderer</label>
+                                <select id="p5-renderer" class="sketch-field-input">
+                                    <option value="P2D">2D (P2D)</option>
+                                    <option value="WEBGL">3D (WEBGL)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="sketch-row">
+                            <div class="sketch-field-group">
+                                <label class="sketch-field-label">Background Color</label>
+                                <input type="color" id="p5-background" class="sketch-field-input" value="#FFFFFF">
+                            </div>
+                            <div class="sketch-field-group">
+                                <label class="sketch-field-label">Color Mode</label>
+                                <select id="p5-color-mode" class="sketch-field-input">
+                                    <option value="RGB">RGB (0-255)</option>
+                                    <option value="HSB">HSB (Hue, Saturation, Brightness)</option>
+                                </select>
+                            </div>
+                            <div class="sketch-field-group">
+                                <label class="sketch-field-label">Frame Rate</label>
+                                <input type="number" id="p5-frame-rate" class="sketch-field-input" value="60" min="1" max="120">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Drawing Style -->
+                    <div class="sketch-section">
+                        <h4 class="sketch-section-title">Drawing Style</h4>
+
+                        <div class="sketch-row">
+                            <div class="sketch-field-group">
+                                <label class="sketch-field-label">Shape Type</label>
+                                <select id="p5-shape-type" class="sketch-field-input">
+                                    <option value="ellipse">Ellipse/Circle</option>
+                                    <option value="rect">Rectangle</option>
+                                    <option value="triangle">Triangle</option>
+                                    <option value="line">Line</option>
+                                    <option value="point">Point</option>
+                                    <option value="bezier">Bezier Curve</option>
+                                    <option value="polygon">Polygon</option>
+                                    <option value="custom">Custom Shape</option>
+                                </select>
+                            </div>
+                            <div class="sketch-field-group">
+                                <label class="sketch-field-label">Shape Count</label>
+                                <input type="number" id="p5-shape-count" class="sketch-field-input" value="100" min="1" max="10000">
+                            </div>
+                            <div class="sketch-field-group">
+                                <label class="sketch-field-label">Shape Size</label>
+                                <input type="number" id="p5-shape-size" class="sketch-field-input" value="20" step="1" min="1">
+                            </div>
+                        </div>
+
+                        <div class="sketch-row">
+                            <div class="sketch-field-group">
+                                <label class="sketch-field-label">Stroke Weight</label>
+                                <input type="number" id="p5-stroke-weight" class="sketch-field-input" value="1" step="0.5" min="0">
+                            </div>
+                            <div class="sketch-field-group">
+                                <label class="sketch-field-label">Stroke Color</label>
+                                <input type="color" id="p5-stroke-color" class="sketch-field-input" value="#000000">
+                            </div>
+                            <div class="sketch-field-group">
+                                <label class="sketch-field-label">
+                                    <input type="checkbox" id="p5-no-stroke">
+                                    No Stroke
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="sketch-row">
+                            <div class="sketch-field-group">
+                                <label class="sketch-field-label">Fill Color</label>
+                                <input type="color" id="p5-fill-color" class="sketch-field-input" value="#ED225D">
+                            </div>
+                            <div class="sketch-field-group">
+                                <label class="sketch-field-label">Fill Opacity</label>
+                                <input type="range" id="p5-fill-opacity" class="sketch-field-input" value="255" min="0" max="255">
+                                <span id="p5-fill-opacity-value">255</span>
+                            </div>
+                            <div class="sketch-field-group">
+                                <label class="sketch-field-label">
+                                    <input type="checkbox" id="p5-no-fill">
+                                    No Fill
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Color Palette -->
+                    <div class="sketch-section">
+                        <h4 class="sketch-section-title">Color Palette</h4>
+
+                        <div id="p5-color-palette-container">
+                            <!-- Color inputs will be dynamically added here -->
+                        </div>
+                        <button type="button" class="btn btn-sm btn-success" onclick="addP5Color()">
+                            + Add Color
+                        </button>
+                        <div class="sketch-field-group" style="margin-top: 15px;">
+                            <label class="sketch-field-label">
+                                <input type="checkbox" id="p5-use-palette">
+                                Use Random Colors from Palette
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Pattern & Generation -->
+                    <div class="sketch-section">
+                        <h4 class="sketch-section-title">Pattern & Generation</h4>
+
+                        <div class="sketch-row">
+                            <div class="sketch-field-group">
+                                <label class="sketch-field-label">Pattern Type</label>
+                                <select id="p5-pattern-type" class="sketch-field-input">
+                                    <option value="grid">Grid</option>
+                                    <option value="random">Random</option>
+                                    <option value="noise">Perlin Noise</option>
+                                    <option value="spiral">Spiral</option>
+                                    <option value="radial">Radial</option>
+                                    <option value="flow">Flow Field</option>
+                                    <option value="fractal">Fractal</option>
+                                </select>
+                            </div>
+                            <div class="sketch-field-group">
+                                <label class="sketch-field-label">Spacing/Density</label>
+                                <input type="number" id="p5-spacing" class="sketch-field-input" value="30" step="1" min="1">
+                            </div>
+                            <div class="sketch-field-group">
+                                <label class="sketch-field-label">Random Seed</label>
+                                <input type="number" id="p5-random-seed" class="sketch-field-input" value="42">
+                            </div>
+                        </div>
+
+                        <div class="sketch-row">
+                            <div class="sketch-field-group">
+                                <label class="sketch-field-label">Noise Scale</label>
+                                <input type="number" id="p5-noise-scale" class="sketch-field-input" value="0.01" step="0.001" min="0.001">
+                                <small class="form-help">Controls noise smoothness</small>
+                            </div>
+                            <div class="sketch-field-group">
+                                <label class="sketch-field-label">Noise Detail</label>
+                                <input type="number" id="p5-noise-detail" class="sketch-field-input" value="4" step="1" min="1" max="8">
+                                <small class="form-help">Level of detail (octaves)</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Animation Settings -->
+                    <div class="sketch-section">
+                        <h4 class="sketch-section-title">Animation Settings</h4>
+
+                        <div class="sketch-row">
+                            <div class="sketch-field-group">
+                                <label class="sketch-field-label">
+                                    <input type="checkbox" id="p5-animated" checked onchange="updateP5AnimationFields()">
+                                    Animated (use draw loop)
+                                </label>
+                            </div>
+                            <div class="sketch-field-group">
+                                <label class="sketch-field-label">
+                                    <input type="checkbox" id="p5-loop" checked>
+                                    Loop Animation
+                                </label>
+                            </div>
+                        </div>
+
+                        <div id="p5-animation-fields">
+                            <div class="sketch-row">
+                                <div class="sketch-field-group">
+                                    <label class="sketch-field-label">Animation Type</label>
+                                    <select id="p5-animation-type" class="sketch-field-input">
+                                        <option value="rotation">Rotation</option>
+                                        <option value="translation">Translation</option>
+                                        <option value="scale">Scale/Pulse</option>
+                                        <option value="morph">Morph</option>
+                                        <option value="noise">Noise-based</option>
+                                        <option value="sine">Sine Wave</option>
+                                    </select>
+                                </div>
+                                <div class="sketch-field-group">
+                                    <label class="sketch-field-label">Animation Speed</label>
+                                    <input type="number" id="p5-animation-speed" class="sketch-field-input" value="1" step="0.1" min="0.1" max="10">
+                                </div>
+                                <div class="sketch-field-group">
+                                    <label class="sketch-field-label">
+                                        <input type="checkbox" id="p5-clear-background">
+                                        Clear Background Each Frame
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Interaction Settings -->
+                    <div class="sketch-section">
+                        <h4 class="sketch-section-title">Interaction Settings</h4>
+
+                        <div class="sketch-row">
+                            <div class="sketch-field-group">
+                                <label class="sketch-field-label">
+                                    <input type="checkbox" id="p5-mouse-interaction">
+                                    Enable Mouse Interaction
+                                </label>
+                            </div>
+                            <div class="sketch-field-group">
+                                <label class="sketch-field-label">Interaction Type</label>
+                                <select id="p5-interaction-type" class="sketch-field-input">
+                                    <option value="follow">Follow Mouse</option>
+                                    <option value="repel">Repel from Mouse</option>
+                                    <option value="attract">Attract to Mouse</option>
+                                    <option value="draw">Draw on Click</option>
+                                    <option value="change-color">Change Color</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="sketch-row">
+                            <div class="sketch-field-group">
+                                <label class="sketch-field-label">
+                                    <input type="checkbox" id="p5-keyboard-interaction">
+                                    Enable Keyboard Interaction
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Advanced Settings -->
+                    <details style="margin-top: 20px;">
+                        <summary style="cursor: pointer; font-weight: 600; color: #ED225D; font-size: 16px;">
+                            ⚙️ Advanced Settings
+                        </summary>
+                        <div style="margin-top: 15px; padding: 20px; background: #f8f9fa; border-radius: 8px;">
+                            <div class="sketch-row">
+                                <div class="sketch-field-group">
+                                    <label class="sketch-field-label">Blend Mode</label>
+                                    <select id="p5-blend-mode" class="sketch-field-input">
+                                        <option value="BLEND">Normal (BLEND)</option>
+                                        <option value="ADD">Add</option>
+                                        <option value="MULTIPLY">Multiply</option>
+                                        <option value="SCREEN">Screen</option>
+                                        <option value="OVERLAY">Overlay</option>
+                                        <option value="DIFFERENCE">Difference</option>
+                                        <option value="EXCLUSION">Exclusion</option>
+                                    </select>
+                                </div>
+                                <div class="sketch-field-group">
+                                    <label class="sketch-field-label">Rect Mode</label>
+                                    <select id="p5-rect-mode" class="sketch-field-input">
+                                        <option value="CORNER">Corner</option>
+                                        <option value="CENTER">Center</option>
+                                        <option value="RADIUS">Radius</option>
+                                        <option value="CORNERS">Corners</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="sketch-row">
+                                <div class="sketch-field-group">
+                                    <label class="sketch-field-label">Ellipse Mode</label>
+                                    <select id="p5-ellipse-mode" class="sketch-field-input">
+                                        <option value="CENTER">Center</option>
+                                        <option value="CORNER">Corner</option>
+                                        <option value="RADIUS">Radius</option>
+                                        <option value="CORNERS">Corners</option>
+                                    </select>
+                                </div>
+                                <div class="sketch-field-group">
+                                    <label class="sketch-field-label">Angle Mode</label>
+                                    <select id="p5-angle-mode" class="sketch-field-input">
+                                        <option value="RADIANS">Radians</option>
+                                        <option value="DEGREES">Degrees</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </details>
+                </div>
+            </div>
+
+            <!-- Hidden field to store P5.js configuration as JSON -->
+            <input type="hidden" name="configuration_json" id="configuration_json">
+
+            <div class="form-group" style="margin-top: 30px;">
                 <button type="submit" class="btn btn-primary btn-lg">
                     <?php echo $action === 'create' ? 'Create Piece' : 'Update Piece'; ?>
                 </button>
@@ -396,7 +707,359 @@ require_once(__DIR__ . '/includes/header.php');
         </form>
     </div>
 
+    <style>
+    .sketch-section {
+        background: white;
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+
+    .sketch-section-title {
+        color: #ED225D;
+        font-size: 18px;
+        font-weight: 600;
+        margin: 0 0 15px 0;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #ED225D;
+    }
+
+    .sketch-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin-bottom: 15px;
+    }
+
+    .sketch-field-group {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .sketch-field-label {
+        font-weight: 600;
+        margin-bottom: 5px;
+        color: #495057;
+        font-size: 14px;
+    }
+
+    .sketch-field-input {
+        padding: 8px 12px;
+        border: 1px solid #ced4da;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+
+    .sketch-field-input:focus {
+        outline: none;
+        border-color: #ED225D;
+        box-shadow: 0 0 0 0.2rem rgba(237, 34, 93, 0.25);
+    }
+
+    .p5-color-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 10px;
+    }
+
+    .p5-color-remove-btn {
+        background: #dc3545;
+        color: white;
+        border: none;
+        padding: 4px 8px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+    }
+
+    .p5-color-remove-btn:hover {
+        background: #c82333;
+    }
+    </style>
+
     <script>
+    // P5.js sketch configuration state
+    const p5Config = {
+        canvas: {
+            width: 800,
+            height: 600,
+            renderer: 'P2D',
+            background: '#FFFFFF',
+            colorMode: 'RGB',
+            frameRate: 60
+        },
+        drawing: {
+            shapeType: 'ellipse',
+            shapeCount: 100,
+            shapeSize: 20,
+            strokeWeight: 1,
+            strokeColor: '#000000',
+            noStroke: false,
+            fillColor: '#ED225D',
+            fillOpacity: 255,
+            noFill: false
+        },
+        colors: ['#ED225D', '#F06292', '#BA68C8', '#9575CD'],
+        usePalette: false,
+        pattern: {
+            type: 'grid',
+            spacing: 30,
+            randomSeed: 42,
+            noiseScale: 0.01,
+            noiseDetail: 4
+        },
+        animation: {
+            animated: true,
+            loop: true,
+            type: 'rotation',
+            speed: 1,
+            clearBackground: true
+        },
+        interaction: {
+            mouse: false,
+            mouseType: 'follow',
+            keyboard: false
+        },
+        advanced: {
+            blendMode: 'BLEND',
+            rectMode: 'CORNER',
+            ellipseMode: 'CENTER',
+            angleMode: 'RADIANS'
+        }
+    };
+
+    // Initialize P5 color palette
+    function initializeP5ColorPalette() {
+        const container = document.getElementById('p5-color-palette-container');
+        container.innerHTML = '';
+        p5Config.colors.forEach((color, index) => {
+            addP5ColorWithValue(color);
+        });
+        updateP5Configuration();
+    }
+
+    // Add color to P5 palette
+    function addP5Color() {
+        addP5ColorWithValue('#' + Math.floor(Math.random()*16777215).toString(16));
+        updateP5Configuration();
+    }
+
+    // Add color with specific value
+    function addP5ColorWithValue(color) {
+        const container = document.getElementById('p5-color-palette-container');
+        const index = container.children.length;
+
+        const colorItem = document.createElement('div');
+        colorItem.className = 'p5-color-item';
+        colorItem.innerHTML = `
+            <input type="color" class="sketch-field-input" value="${color}"
+                   onchange="updateP5Color(${index}, this.value)" style="width: 60px;">
+            <input type="text" class="sketch-field-input" value="${color}"
+                   onchange="updateP5Color(${index}, this.value)" style="flex: 1;">
+            <button type="button" class="p5-color-remove-btn" onclick="removeP5Color(${index})">Remove</button>
+        `;
+        container.appendChild(colorItem);
+
+        // Update the colors array
+        if (index >= p5Config.colors.length) {
+            p5Config.colors.push(color);
+        }
+    }
+
+    // Update color in P5 palette
+    function updateP5Color(index, value) {
+        p5Config.colors[index] = value;
+        // Sync both inputs
+        const colorItem = document.querySelectorAll('.p5-color-item')[index];
+        const inputs = colorItem.querySelectorAll('input');
+        inputs[0].value = value;
+        inputs[1].value = value;
+        updateP5Configuration();
+    }
+
+    // Remove color from P5 palette
+    function removeP5Color(index) {
+        if (p5Config.colors.length <= 1) {
+            alert('You must have at least one color in the palette!');
+            return;
+        }
+        p5Config.colors.splice(index, 1);
+        initializeP5ColorPalette();
+    }
+
+    // Update animation fields visibility
+    function updateP5AnimationFields() {
+        const animated = document.getElementById('p5-animated').checked;
+        const fields = document.getElementById('p5-animation-fields');
+        fields.style.display = animated ? 'block' : 'none';
+        p5Config.animation.animated = animated;
+        updateP5Configuration();
+    }
+
+    // Collect all P5 form values and update configuration
+    function collectP5FormValues() {
+        // Canvas settings
+        p5Config.canvas.width = parseInt(document.getElementById('p5-width').value);
+        p5Config.canvas.height = parseInt(document.getElementById('p5-height').value);
+        p5Config.canvas.renderer = document.getElementById('p5-renderer').value;
+        p5Config.canvas.background = document.getElementById('p5-background').value;
+        p5Config.canvas.colorMode = document.getElementById('p5-color-mode').value;
+        p5Config.canvas.frameRate = parseInt(document.getElementById('p5-frame-rate').value);
+
+        // Drawing settings
+        p5Config.drawing.shapeType = document.getElementById('p5-shape-type').value;
+        p5Config.drawing.shapeCount = parseInt(document.getElementById('p5-shape-count').value);
+        p5Config.drawing.shapeSize = parseFloat(document.getElementById('p5-shape-size').value);
+        p5Config.drawing.strokeWeight = parseFloat(document.getElementById('p5-stroke-weight').value);
+        p5Config.drawing.strokeColor = document.getElementById('p5-stroke-color').value;
+        p5Config.drawing.noStroke = document.getElementById('p5-no-stroke').checked;
+        p5Config.drawing.fillColor = document.getElementById('p5-fill-color').value;
+        p5Config.drawing.fillOpacity = parseInt(document.getElementById('p5-fill-opacity').value);
+        p5Config.drawing.noFill = document.getElementById('p5-no-fill').checked;
+
+        // Color palette
+        p5Config.usePalette = document.getElementById('p5-use-palette').checked;
+
+        // Pattern settings
+        p5Config.pattern.type = document.getElementById('p5-pattern-type').value;
+        p5Config.pattern.spacing = parseFloat(document.getElementById('p5-spacing').value);
+        p5Config.pattern.randomSeed = parseInt(document.getElementById('p5-random-seed').value);
+        p5Config.pattern.noiseScale = parseFloat(document.getElementById('p5-noise-scale').value);
+        p5Config.pattern.noiseDetail = parseInt(document.getElementById('p5-noise-detail').value);
+
+        // Animation settings
+        p5Config.animation.animated = document.getElementById('p5-animated').checked;
+        p5Config.animation.loop = document.getElementById('p5-loop').checked;
+        p5Config.animation.type = document.getElementById('p5-animation-type').value;
+        p5Config.animation.speed = parseFloat(document.getElementById('p5-animation-speed').value);
+        p5Config.animation.clearBackground = document.getElementById('p5-clear-background').checked;
+
+        // Interaction settings
+        p5Config.interaction.mouse = document.getElementById('p5-mouse-interaction').checked;
+        p5Config.interaction.mouseType = document.getElementById('p5-interaction-type').value;
+        p5Config.interaction.keyboard = document.getElementById('p5-keyboard-interaction').checked;
+
+        // Advanced settings
+        p5Config.advanced.blendMode = document.getElementById('p5-blend-mode').value;
+        p5Config.advanced.rectMode = document.getElementById('p5-rect-mode').value;
+        p5Config.advanced.ellipseMode = document.getElementById('p5-ellipse-mode').value;
+        p5Config.advanced.angleMode = document.getElementById('p5-angle-mode').value;
+    }
+
+    // Update the hidden configuration field
+    function updateP5Configuration() {
+        collectP5FormValues();
+        document.getElementById('configuration_json').value = JSON.stringify(p5Config, null, 2);
+    }
+
+    // Initialize everything on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        // Update fill opacity display
+        const fillOpacityInput = document.getElementById('p5-fill-opacity');
+        const fillOpacityValue = document.getElementById('p5-fill-opacity-value');
+
+        if (fillOpacityInput && fillOpacityValue) {
+            fillOpacityInput.addEventListener('input', function() {
+                fillOpacityValue.textContent = this.value;
+                updateP5Configuration();
+            });
+        }
+
+        // Add change listeners to all inputs
+        const inputs = document.querySelectorAll('.sketch-field-input, #p5-animated, #p5-loop, #p5-no-stroke, #p5-no-fill, #p5-use-palette, #p5-clear-background, #p5-mouse-interaction, #p5-keyboard-interaction');
+        inputs.forEach(input => {
+            input.addEventListener('change', updateP5Configuration);
+            input.addEventListener('input', updateP5Configuration);
+        });
+
+        // Initialize color palette
+        initializeP5ColorPalette();
+
+        // Initialize animation fields visibility
+        updateP5AnimationFields();
+
+        // Load existing configuration if editing
+        <?php if ($editPiece && !empty($editPiece['configuration'])): ?>
+        try {
+            const savedConfig = <?php echo $editPiece['configuration']; ?>;
+            if (savedConfig) {
+                // Load canvas settings
+                if (savedConfig.canvas) {
+                    document.getElementById('p5-width').value = savedConfig.canvas.width;
+                    document.getElementById('p5-height').value = savedConfig.canvas.height;
+                    document.getElementById('p5-renderer').value = savedConfig.canvas.renderer;
+                    document.getElementById('p5-background').value = savedConfig.canvas.background;
+                    document.getElementById('p5-color-mode').value = savedConfig.canvas.colorMode;
+                    document.getElementById('p5-frame-rate').value = savedConfig.canvas.frameRate;
+                }
+
+                // Load drawing settings
+                if (savedConfig.drawing) {
+                    document.getElementById('p5-shape-type').value = savedConfig.drawing.shapeType;
+                    document.getElementById('p5-shape-count').value = savedConfig.drawing.shapeCount;
+                    document.getElementById('p5-shape-size').value = savedConfig.drawing.shapeSize;
+                    document.getElementById('p5-stroke-weight').value = savedConfig.drawing.strokeWeight;
+                    document.getElementById('p5-stroke-color').value = savedConfig.drawing.strokeColor;
+                    document.getElementById('p5-no-stroke').checked = savedConfig.drawing.noStroke;
+                    document.getElementById('p5-fill-color').value = savedConfig.drawing.fillColor;
+                    document.getElementById('p5-fill-opacity').value = savedConfig.drawing.fillOpacity;
+                    fillOpacityValue.textContent = savedConfig.drawing.fillOpacity;
+                    document.getElementById('p5-no-fill').checked = savedConfig.drawing.noFill;
+                }
+
+                // Load color palette
+                if (savedConfig.colors) {
+                    p5Config.colors = savedConfig.colors;
+                    initializeP5ColorPalette();
+                }
+                if (savedConfig.usePalette !== undefined) {
+                    document.getElementById('p5-use-palette').checked = savedConfig.usePalette;
+                }
+
+                // Load pattern settings
+                if (savedConfig.pattern) {
+                    document.getElementById('p5-pattern-type').value = savedConfig.pattern.type;
+                    document.getElementById('p5-spacing').value = savedConfig.pattern.spacing;
+                    document.getElementById('p5-random-seed').value = savedConfig.pattern.randomSeed;
+                    document.getElementById('p5-noise-scale').value = savedConfig.pattern.noiseScale;
+                    document.getElementById('p5-noise-detail').value = savedConfig.pattern.noiseDetail;
+                }
+
+                // Load animation settings
+                if (savedConfig.animation) {
+                    document.getElementById('p5-animated').checked = savedConfig.animation.animated;
+                    document.getElementById('p5-loop').checked = savedConfig.animation.loop;
+                    document.getElementById('p5-animation-type').value = savedConfig.animation.type;
+                    document.getElementById('p5-animation-speed').value = savedConfig.animation.speed;
+                    document.getElementById('p5-clear-background').checked = savedConfig.animation.clearBackground;
+                    updateP5AnimationFields();
+                }
+
+                // Load interaction settings
+                if (savedConfig.interaction) {
+                    document.getElementById('p5-mouse-interaction').checked = savedConfig.interaction.mouse;
+                    document.getElementById('p5-interaction-type').value = savedConfig.interaction.mouseType;
+                    document.getElementById('p5-keyboard-interaction').checked = savedConfig.interaction.keyboard;
+                }
+
+                // Load advanced settings
+                if (savedConfig.advanced) {
+                    document.getElementById('p5-blend-mode').value = savedConfig.advanced.blendMode;
+                    document.getElementById('p5-rect-mode').value = savedConfig.advanced.rectMode;
+                    document.getElementById('p5-ellipse-mode').value = savedConfig.advanced.ellipseMode;
+                    document.getElementById('p5-angle-mode').value = savedConfig.advanced.angleMode;
+                }
+
+                updateP5Configuration();
+            }
+        } catch (e) {
+            console.error('Error loading P5.js configuration:', e);
+        }
+        <?php endif; ?>
+    });
+
     function addImageUrl() {
         const container = document.getElementById('image-urls-container');
         const input = document.createElement('input');
