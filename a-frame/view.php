@@ -4,6 +4,7 @@
  * Renders A-Frame art pieces from database configuration
  */
 
+require_once(__DIR__ . '/../resources/templates/name.php');
 require_once(__DIR__ . '/../config/config.php');
 require_once(__DIR__ . '/../config/database.php');
 require_once(__DIR__ . '/../config/helpers.php');
@@ -16,10 +17,10 @@ if (!$slug) {
     die('Art piece not found. No slug provided.');
 }
 
-// Query database for the piece
+// Query database for the piece (check both active and draft status during development)
 try {
     $piece = dbFetchOne(
-        "SELECT * FROM aframe_art WHERE slug = ? AND status = 'active'",
+        "SELECT * FROM aframe_art WHERE slug = ? AND deleted_at IS NULL",
         [$slug]
     );
 
@@ -35,7 +36,7 @@ try {
 
     // Set page metadata
     $page_name = htmlspecialchars($piece['title']);
-    $tagline = htmlspecialchars($piece['description']);
+    $tagline = htmlspecialchars($piece['description'] ?? 'A-Frame WebVR Art Piece');
 
 } catch (Exception $e) {
     error_log('Error loading A-Frame piece: ' . $e->getMessage());
@@ -43,9 +44,11 @@ try {
     die('Error loading art piece.');
 }
 
-// Include header
-require_once(__DIR__ . '/../resources/templates/header.php');
+// Include head (DOCTYPE, HTML, A-Frame library)
+require_once(__DIR__ . '/../resources/templates/head.php');
 ?>
+<body>
+<?php require_once(__DIR__ . '/../resources/templates/header.php'); ?>
 
 <!-- A-Frame Scene -->
 <a-scene <?php if (isset($sceneSettings['background'])): ?>background="color: <?php echo htmlspecialchars($sceneSettings['background']); ?>"<?php endif; ?>>
@@ -155,3 +158,5 @@ require_once(__DIR__ . '/../resources/templates/header.php');
 </a-scene>
 
 <?php require_once(__DIR__ . '/../resources/templates/footer.php'); ?>
+</body>
+</html>
