@@ -53,15 +53,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array($action, ['create', 'edit'
             'description' => $_POST['description'] ?? '',
             'thumbnail_url' => $_POST['thumbnail_url'] ?? '',
             'scene_type' => $_POST['scene_type'] ?? 'custom',
+            'sky_color' => $_POST['sky_color'] ?? '#ECECEC',
+            'sky_texture' => $_POST['sky_texture'] ?? '',
+            'ground_color' => $_POST['ground_color'] ?? '#7BC8A4',
+            'ground_texture' => $_POST['ground_texture'] ?? '',
             'tags' => $_POST['tags'] ?? '',
             'status' => $_POST['status'] ?? 'active',
             'sort_order' => $_POST['sort_order'] ?? 0
         ];
-
-        // Handle texture URLs (array input)
-        if (isset($_POST['texture_urls']) && is_array($_POST['texture_urls'])) {
-            $data['texture_urls'] = array_filter($_POST['texture_urls']);
-        }
 
         // Handle configuration JSON if provided
         if (!empty($_POST['configuration_json'])) {
@@ -84,10 +83,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array($action, ['create', 'edit'
             $error = $result['message'];
             // Preserve form data so user doesn't lose their work
             $formData = $data;
-            // Also preserve texture URLs in original format
-            if (isset($_POST['texture_urls'])) {
-                $formData['texture_urls_raw'] = $_POST['texture_urls'];
-            }
             // Preserve configuration JSON
             if (isset($_POST['configuration_json'])) {
                 $formData['configuration_json_raw'] = $_POST['configuration_json'];
@@ -305,7 +300,7 @@ require_once(__DIR__ . '/includes/header.php');
                     data-type="url"
                     data-preview="thumbnail-preview"
                     placeholder="https://example.com/image.png"
-                    value="<?php echo $formData ? htmlspecialchars($formData['thumbnail_url']) : ($editPiece ? htmlspecialchars($editPiece['thumbnail_url']) : ''); ?>"
+                    value="<?php echo $formData ? htmlspecialchars($formData['thumbnail_url'] ?? '') : ($editPiece ? htmlspecialchars($editPiece['thumbnail_url'] ?? '') : ''); ?>"
                 >
                 <small class="form-help">URL to thumbnail image (WEBP, JPG, PNG)</small>
                 <img id="thumbnail-preview" style="display: none; max-width: 200px; margin-top: 10px;" />
@@ -321,36 +316,86 @@ require_once(__DIR__ . '/includes/header.php');
                 </select>
             </div>
 
-            <div class="form-group">
-                <label class="form-label">Background Image URLs (optional)</label>
-                <div id="texture-urls-container">
-                    <?php
-                    $textureUrls = [];
-                    if ($formData && !empty($formData['texture_urls_raw'])) {
-                        $textureUrls = $formData['texture_urls_raw'];
-                    } elseif ($editPiece && !empty($editPiece['texture_urls'])) {
-                        $textureUrls = json_decode($editPiece['texture_urls'], true) ?: [];
-                    }
-
-                    if (empty($textureUrls)) {
-                        $textureUrls = [''];
-                    }
-
-                    foreach ($textureUrls as $index => $url):
-                    ?>
-                    <input
-                        type="url"
-                        name="texture_urls[]"
-                        class="form-control mb-1"
-                        placeholder="https://example.com/background.png"
-                        value="<?php echo htmlspecialchars($url); ?>"
-                    >
-                    <?php endforeach; ?>
+            <!-- Scene Environment Settings -->
+            <div class="card" style="margin-top: 20px; border: 2px solid #4a90e2;">
+                <div class="card-header" style="background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%); color: white;">
+                    <h3 style="margin: 0;">🌅 Scene Environment</h3>
+                    <p style="margin: 5px 0 0 0; font-size: 14px; opacity: 0.95;">Configure sky (background) and ground (foreground) appearance</p>
                 </div>
-                <button type="button" class="btn btn-sm btn-secondary mt-1" onclick="addTextureUrl()">
-                    + Add Another Background Image URL
-                </button>
-                <small class="form-help">Background image URLs for the scene. If multiple URLs are provided, one will be randomly selected each time the piece loads. Individual shape textures are configured in the Shape Builder below.</small>
+
+                <div style="padding: 20px;">
+                    <div class="form-group">
+                        <label for="sky_color" class="form-label">Sky Color (Background)</label>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <input
+                                type="color"
+                                id="sky_color"
+                                name="sky_color"
+                                class="form-control"
+                                style="width: 80px; height: 40px; padding: 2px;"
+                                value="<?php echo $formData ? ($formData['sky_color'] ?? '#ECECEC') : ($editPiece && !empty($editPiece['sky_color']) ? $editPiece['sky_color'] : '#ECECEC'); ?>"
+                            >
+                            <input
+                                type="text"
+                                class="form-control"
+                                placeholder="#ECECEC"
+                                value="<?php echo $formData ? ($formData['sky_color'] ?? '#ECECEC') : ($editPiece && !empty($editPiece['sky_color']) ? $editPiece['sky_color'] : '#ECECEC'); ?>"
+                                onchange="document.getElementById('sky_color').value = this.value"
+                                style="flex: 1;"
+                            >
+                        </div>
+                        <small class="form-help">The color of the sky/background (distant environment)</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="sky_texture" class="form-label">Sky Texture URL (optional)</label>
+                        <input
+                            type="url"
+                            id="sky_texture"
+                            name="sky_texture"
+                            class="form-control"
+                            placeholder="https://example.com/sky-texture.jpg"
+                            value="<?php echo $formData ? ($formData['sky_texture'] ?? '') : ($editPiece ? ($editPiece['sky_texture'] ?? '') : ''); ?>"
+                        >
+                        <small class="form-help">Optional: Apply a texture/image to the sky sphere (360° panorama works best)</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="ground_color" class="form-label">Ground Color (Foreground)</label>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <input
+                                type="color"
+                                id="ground_color"
+                                name="ground_color"
+                                class="form-control"
+                                style="width: 80px; height: 40px; padding: 2px;"
+                                value="<?php echo $formData ? ($formData['ground_color'] ?? '#7BC8A4') : ($editPiece && !empty($editPiece['ground_color']) ? $editPiece['ground_color'] : '#7BC8A4'); ?>"
+                            >
+                            <input
+                                type="text"
+                                class="form-control"
+                                placeholder="#7BC8A4"
+                                value="<?php echo $formData ? ($formData['ground_color'] ?? '#7BC8A4') : ($editPiece && !empty($editPiece['ground_color']) ? $editPiece['ground_color'] : '#7BC8A4'); ?>"
+                                onchange="document.getElementById('ground_color').value = this.value"
+                                style="flex: 1;"
+                            >
+                        </div>
+                        <small class="form-help">The color of the ground plane (floor/foreground)</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="ground_texture" class="form-label">Ground Texture URL (optional)</label>
+                        <input
+                            type="url"
+                            id="ground_texture"
+                            name="ground_texture"
+                            class="form-control"
+                            placeholder="https://example.com/ground-texture.jpg"
+                            value="<?php echo $formData ? ($formData['ground_texture'] ?? '') : ($editPiece ? ($editPiece['ground_texture'] ?? '') : ''); ?>"
+                        >
+                        <small class="form-help">Optional: Apply a texture/image to the ground plane (tiling textures work best)</small>
+                    </div>
+                </div>
             </div>
 
             <div class="form-group">
@@ -361,7 +406,7 @@ require_once(__DIR__ . '/includes/header.php');
                     name="tags"
                     class="form-control"
                     placeholder="WebVR, A-Frame, 3D, Animation"
-                    value="<?php echo $formData ? htmlspecialchars($formData['tags']) : ($editPiece ? htmlspecialchars($editPiece['tags']) : ''); ?>"
+                    value="<?php echo $formData ? htmlspecialchars($formData['tags'] ?? '') : ($editPiece ? htmlspecialchars($editPiece['tags'] ?? '') : ''); ?>"
                 >
                 <small class="form-help">Comma-separated tags</small>
             </div>
@@ -548,16 +593,6 @@ require_once(__DIR__ . '/includes/header.php');
         'tetrahedron': { radius: true, label: 'Tetrahedron' },
         'icosahedron': { radius: true, label: 'Icosahedron' }
     };
-
-    function addTextureUrl() {
-        const container = document.getElementById('texture-urls-container');
-        const input = document.createElement('input');
-        input.type = 'url';
-        input.name = 'texture_urls[]';
-        input.className = 'form-control mb-1';
-        input.placeholder = 'https://example.com/texture.png';
-        container.appendChild(input);
-    }
 
     function updateSlugPreview() {
         const titleInput = document.getElementById('title');

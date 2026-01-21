@@ -51,10 +51,14 @@ require_once(__DIR__ . '/../resources/templates/head.php');
 <?php require_once(__DIR__ . '/../resources/templates/header.php'); ?>
 
 <!-- A-Frame Scene -->
-<a-scene <?php if (isset($sceneSettings['background'])): ?>background="color: <?php echo htmlspecialchars($sceneSettings['background']); ?>"<?php endif; ?>>
+<a-scene>
 
     <!-- Camera -->
     <a-camera position="0 1.6 0" look-controls wasd-controls></a-camera>
+
+    <!-- Lighting -->
+    <a-light type="ambient" color="#BBB"></a-light>
+    <a-light type="directional" color="#FFF" intensity="0.6" position="-0.5 1 1"></a-light>
 
     <!-- Dynamically render shapes from configuration -->
     <?php if (!empty($shapes)): ?>
@@ -151,11 +155,26 @@ require_once(__DIR__ . '/../resources/templates/head.php');
         <?php endforeach; ?>
     <?php endif; ?>
 
-    <!-- Ground plane -->
-    <a-plane position="0 0 -4" rotation="-90 0 0" width="100" height="100" color="#7BC8A4"></a-plane>
+    <!-- Ground plane (foreground) -->
+    <a-plane
+        position="0 0 -4"
+        rotation="-90 0 0"
+        width="100"
+        height="100"
+        color="<?php echo htmlspecialchars($piece['ground_color'] ?? '#7BC8A4'); ?>"
+        <?php if (!empty($piece['ground_texture'])): ?>
+            src="<?php echo htmlspecialchars(proxifyImageUrl($piece['ground_texture'])); ?>"
+            repeat="10 10"
+        <?php endif; ?>
+    ></a-plane>
 
-    <!-- Sky -->
-    <a-sky color="<?php echo htmlspecialchars($sceneSettings['background'] ?? '#ECECEC'); ?>"></a-sky>
+    <!-- Sky (background) -->
+    <a-sky
+        color="<?php echo htmlspecialchars($piece['sky_color'] ?? '#ECECEC'); ?>"
+        <?php if (!empty($piece['sky_texture'])): ?>
+            src="<?php echo htmlspecialchars(proxifyImageUrl($piece['sky_texture'])); ?>"
+        <?php endif; ?>
+    ></a-sky>
 </a-scene>
 
 <?php require_once(__DIR__ . '/../resources/templates/footer.php'); ?>

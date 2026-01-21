@@ -330,7 +330,7 @@ require_once(__DIR__ . '/includes/header.php');
                     data-type="url"
                     data-preview="thumbnail-preview"
                     placeholder="https://example.com/image.png"
-                    value="<?php echo $formData ? htmlspecialchars($formData['thumbnail_url']) : ($editPiece ? htmlspecialchars($editPiece['thumbnail_url']) : ''); ?>"
+                    value="<?php echo $formData ? htmlspecialchars($formData['thumbnail_url'] ?? '') : ($editPiece ? htmlspecialchars($editPiece['thumbnail_url'] ?? '') : ''); ?>"
                 >
                 <small class="form-help">URL to thumbnail image (WEBP, JPG, PNG)</small>
                 <img id="thumbnail-preview" style="display: none; max-width: 200px; margin-top: 10px;" />
@@ -376,7 +376,7 @@ require_once(__DIR__ . '/includes/header.php');
                     name="tags"
                     class="form-control"
                     placeholder="Three.js, 3D, WebGL, Animation"
-                    value="<?php echo $formData ? htmlspecialchars($formData['tags']) : ($editPiece ? htmlspecialchars($editPiece['tags']) : ''); ?>"
+                    value="<?php echo $formData ? htmlspecialchars($formData['tags'] ?? '') : ($editPiece ? htmlspecialchars($editPiece['tags'] ?? '') : ''); ?>"
                 >
                 <small class="form-help">Comma-separated tags</small>
             </div>

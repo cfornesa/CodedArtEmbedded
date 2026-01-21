@@ -448,6 +448,152 @@ select.form-control {
     flex-wrap: wrap;
 }
 
+/* Shape/Geometry Configuration Builder */
+.shape-panel, .geometry-panel, .pattern-panel, .sketch-panel {
+    background-color: #f8f9fa;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    transition: border-color 0.3s ease;
+}
+
+.shape-panel:hover, .geometry-panel:hover, .pattern-panel:hover, .sketch-panel:hover {
+    border-color: #667eea;
+}
+
+.shape-panel-header, .geometry-panel-header, .pattern-panel-header, .sketch-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.shape-panel-title, .geometry-panel-title, .pattern-panel-title, .sketch-panel-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #495057;
+}
+
+.shape-remove-btn, .geometry-remove-btn, .pattern-remove-btn, .sketch-remove-btn {
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s ease;
+}
+
+.shape-remove-btn:hover, .geometry-remove-btn:hover, .pattern-remove-btn:hover, .sketch-remove-btn:hover {
+    background-color: #c82333;
+}
+
+.shape-row, .geometry-row, .pattern-row, .sketch-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.shape-field-group, .geometry-field-group, .pattern-field-group, .sketch-field-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.shape-field-label, .geometry-field-label, .pattern-field-label, .sketch-field-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 5px;
+}
+
+.shape-field-input, .geometry-field-input, .pattern-field-input, .sketch-field-input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ced4da;
+    border-radius: 5px;
+    font-size: 14px;
+    transition: border-color 0.3s ease;
+}
+
+.shape-field-input:focus, .geometry-field-input:focus, .pattern-field-input:focus, .sketch-field-input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.xyz-inputs {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+}
+
+.xyz-input-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.xyz-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #6c757d;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+}
+
+.animation-settings {
+    background-color: white;
+    border: 1px solid #dee2e6;
+    border-radius: 5px;
+    padding: 15px;
+    margin-top: 10px;
+}
+
+.animation-settings-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+}
+
+.animation-settings-header:hover {
+    color: #667eea;
+}
+
+.animation-settings-content {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid #e9ecef;
+}
+
+.animation-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.animation-toggle input[type="checkbox"] {
+    width: auto;
+    margin: 0;
+}
+
+/* Responsive adjustments for builder */
+@media (max-width: 768px) {
+    .shape-row, .geometry-row, .pattern-row, .sketch-row {
+        grid-template-columns: 1fr;
+    }
+
+    .xyz-inputs {
+        grid-template-columns: 1fr;
+    }
+}
+
 /* Modal (for delete confirmation, etc.) */
 .modal {
     display: none;
