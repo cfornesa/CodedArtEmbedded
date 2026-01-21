@@ -12,7 +12,7 @@ extract($pageInfo); // Creates $page_name, $tagline, $section, $type
 // Fetch active C2 art pieces from database
 try {
     $db = getDbConnection();
-    $stmt = $db->prepare("SELECT * FROM c2_art WHERE status = ? ORDER BY sort_order ASC, created_at DESC");
+    $stmt = $db->prepare("SELECT * FROM c2_art WHERE status = ? AND deleted_at IS NULL ORDER BY sort_order ASC, created_at DESC");
     $stmt->execute(['active']);
     $artPieces = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
@@ -53,14 +53,14 @@ require('../resources/templates/head.php');
 
           <div class="col-lg-6 col-md-12 col-sm-12 col-xs-12">
             <center>
-              <a href="<?php echo htmlspecialchars($piece['file_path']); ?>">
+              <a href="view.php?slug=<?php echo urlencode($piece['slug']); ?>">
                 <h2><?php echo htmlspecialchars($piece['title']); ?></h2>
               </a>
             </center>
 
             <?php if (!empty($piece['thumbnail_url'])): ?>
               <center>
-                <a href="<?php echo htmlspecialchars($piece['file_path']); ?>">
+                <a href="view.php?slug=<?php echo urlencode($piece['slug']); ?>">
                   <img
                     src="<?php echo htmlspecialchars($piece['thumbnail_url']); ?>"
                     alt="<?php echo htmlspecialchars($piece['title']); ?>"

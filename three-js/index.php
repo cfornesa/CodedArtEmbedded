@@ -12,7 +12,7 @@ extract($pageInfo); // Creates $page_name, $tagline, $section, $type
 // Fetch active Three.js art pieces from database
 try {
     $db = getDbConnection();
-    $stmt = $db->prepare("SELECT * FROM threejs_art WHERE status = ? ORDER BY sort_order ASC, created_at DESC");
+    $stmt = $db->prepare("SELECT * FROM threejs_art WHERE status = ? AND deleted_at IS NULL ORDER BY sort_order ASC, created_at DESC");
     $stmt->execute(['active']);
     $artPieces = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
@@ -45,19 +45,13 @@ require('../resources/templates/head.php');
         <?php foreach ($artPieces as $piece): ?>
           <div class="row">
             <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
-              <a href="<?php echo htmlspecialchars($piece['file_path']); ?>">
+              <a href="view.php?slug=<?php echo urlencode($piece['slug']); ?>">
                 <h2><?php echo htmlspecialchars($piece['title']); ?></h2>
               </a>
 
-              <?php if (!empty($piece['embedded_path'])): ?>
-                <iframe
-                  src="<?php echo htmlspecialchars($piece['embedded_path']); ?>"
-                  scrolling="no"
-                  style="width: 100%; height: 500px; border: none; border-radius: 8px;"
-                ></iframe>
-              <?php elseif (!empty($piece['thumbnail_url'])): ?>
+              <?php if (!empty($piece['thumbnail_url'])): ?>
                 <center>
-                  <a href="<?php echo htmlspecialchars($piece['file_path']); ?>">
+                  <a href="view.php?slug=<?php echo urlencode($piece['slug']); ?>">
                     <img
                       src="<?php echo htmlspecialchars($piece['thumbnail_url']); ?>"
                       alt="<?php echo htmlspecialchars($piece['title']); ?>"

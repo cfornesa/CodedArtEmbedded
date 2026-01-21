@@ -4,6 +4,7 @@
  * Renders P5.js art pieces from database configuration
  */
 
+require_once(__DIR__ . '/../resources/templates/name.php');
 require_once(__DIR__ . '/../config/config.php');
 require_once(__DIR__ . '/../config/database.php');
 require_once(__DIR__ . '/../config/helpers.php');
@@ -16,10 +17,10 @@ if (!$slug) {
     die('Art piece not found. No slug provided.');
 }
 
-// Query database for the piece
+// Query database for the piece (check both active and draft status during development)
 try {
     $piece = dbFetchOne(
-        "SELECT * FROM p5_art WHERE slug = ? AND status = 'active'",
+        "SELECT * FROM p5_art WHERE slug = ? AND deleted_at IS NULL",
         [$slug]
     );
 
@@ -33,7 +34,7 @@ try {
 
     // Set page metadata
     $page_name = htmlspecialchars($piece['title']);
-    $tagline = htmlspecialchars($piece['description']);
+    $tagline = htmlspecialchars($piece['description'] ?? 'P5.js Processing Art Piece');
 
 } catch (Exception $e) {
     error_log('Error loading P5.js piece: ' . $e->getMessage());
@@ -41,9 +42,11 @@ try {
     die('Error loading art piece.');
 }
 
-// Include header
-require_once(__DIR__ . '/../resources/templates/header.php');
+// Include head (DOCTYPE, HTML, libraries)
+require_once(__DIR__ . '/../resources/templates/head.php');
 ?>
+<body>
+<?php require_once(__DIR__ . '/../resources/templates/header.php'); ?>
 
 <div id="p5-container" style="display: flex; justify-content: center; align-items: center; min-height: 400px;"></div>
 
@@ -397,3 +400,5 @@ new p5(sketch);
 </script>
 
 <?php require_once(__DIR__ . '/../resources/templates/footer.php'); ?>
+</body>
+</html>
