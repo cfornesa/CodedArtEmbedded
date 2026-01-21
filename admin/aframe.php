@@ -368,7 +368,35 @@ require_once(__DIR__ . '/includes/header.php');
                 <small class="form-help">Lower numbers appear first</small>
             </div>
 
-            <div class="form-group">
+            <!-- Advanced Shape Configuration Builder -->
+            <div class="card" style="margin-top: 30px; border: 2px solid #667eea;">
+                <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                    <h3 style="margin: 0; display: flex; align-items: center; justify-content: space-between;">
+                        <span>🎨 Shape Configuration Builder</span>
+                        <small style="opacity: 0.9; font-weight: normal;">(Max: 40 shapes)</small>
+                    </h3>
+                    <p style="margin: 5px 0 0 0; font-size: 14px; opacity: 0.95;">
+                        Add and configure 3D shapes for your A-Frame scene
+                    </p>
+                </div>
+
+                <div style="padding: 20px;">
+                    <div id="shapes-container"></div>
+
+                    <button type="button" class="btn btn-success" onclick="addShape()" id="add-shape-btn">
+                        + Add New Shape
+                    </button>
+
+                    <small class="form-help" style="display: block; margin-top: 10px;">
+                        <strong>Tip:</strong> Click "Add New Shape" to add shapes to your scene. Each shape can be fully customized with position, rotation, color, and textures.
+                    </small>
+                </div>
+            </div>
+
+            <!-- Hidden field to store shape configuration as JSON -->
+            <input type="hidden" name="configuration_json" id="configuration_json">
+
+            <div class="form-group" style="margin-top: 30px;">
                 <button type="submit" class="btn btn-primary btn-lg">
                     <?php echo $action === 'create' ? 'Create Piece' : 'Update Piece'; ?>
                 </button>
@@ -379,7 +407,128 @@ require_once(__DIR__ . '/includes/header.php');
         </form>
     </div>
 
+    <style>
+    .shape-panel {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 15px;
+        position: relative;
+    }
+
+    .shape-panel-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #667eea;
+    }
+
+    .shape-panel-title {
+        font-weight: bold;
+        color: #333;
+        font-size: 16px;
+    }
+
+    .shape-remove-btn {
+        background: #dc3545;
+        color: white;
+        border: none;
+        padding: 6px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+    }
+
+    .shape-remove-btn:hover {
+        background: #c82333;
+    }
+
+    .shape-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin-bottom: 15px;
+    }
+
+    .shape-field-group {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .shape-field-label {
+        font-weight: 600;
+        margin-bottom: 5px;
+        color: #495057;
+        font-size: 14px;
+    }
+
+    .shape-field-input {
+        padding: 8px 12px;
+        border: 1px solid #ced4da;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+
+    .shape-field-input:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    }
+
+    .xyz-inputs {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+    }
+
+    .xyz-input-group {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .xyz-label {
+        font-weight: 600;
+        font-size: 12px;
+        color: #6c757d;
+        margin-bottom: 3px;
+    }
+
+    #shapes-container:empty::before {
+        content: 'No shapes added yet. Click "Add New Shape" to get started.';
+        display: block;
+        padding: 40px;
+        text-align: center;
+        color: #6c757d;
+        background: #f8f9fa;
+        border: 2px dashed #dee2e6;
+        border-radius: 8px;
+        margin-bottom: 15px;
+    }
+    </style>
+
     <script>
+    let shapeCount = 0;
+    const MAX_SHAPES = 40;
+    const shapes = [];
+
+    // A-Frame shape types with their specific properties
+    const shapeTypes = {
+        'box': { dimensions: true, label: 'Box' },
+        'sphere': { radius: true, label: 'Sphere' },
+        'cylinder': { radius: true, height: true, label: 'Cylinder' },
+        'cone': { radius: true, height: true, label: 'Cone' },
+        'plane': { dimensions: true, label: 'Plane' },
+        'torus': { radius: true, tube: true, label: 'Torus' },
+        'ring': { radiusInner: true, radiusOuter: true, label: 'Ring' },
+        'dodecahedron': { radius: true, label: 'Dodecahedron' },
+        'octahedron': { radius: true, label: 'Octahedron' },
+        'tetrahedron': { radius: true, label: 'Tetrahedron' },
+        'icosahedron': { radius: true, label: 'Icosahedron' }
+    };
+
     function addTextureUrl() {
         const container = document.getElementById('texture-urls-container');
         const input = document.createElement('input');
@@ -423,6 +572,352 @@ require_once(__DIR__ . '/includes/header.php');
     <?php if ($action === 'create'): ?>
     document.addEventListener('DOMContentLoaded', function() {
         updateSlugPreview();
+    });
+    <?php endif; ?>
+
+    // ============================================
+    // SHAPE BUILDER FUNCTIONS
+    // ============================================
+
+    function addShape() {
+        if (shapeCount >= MAX_SHAPES) {
+            alert(`Maximum of ${MAX_SHAPES} shapes reached!`);
+            return;
+        }
+
+        const id = Date.now();
+        shapeCount++;
+
+        const shapeData = {
+            id: id,
+            type: 'box',
+            position: { x: 0, y: 0, z: -5 },
+            rotation: { x: 0, y: 0, z: 0 },
+            scale: { x: 1, y: 1, z: 1 },
+            color: '#4CC3D9',
+            texture: '',
+            width: 1,
+            height: 1,
+            depth: 1,
+            radius: 1,
+            animation: {
+                enabled: false,
+                property: 'rotation',
+                to: '0 360 0',
+                dur: 10000,
+                loop: true
+            }
+        };
+
+        shapes.push(shapeData);
+        renderShape(shapeData);
+        updateAddButtonState();
+        updateConfiguration();
+    }
+
+    function renderShape(shapeData) {
+        const container = document.getElementById('shapes-container');
+        const shapeIndex = shapes.findIndex(s => s.id === shapeData.id);
+
+        const panel = document.createElement('div');
+        panel.className = 'shape-panel';
+        panel.id = `shape-${shapeData.id}`;
+        panel.innerHTML = `
+            <div class="shape-panel-header">
+                <span class="shape-panel-title">Shape #${shapeIndex + 1}</span>
+                <button type="button" class="shape-remove-btn" onclick="removeShape(${shapeData.id})">
+                    ✕ Remove
+                </button>
+            </div>
+
+            <!-- Shape Type -->
+            <div class="shape-row">
+                <div class="shape-field-group">
+                    <label class="shape-field-label">Shape Type</label>
+                    <select class="shape-field-input" onchange="updateShapeType(${shapeData.id}, this.value)">
+                        ${Object.entries(shapeTypes).map(([value, config]) => `
+                            <option value="${value}" ${shapeData.type === value ? 'selected' : ''}>
+                                ${config.label}
+                            </option>
+                        `).join('')}
+                    </select>
+                </div>
+
+                <div class="shape-field-group">
+                    <label class="shape-field-label">Color</label>
+                    <input type="color" class="shape-field-input" value="${shapeData.color}"
+                           onchange="updateShapeProperty(${shapeData.id}, 'color', this.value)">
+                </div>
+
+                <div class="shape-field-group">
+                    <label class="shape-field-label">Texture URL (optional)</label>
+                    <input type="url" class="shape-field-input" value="${shapeData.texture}"
+                           placeholder="https://example.com/texture.png"
+                           onchange="updateShapeProperty(${shapeData.id}, 'texture', this.value)">
+                </div>
+            </div>
+
+            <!-- Dimensions (type-specific) -->
+            <div class="shape-row" id="dimensions-${shapeData.id}">
+                ${renderDimensions(shapeData)}
+            </div>
+
+            <!-- Position -->
+            <div class="shape-row">
+                <div class="shape-field-group">
+                    <label class="shape-field-label">Position</label>
+                    <div class="xyz-inputs">
+                        <div class="xyz-input-group">
+                            <label class="xyz-label">X</label>
+                            <input type="number" class="shape-field-input" value="${shapeData.position.x}" step="0.1"
+                                   onchange="updateShapeXYZ(${shapeData.id}, 'position', 'x', this.value)">
+                        </div>
+                        <div class="xyz-input-group">
+                            <label class="xyz-label">Y</label>
+                            <input type="number" class="shape-field-input" value="${shapeData.position.y}" step="0.1"
+                                   onchange="updateShapeXYZ(${shapeData.id}, 'position', 'y', this.value)">
+                        </div>
+                        <div class="xyz-input-group">
+                            <label class="xyz-label">Z</label>
+                            <input type="number" class="shape-field-input" value="${shapeData.position.z}" step="0.1"
+                                   onchange="updateShapeXYZ(${shapeData.id}, 'position', 'z', this.value)">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Rotation -->
+                <div class="shape-field-group">
+                    <label class="shape-field-label">Rotation (degrees)</label>
+                    <div class="xyz-inputs">
+                        <div class="xyz-input-group">
+                            <label class="xyz-label">X</label>
+                            <input type="number" class="shape-field-input" value="${shapeData.rotation.x}" step="15"
+                                   onchange="updateShapeXYZ(${shapeData.id}, 'rotation', 'x', this.value)">
+                        </div>
+                        <div class="xyz-input-group">
+                            <label class="xyz-label">Y</label>
+                            <input type="number" class="shape-field-input" value="${shapeData.rotation.y}" step="15"
+                                   onchange="updateShapeXYZ(${shapeData.id}, 'rotation', 'y', this.value)">
+                        </div>
+                        <div class="xyz-input-group">
+                            <label class="xyz-label">Z</label>
+                            <input type="number" class="shape-field-input" value="${shapeData.rotation.z}" step="15"
+                                   onchange="updateShapeXYZ(${shapeData.id}, 'rotation', 'z', this.value)">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Scale -->
+                <div class="shape-field-group">
+                    <label class="shape-field-label">Scale</label>
+                    <div class="xyz-inputs">
+                        <div class="xyz-input-group">
+                            <label class="xyz-label">X</label>
+                            <input type="number" class="shape-field-input" value="${shapeData.scale.x}" step="0.1" min="0.1"
+                                   onchange="updateShapeXYZ(${shapeData.id}, 'scale', 'x', this.value)">
+                        </div>
+                        <div class="xyz-input-group">
+                            <label class="xyz-label">Y</label>
+                            <input type="number" class="shape-field-input" value="${shapeData.scale.y}" step="0.1" min="0.1"
+                                   onchange="updateShapeXYZ(${shapeData.id}, 'scale', 'y', this.value)">
+                        </div>
+                        <div class="xyz-input-group">
+                            <label class="xyz-label">Z</label>
+                            <input type="number" class="shape-field-input" value="${shapeData.scale.z}" step="0.1" min="0.1"
+                                   onchange="updateShapeXYZ(${shapeData.id}, 'scale', 'z', this.value)">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Animation -->
+            <details style="margin-top: 15px;">
+                <summary style="cursor: pointer; font-weight: 600; color: #495057; padding: 10px; background: #e9ecef; border-radius: 4px;">
+                    ⚙️ Animation Settings (optional)
+                </summary>
+                <div style="padding: 15px; background: white; border: 1px solid #dee2e6; border-radius: 0 0 4px 4px;">
+                    <div class="shape-row">
+                        <div class="shape-field-group">
+                            <label class="shape-field-label">
+                                <input type="checkbox" ${shapeData.animation.enabled ? 'checked' : ''}
+                                       onchange="updateAnimationEnabled(${shapeData.id}, this.checked)">
+                                Enable Animation
+                            </label>
+                        </div>
+                        <div class="shape-field-group">
+                            <label class="shape-field-label">Property to Animate</label>
+                            <select class="shape-field-input" onchange="updateAnimationProperty(${shapeData.id}, 'property', this.value)">
+                                <option value="rotation" ${shapeData.animation.property === 'rotation' ? 'selected' : ''}>Rotation</option>
+                                <option value="position" ${shapeData.animation.property === 'position' ? 'selected' : ''}>Position</option>
+                                <option value="scale" ${shapeData.animation.property === 'scale' ? 'selected' : ''}>Scale</option>
+                            </select>
+                        </div>
+                        <div class="shape-field-group">
+                            <label class="shape-field-label">Duration (ms)</label>
+                            <input type="number" class="shape-field-input" value="${shapeData.animation.dur}" step="1000" min="0"
+                                   onchange="updateAnimationProperty(${shapeData.id}, 'dur', this.value)">
+                        </div>
+                    </div>
+                </div>
+            </details>
+        `;
+
+        container.appendChild(panel);
+    }
+
+    function renderDimensions(shapeData) {
+        const config = shapeTypes[shapeData.type];
+
+        if (config.dimensions) {
+            return `
+                <div class="shape-field-group">
+                    <label class="shape-field-label">Width</label>
+                    <input type="number" class="shape-field-input" value="${shapeData.width}" step="0.1" min="0.1"
+                           onchange="updateShapeProperty(${shapeData.id}, 'width', this.value)">
+                </div>
+                <div class="shape-field-group">
+                    <label class="shape-field-label">Height</label>
+                    <input type="number" class="shape-field-input" value="${shapeData.height}" step="0.1" min="0.1"
+                           onchange="updateShapeProperty(${shapeData.id}, 'height', this.value)">
+                </div>
+                <div class="shape-field-group">
+                    <label class="shape-field-label">Depth</label>
+                    <input type="number" class="shape-field-input" value="${shapeData.depth}" step="0.1" min="0.1"
+                           onchange="updateShapeProperty(${shapeData.id}, 'depth', this.value)">
+                </div>
+            `;
+        } else if (config.radius && config.height) {
+            return `
+                <div class="shape-field-group">
+                    <label class="shape-field-label">Radius</label>
+                    <input type="number" class="shape-field-input" value="${shapeData.radius}" step="0.1" min="0.1"
+                           onchange="updateShapeProperty(${shapeData.id}, 'radius', this.value)">
+                </div>
+                <div class="shape-field-group">
+                    <label class="shape-field-label">Height</label>
+                    <input type="number" class="shape-field-input" value="${shapeData.height}" step="0.1" min="0.1"
+                           onchange="updateShapeProperty(${shapeData.id}, 'height', this.value)">
+                </div>
+            `;
+        } else if (config.radius) {
+            return `
+                <div class="shape-field-group">
+                    <label class="shape-field-label">Radius</label>
+                    <input type="number" class="shape-field-input" value="${shapeData.radius}" step="0.1" min="0.1"
+                           onchange="updateShapeProperty(${shapeData.id}, 'radius', this.value)">
+                </div>
+            `;
+        }
+
+        return '';
+    }
+
+    function removeShape(id) {
+        const index = shapes.findIndex(s => s.id === id);
+        if (index > -1) {
+            shapes.splice(index, 1);
+            shapeCount--;
+            document.getElementById(`shape-${id}`).remove();
+            updateAddButtonState();
+            updateConfiguration();
+            renumberShapes();
+        }
+    }
+
+    function updateShapeType(id, type) {
+        const shape = shapes.find(s => s.id === id);
+        if (shape) {
+            shape.type = type;
+            // Re-render dimensions section
+            const dimensionsContainer = document.getElementById(`dimensions-${id}`);
+            dimensionsContainer.innerHTML = renderDimensions(shape);
+            updateConfiguration();
+        }
+    }
+
+    function updateShapeProperty(id, property, value) {
+        const shape = shapes.find(s => s.id === id);
+        if (shape) {
+            shape[property] = property === 'color' || property === 'texture' ? value : parseFloat(value);
+            updateConfiguration();
+        }
+    }
+
+    function updateShapeXYZ(id, property, axis, value) {
+        const shape = shapes.find(s => s.id === id);
+        if (shape && shape[property]) {
+            shape[property][axis] = parseFloat(value);
+            updateConfiguration();
+        }
+    }
+
+    function updateAnimationEnabled(id, enabled) {
+        const shape = shapes.find(s => s.id === id);
+        if (shape) {
+            shape.animation.enabled = enabled;
+            updateConfiguration();
+        }
+    }
+
+    function updateAnimationProperty(id, property, value) {
+        const shape = shapes.find(s => s.id === id);
+        if (shape) {
+            shape.animation[property] = property === 'dur' ? parseInt(value) : value;
+            updateConfiguration();
+        }
+    }
+
+    function updateConfiguration() {
+        const config = {
+            shapes: shapes,
+            sceneSettings: {
+                background: '#ECECEC',
+                fog: 'type: linear; color: #AAA'
+            }
+        };
+        document.getElementById('configuration_json').value = JSON.stringify(config, null, 2);
+    }
+
+    function updateAddButtonState() {
+        const btn = document.getElementById('add-shape-btn');
+        if (shapeCount >= MAX_SHAPES) {
+            btn.disabled = true;
+            btn.textContent = `Maximum Shapes Reached (${MAX_SHAPES}/${MAX_SHAPES})`;
+            btn.style.opacity = '0.5';
+        } else {
+            btn.disabled = false;
+            btn.textContent = `+ Add New Shape (${shapeCount}/${MAX_SHAPES})`;
+            btn.style.opacity = '1';
+        }
+    }
+
+    function renumberShapes() {
+        shapes.forEach((shape, index) => {
+            const panel = document.getElementById(`shape-${shape.id}`);
+            if (panel) {
+                const title = panel.querySelector('.shape-panel-title');
+                title.textContent = `Shape #${index + 1}`;
+            }
+        });
+    }
+
+    // Load existing configuration when editing
+    <?php if ($editPiece && !empty($editPiece['configuration'])): ?>
+    document.addEventListener('DOMContentLoaded', function() {
+        try {
+            const config = <?php echo $editPiece['configuration']; ?>;
+            if (config && config.shapes) {
+                config.shapes.forEach(shapeData => {
+                    shapes.push(shapeData);
+                    shapeCount++;
+                    renderShape(shapeData);
+                });
+                updateAddButtonState();
+                updateConfiguration();
+            }
+        } catch (e) {
+            console.error('Error loading shape configuration:', e);
+        }
     });
     <?php endif; ?>
     </script>
