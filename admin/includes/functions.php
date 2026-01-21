@@ -410,9 +410,10 @@ function prepareArtPieceData($type, $data, $userId, $isUpdate = false) {
     switch ($type) {
         case 'aframe':
             $prepared['scene_type'] = $data['scene_type'] ?? 'custom';
-            $prepared['texture_urls'] = !empty($data['texture_urls'])
-                ? jsonEncode($data['texture_urls'])
-                : null;
+            $prepared['sky_color'] = $data['sky_color'] ?? '#ECECEC';
+            $prepared['sky_texture'] = !empty($data['sky_texture']) ? sanitize($data['sky_texture']) : null;
+            $prepared['ground_color'] = $data['ground_color'] ?? '#7BC8A4';
+            $prepared['ground_texture'] = !empty($data['ground_texture']) ? sanitize($data['ground_texture']) : null;
             $prepared['configuration'] = !empty($data['configuration'])
                 ? jsonEncode($data['configuration'])
                 : null;
