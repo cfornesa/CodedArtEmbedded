@@ -109,10 +109,20 @@ function createArtPieceWithSlug($type, $data) {
         ];
     } catch (Exception $e) {
         dbRollback();
-        error_log("Create art piece error: " . $e->getMessage());
+        // Enhanced error logging for debugging
+        $errorDetails = [
+            'error' => $e->getMessage(),
+            'type' => $type,
+            'file' => $e->getFile(),
+            'line' => $e->getLine(),
+            'trace' => $e->getTraceAsString()
+        ];
+        error_log("Create art piece error: " . json_encode($errorDetails));
+
+        // Return user-friendly message with debug hint
         return [
             'success' => false,
-            'message' => 'An error occurred while creating the art piece.',
+            'message' => 'An error occurred while creating the art piece. Error: ' . $e->getMessage(),
             'id' => null,
             'slug' => null
         ];
@@ -183,9 +193,9 @@ function updateArtPieceWithSlug($type, $id, $data) {
         }
 
         $data['slug'] = $newSlug;
-    } else if (isset($data['title']) && $data['title'] !== $existingPiece['title']) {
-        // Title changed, offer to regenerate slug
-        // Keep old slug unless explicitly changed
+    } else {
+        // No slug change requested - preserve existing slug
+        // This ensures file_path can be regenerated correctly
         $data['slug'] = $oldSlug;
     }
 
@@ -237,10 +247,21 @@ function updateArtPieceWithSlug($type, $id, $data) {
         ];
     } catch (Exception $e) {
         dbRollback();
-        error_log("Update art piece error: " . $e->getMessage());
+        // Enhanced error logging for debugging
+        $errorDetails = [
+            'error' => $e->getMessage(),
+            'type' => $type,
+            'id' => $id,
+            'file' => $e->getFile(),
+            'line' => $e->getLine(),
+            'trace' => $e->getTraceAsString()
+        ];
+        error_log("Update art piece error: " . json_encode($errorDetails));
+
+        // Return user-friendly message with debug hint
         return [
             'success' => false,
-            'message' => 'An error occurred while updating the art piece.',
+            'message' => 'An error occurred while updating the art piece. Error: ' . $e->getMessage(),
             'slug' => null
         ];
     }
@@ -325,10 +346,22 @@ function deleteArtPieceWithSlug($type, $id, $permanent = false) {
         ];
     } catch (Exception $e) {
         dbRollback();
-        error_log("Delete art piece error: " . $e->getMessage());
+        // Enhanced error logging for debugging
+        $errorDetails = [
+            'error' => $e->getMessage(),
+            'type' => $type,
+            'id' => $id,
+            'permanent' => $permanent,
+            'file' => $e->getFile(),
+            'line' => $e->getLine(),
+            'trace' => $e->getTraceAsString()
+        ];
+        error_log("Delete art piece error: " . json_encode($errorDetails));
+
+        // Return user-friendly message with debug hint
         return [
             'success' => false,
-            'message' => 'An error occurred while deleting the art piece.'
+            'message' => 'An error occurred while deleting the art piece. Error: ' . $e->getMessage()
         ];
     }
 }
