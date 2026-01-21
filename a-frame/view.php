@@ -86,15 +86,31 @@ require_once(__DIR__ . '/../resources/templates/head.php');
                 $attrs[] = 'scale="' . $scale . '"';
             }
 
-            // Color
+            // Material properties (color, texture, opacity)
+            $materialAttrs = [];
+
             if (!empty($shape['color'])) {
-                $attrs[] = 'color="' . htmlspecialchars($shape['color']) . '"';
+                $materialAttrs[] = 'color: ' . htmlspecialchars($shape['color']);
             }
 
             // Texture (use CORS proxy for external images)
             if (!empty($shape['texture'])) {
                 $textureUrl = proxifyImageUrl($shape['texture']);
-                $attrs[] = 'src="' . htmlspecialchars($textureUrl) . '"';
+                $materialAttrs[] = 'src: ' . htmlspecialchars($textureUrl);
+            }
+
+            // Opacity (if less than 1.0, enable transparency)
+            $opacity = isset($shape['opacity']) ? (float)$shape['opacity'] : 1.0;
+            if ($opacity < 1.0) {
+                $materialAttrs[] = 'opacity: ' . $opacity;
+                $materialAttrs[] = 'transparent: true';
+            }
+
+            if (!empty($materialAttrs)) {
+                $attrs[] = 'material="' . implode('; ', $materialAttrs) . '"';
+            } else if (!empty($shape['color'])) {
+                // Fallback for backward compatibility
+                $attrs[] = 'color="' . htmlspecialchars($shape['color']) . '"';
             }
 
             // Type-specific dimensions
@@ -138,14 +154,59 @@ require_once(__DIR__ . '/../resources/templates/head.php');
                     }
             }
 
-            // Animation
-            if (!empty($shape['animation']) && $shape['animation']['enabled']) {
-                $animAttrs = [];
-                $animAttrs[] = 'property: ' . ($shape['animation']['property'] ?? 'rotation');
-                $animAttrs[] = 'to: ' . ($shape['animation']['to'] ?? '0 360 0');
-                $animAttrs[] = 'dur: ' . ($shape['animation']['dur'] ?? 10000);
-                $animAttrs[] = 'loop: ' . ($shape['animation']['loop'] ? 'true' : 'false');
-                $attrs[] = 'animation="' . implode('; ', $animAttrs) . '"';
+            // Granular Animations (rotation, position, scale)
+            if (!empty($shape['animation'])) {
+                // Rotation Animation
+                if (!empty($shape['animation']['rotation']['enabled'])) {
+                    $degrees = $shape['animation']['rotation']['degrees'] ?? 360;
+                    $duration = $shape['animation']['rotation']['duration'] ?? 10000;
+                    $attrs[] = 'animation__rotation="property: rotation; to: 0 ' . $degrees . ' 0; dur: ' . $duration . '; loop: true; easing: linear"';
+                }
+
+                // Position Animation
+                if (!empty($shape['animation']['position']['enabled'])) {
+                    $axis = $shape['animation']['position']['axis'] ?? 'y';
+                    $distance = $shape['animation']['position']['distance'] ?? 0;
+                    $duration = $shape['animation']['position']['duration'] ?? 10000;
+
+                    // Calculate from and to positions based on current position
+                    $currentPos = $shape['position'] ?? ['x' => 0, 'y' => 0, 'z' => 0];
+                    $fromPos = sprintf('%s %s %s', $currentPos['x'], $currentPos['y'], $currentPos['z']);
+
+                    // Apply distance to the selected axis
+                    $toPos = $currentPos;
+                    $toPos[$axis] = $currentPos[$axis] + $distance;
+                    $toPosStr = sprintf('%s %s %s', $toPos['x'], $toPos['y'], $toPos['z']);
+
+                    $attrs[] = 'animation__position="property: position; from: ' . $fromPos . '; to: ' . $toPosStr . '; dur: ' . $duration . '; loop: true; dir: alternate; easing: easeInOutSine"';
+                }
+
+                // Scale Animation
+                if (!empty($shape['animation']['scale']['enabled'])) {
+                    $minScale = $shape['animation']['scale']['min'] ?? 1.0;
+                    $maxScale = $shape['animation']['scale']['max'] ?? 1.0;
+                    $duration = $shape['animation']['scale']['duration'] ?? 10000;
+
+                    // Only animate if min and max are different
+                    if ($minScale != $maxScale) {
+                        $fromScale = sprintf('%s %s %s', $minScale, $minScale, $minScale);
+                        $toScale = sprintf('%s %s %s', $maxScale, $maxScale, $maxScale);
+                        $attrs[] = 'animation__scale="property: scale; from: ' . $fromScale . '; to: ' . $toScale . '; dur: ' . $duration . '; loop: true; dir: alternate; easing: easeInOutSine"';
+                    }
+                }
+
+                // Backward compatibility: Support old animation structure
+                if (isset($shape['animation']['enabled']) && $shape['animation']['enabled'] &&
+                    empty($shape['animation']['rotation']) &&
+                    empty($shape['animation']['position']) &&
+                    empty($shape['animation']['scale'])) {
+                    $animAttrs = [];
+                    $animAttrs[] = 'property: ' . ($shape['animation']['property'] ?? 'rotation');
+                    $animAttrs[] = 'to: ' . ($shape['animation']['to'] ?? '0 360 0');
+                    $animAttrs[] = 'dur: ' . ($shape['animation']['dur'] ?? 10000);
+                    $animAttrs[] = 'loop: true';
+                    $attrs[] = 'animation="' . implode('; ', $animAttrs) . '"';
+                }
             }
 
             $attrString = implode(' ', $attrs);
@@ -161,19 +222,33 @@ require_once(__DIR__ . '/../resources/templates/head.php');
         rotation="-90 0 0"
         width="100"
         height="100"
-        color="<?php echo htmlspecialchars($piece['ground_color'] ?? '#7BC8A4'); ?>"
-        <?php if (!empty($piece['ground_texture'])): ?>
-            src="<?php echo htmlspecialchars(proxifyImageUrl($piece['ground_texture'])); ?>"
-            repeat="10 10"
-        <?php endif; ?>
+        material="color: <?php echo htmlspecialchars($piece['ground_color'] ?? '#7BC8A4'); ?>;
+                  <?php if (!empty($piece['ground_texture'])): ?>
+                      src: <?php echo htmlspecialchars(proxifyImageUrl($piece['ground_texture'])); ?>;
+                      repeat: 10 10;
+                  <?php endif; ?>
+                  <?php
+                  $groundOpacity = isset($piece['ground_opacity']) ? (float)$piece['ground_opacity'] : 1.0;
+                  if ($groundOpacity < 1.0): ?>
+                      opacity: <?php echo $groundOpacity; ?>;
+                      transparent: true;
+                  <?php endif; ?>
+                  "
     ></a-plane>
 
     <!-- Sky (background) -->
     <a-sky
-        color="<?php echo htmlspecialchars($piece['sky_color'] ?? '#ECECEC'); ?>"
-        <?php if (!empty($piece['sky_texture'])): ?>
-            src="<?php echo htmlspecialchars(proxifyImageUrl($piece['sky_texture'])); ?>"
-        <?php endif; ?>
+        material="color: <?php echo htmlspecialchars($piece['sky_color'] ?? '#ECECEC'); ?>;
+                  <?php if (!empty($piece['sky_texture'])): ?>
+                      src: <?php echo htmlspecialchars(proxifyImageUrl($piece['sky_texture'])); ?>;
+                  <?php endif; ?>
+                  <?php
+                  $skyOpacity = isset($piece['sky_opacity']) ? (float)$piece['sky_opacity'] : 1.0;
+                  if ($skyOpacity < 1.0): ?>
+                      opacity: <?php echo $skyOpacity; ?>;
+                      transparent: true;
+                  <?php endif; ?>
+                  "
     ></a-sky>
 </a-scene>
 

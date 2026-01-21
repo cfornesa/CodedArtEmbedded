@@ -55,8 +55,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array($action, ['create', 'edit'
             'scene_type' => $_POST['scene_type'] ?? 'custom',
             'sky_color' => $_POST['sky_color'] ?? '#ECECEC',
             'sky_texture' => $_POST['sky_texture'] ?? '',
+            'sky_opacity' => $_POST['sky_opacity'] ?? '1.0',
             'ground_color' => $_POST['ground_color'] ?? '#7BC8A4',
             'ground_texture' => $_POST['ground_texture'] ?? '',
+            'ground_opacity' => $_POST['ground_opacity'] ?? '1.0',
             'tags' => $_POST['tags'] ?? '',
             'status' => $_POST['status'] ?? 'active',
             'sort_order' => $_POST['sort_order'] ?? 0
@@ -361,6 +363,28 @@ require_once(__DIR__ . '/includes/header.php');
                     </div>
 
                     <div class="form-group">
+                        <label for="sky_opacity" class="form-label">Sky Color Opacity</label>
+                        <div style="display: flex; gap: 15px; align-items: center;">
+                            <input
+                                type="range"
+                                id="sky_opacity"
+                                name="sky_opacity"
+                                class="form-control"
+                                min="0"
+                                max="1"
+                                step="0.01"
+                                value="<?php echo $formData ? ($formData['sky_opacity'] ?? '1.0') : ($editPiece && isset($editPiece['sky_opacity']) ? $editPiece['sky_opacity'] : '1.0'); ?>"
+                                oninput="document.getElementById('sky_opacity_value').textContent = this.value"
+                                style="flex: 1;"
+                            >
+                            <span id="sky_opacity_value" style="min-width: 40px; font-weight: 600; color: #495057;">
+                                <?php echo $formData ? ($formData['sky_opacity'] ?? '1.0') : ($editPiece && isset($editPiece['sky_opacity']) ? $editPiece['sky_opacity'] : '1.0'); ?>
+                            </span>
+                        </div>
+                        <small class="form-help">0 = fully transparent, 1 = fully opaque (default: 1.0)</small>
+                    </div>
+
+                    <div class="form-group">
                         <label for="ground_color" class="form-label">Ground Color (Foreground)</label>
                         <div style="display: flex; gap: 10px; align-items: center;">
                             <input
@@ -394,6 +418,28 @@ require_once(__DIR__ . '/includes/header.php');
                             value="<?php echo $formData ? ($formData['ground_texture'] ?? '') : ($editPiece ? ($editPiece['ground_texture'] ?? '') : ''); ?>"
                         >
                         <small class="form-help">Optional: Apply a texture/image to the ground plane (tiling textures work best)</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="ground_opacity" class="form-label">Ground Color Opacity</label>
+                        <div style="display: flex; gap: 15px; align-items: center;">
+                            <input
+                                type="range"
+                                id="ground_opacity"
+                                name="ground_opacity"
+                                class="form-control"
+                                min="0"
+                                max="1"
+                                step="0.01"
+                                value="<?php echo $formData ? ($formData['ground_opacity'] ?? '1.0') : ($editPiece && isset($editPiece['ground_opacity']) ? $editPiece['ground_opacity'] : '1.0'); ?>"
+                                oninput="document.getElementById('ground_opacity_value').textContent = this.value"
+                                style="flex: 1;"
+                            >
+                            <span id="ground_opacity_value" style="min-width: 40px; font-weight: 600; color: #495057;">
+                                <?php echo $formData ? ($formData['ground_opacity'] ?? '1.0') : ($editPiece && isset($editPiece['ground_opacity']) ? $editPiece['ground_opacity'] : '1.0'); ?>
+                            </span>
+                        </div>
+                        <small class="form-help">0 = fully transparent, 1 = fully opaque (default: 1.0)</small>
                     </div>
                 </div>
             </div>
@@ -716,16 +762,29 @@ require_once(__DIR__ . '/includes/header.php');
             scale: { x: 1, y: 1, z: 1 },
             color: '#4CC3D9',
             texture: '',
+            opacity: 1.0,  // NEW: Per-shape opacity
             width: 1,
             height: 1,
             depth: 1,
             radius: 1,
             animation: {
-                enabled: false,
-                property: 'rotation',
-                to: '0 360 0',
-                dur: 10000,
-                loop: true
+                rotation: {  // CHANGED: Granular animation control
+                    enabled: false,
+                    degrees: 360,
+                    duration: 10000
+                },
+                position: {  // NEW: Position animation
+                    enabled: false,
+                    axis: 'y',
+                    distance: 0,
+                    duration: 10000
+                },
+                scale: {  // NEW: Scale animation
+                    enabled: false,
+                    min: 1.0,
+                    max: 1.0,
+                    duration: 10000
+                }
             }
         };
 
@@ -774,6 +833,19 @@ require_once(__DIR__ . '/includes/header.php');
                     <input type="url" class="shape-field-input" value="${shapeData.texture}"
                            placeholder="https://example.com/texture.png"
                            onchange="updateShapeProperty(${shapeData.id}, 'texture', this.value)">
+                </div>
+
+                <div class="shape-field-group">
+                    <label class="shape-field-label">Opacity</label>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <input type="range" class="shape-field-input"
+                               min="0" max="1" step="0.01"
+                               value="${shapeData.opacity}"
+                               oninput="this.nextElementSibling.textContent = this.value; updateShapeProperty(${shapeData.id}, 'opacity', parseFloat(this.value))"
+                               style="flex: 1;">
+                        <span style="min-width: 40px; font-weight: 600; color: #495057;">${shapeData.opacity}</span>
+                    </div>
+                    <small style="display: block; margin-top: 5px; color: #6c757d; font-size: 0.875em;">0 = transparent, 1 = opaque</small>
                 </div>
             </div>
 
@@ -850,36 +922,136 @@ require_once(__DIR__ . '/includes/header.php');
                 </div>
             </div>
 
-            <!-- Animation -->
-            <details style="margin-top: 15px;">
-                <summary style="cursor: pointer; font-weight: 600; color: #495057; padding: 10px; background: #e9ecef; border-radius: 4px;">
+            <!-- Animation Settings -->
+            <div style="margin-top: 15px; border: 1px solid #dee2e6; border-radius: 4px; overflow: hidden;">
+                <div style="background: #e9ecef; padding: 10px; font-weight: 600; color: #495057;">
                     ⚙️ Animation Settings (optional)
-                </summary>
-                <div style="padding: 15px; background: white; border: 1px solid #dee2e6; border-radius: 0 0 4px 4px;">
-                    <div class="shape-row">
-                        <div class="shape-field-group">
+                </div>
+
+                <!-- Rotation Animation -->
+                <details style="border-bottom: 1px solid #dee2e6;">
+                    <summary style="cursor: pointer; padding: 10px; background: #f8f9fa; font-weight: 500; color: #495057;">
+                        📐 Rotation Animation
+                    </summary>
+                    <div style="padding: 15px; background: white;">
+                        <div class="shape-field-group" style="margin-bottom: 15px;">
                             <label class="shape-field-label">
-                                <input type="checkbox" ${shapeData.animation.enabled ? 'checked' : ''}
-                                       onchange="updateAnimationEnabled(${shapeData.id}, this.checked)">
-                                Enable Animation
+                                <input type="checkbox" ${shapeData.animation.rotation.enabled ? 'checked' : ''}
+                                       onchange="updateRotationAnimation(${shapeData.id}, 'enabled', this.checked)">
+                                Enable Rotation
                             </label>
                         </div>
-                        <div class="shape-field-group">
-                            <label class="shape-field-label">Property to Animate</label>
-                            <select class="shape-field-input" onchange="updateAnimationProperty(${shapeData.id}, 'property', this.value)">
-                                <option value="rotation" ${shapeData.animation.property === 'rotation' ? 'selected' : ''}>Rotation</option>
-                                <option value="position" ${shapeData.animation.property === 'position' ? 'selected' : ''}>Position</option>
-                                <option value="scale" ${shapeData.animation.property === 'scale' ? 'selected' : ''}>Scale</option>
-                            </select>
+                        <div class="shape-field-group" style="margin-bottom: 15px;">
+                            <label class="shape-field-label">Rotation Degrees (0-360°)</label>
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <input type="range" class="shape-field-input"
+                                       min="0" max="360" step="1"
+                                       value="${shapeData.animation.rotation.degrees}"
+                                       oninput="this.nextElementSibling.textContent = this.value + '°'; updateRotationAnimation(${shapeData.id}, 'degrees', parseInt(this.value))"
+                                       style="flex: 1;">
+                                <span style="min-width: 50px; font-weight: 600; color: #495057;">${shapeData.animation.rotation.degrees}°</span>
+                            </div>
                         </div>
                         <div class="shape-field-group">
-                            <label class="shape-field-label">Duration (ms)</label>
-                            <input type="number" class="shape-field-input" value="${shapeData.animation.dur}" step="1000" min="0"
-                                   onchange="updateAnimationProperty(${shapeData.id}, 'dur', this.value)">
+                            <label class="shape-field-label">Duration (milliseconds)</label>
+                            <input type="number" class="shape-field-input"
+                                   value="${shapeData.animation.rotation.duration}"
+                                   step="1000" min="100"
+                                   onchange="updateRotationAnimation(${shapeData.id}, 'duration', parseInt(this.value))">
                         </div>
                     </div>
-                </div>
-            </details>
+                </details>
+
+                <!-- Position Animation -->
+                <details style="border-bottom: 1px solid #dee2e6;">
+                    <summary style="cursor: pointer; padding: 10px; background: #f8f9fa; font-weight: 500; color: #495057;">
+                        📍 Position Animation
+                    </summary>
+                    <div style="padding: 15px; background: white;">
+                        <div class="shape-field-group" style="margin-bottom: 15px;">
+                            <label class="shape-field-label">
+                                <input type="checkbox" ${shapeData.animation.position.enabled ? 'checked' : ''}
+                                       onchange="updatePositionAnimation(${shapeData.id}, 'enabled', this.checked)">
+                                Enable Position
+                            </label>
+                        </div>
+                        <div class="shape-field-group" style="margin-bottom: 15px;">
+                            <label class="shape-field-label">Axis</label>
+                            <select class="shape-field-input" onchange="updatePositionAnimation(${shapeData.id}, 'axis', this.value)">
+                                <option value="x" ${shapeData.animation.position.axis === 'x' ? 'selected' : ''}>X (Left/Right)</option>
+                                <option value="y" ${shapeData.animation.position.axis === 'y' ? 'selected' : ''}>Y (Up/Down)</option>
+                                <option value="z" ${shapeData.animation.position.axis === 'z' ? 'selected' : ''}>Z (Forward/Back)</option>
+                            </select>
+                        </div>
+                        <div class="shape-field-group" style="margin-bottom: 15px;">
+                            <label class="shape-field-label">Distance (±5 units)</label>
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <input type="range" class="shape-field-input"
+                                       min="-5" max="5" step="0.1"
+                                       value="${shapeData.animation.position.distance}"
+                                       oninput="this.nextElementSibling.textContent = this.value; updatePositionAnimation(${shapeData.id}, 'distance', parseFloat(this.value))"
+                                       style="flex: 1;">
+                                <span style="min-width: 50px; font-weight: 600; color: #495057;">${shapeData.animation.position.distance}</span>
+                            </div>
+                        </div>
+                        <div class="shape-field-group">
+                            <label class="shape-field-label">Duration (milliseconds)</label>
+                            <input type="number" class="shape-field-input"
+                                   value="${shapeData.animation.position.duration}"
+                                   step="1000" min="100"
+                                   onchange="updatePositionAnimation(${shapeData.id}, 'duration', parseInt(this.value))">
+                        </div>
+                    </div>
+                </details>
+
+                <!-- Scale Animation -->
+                <details>
+                    <summary style="cursor: pointer; padding: 10px; background: #f8f9fa; font-weight: 500; color: #495057;">
+                        📏 Scale Animation
+                    </summary>
+                    <div style="padding: 15px; background: white;">
+                        <div class="shape-field-group" style="margin-bottom: 15px;">
+                            <label class="shape-field-label">
+                                <input type="checkbox" ${shapeData.animation.scale.enabled ? 'checked' : ''}
+                                       onchange="updateScaleAnimation(${shapeData.id}, 'enabled', this.checked)">
+                                Enable Scale
+                            </label>
+                        </div>
+                        <div class="shape-field-group" style="margin-bottom: 15px;">
+                            <label class="shape-field-label">Minimum Scale (0.1-10x)</label>
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <input type="range" class="shape-field-input"
+                                       min="0.1" max="10" step="0.1"
+                                       value="${shapeData.animation.scale.min}"
+                                       oninput="this.nextElementSibling.textContent = this.value + 'x'; updateScaleAnimation(${shapeData.id}, 'min', parseFloat(this.value))"
+                                       style="flex: 1;">
+                                <span style="min-width: 50px; font-weight: 600; color: #495057;">${shapeData.animation.scale.min}x</span>
+                            </div>
+                            <small style="display: block; margin-top: 5px; color: #6c757d; font-size: 0.875em;">0.1 = 10% size, 1.0 = 100% size, 10 = 1000% size</small>
+                        </div>
+                        <div class="shape-field-group" style="margin-bottom: 15px;">
+                            <label class="shape-field-label">Maximum Scale (0.1-10x)</label>
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <input type="range" class="shape-field-input"
+                                       min="0.1" max="10" step="0.1"
+                                       value="${shapeData.animation.scale.max}"
+                                       oninput="this.nextElementSibling.textContent = this.value + 'x'; updateScaleAnimation(${shapeData.id}, 'max', parseFloat(this.value))"
+                                       style="flex: 1;">
+                                <span style="min-width: 50px; font-weight: 600; color: #495057;">${shapeData.animation.scale.max}x</span>
+                            </div>
+                            <small style="display: block; margin-top: 5px; color: #6c757d; font-size: 0.875em;">0.1 = 10% size, 1.0 = 100% size, 10 = 1000% size</small>
+                        </div>
+                        <div class="shape-field-group" style="margin-bottom: 15px;" id="scale-validation-${shapeData.id}"></div>
+                        <div class="shape-field-group">
+                            <label class="shape-field-label">Duration (milliseconds)</label>
+                            <input type="number" class="shape-field-input"
+                                   value="${shapeData.animation.scale.duration}"
+                                   step="1000" min="100"
+                                   onchange="updateScaleAnimation(${shapeData.id}, 'duration', parseInt(this.value))">
+                        </div>
+                    </div>
+                </details>
+            </div>
         `;
 
         container.appendChild(panel);
@@ -971,19 +1143,55 @@ require_once(__DIR__ . '/includes/header.php');
         }
     }
 
-    function updateAnimationEnabled(id, enabled) {
+    // Rotation Animation Functions
+    function updateRotationAnimation(id, field, value) {
         const shape = shapes.find(s => s.id === id);
         if (shape) {
-            shape.animation.enabled = enabled;
+            shape.animation.rotation[field] = value;
             updateConfiguration();
         }
     }
 
-    function updateAnimationProperty(id, property, value) {
+    // Position Animation Functions
+    function updatePositionAnimation(id, field, value) {
         const shape = shapes.find(s => s.id === id);
         if (shape) {
-            shape.animation[property] = property === 'dur' ? parseInt(value) : value;
+            shape.animation.position[field] = value;
             updateConfiguration();
+        }
+    }
+
+    // Scale Animation Functions
+    function updateScaleAnimation(id, field, value) {
+        const shape = shapes.find(s => s.id === id);
+        if (shape) {
+            shape.animation.scale[field] = value;
+
+            // Validate min <= max
+            if (field === 'min' || field === 'max') {
+                validateScaleMinMax(id);
+            }
+
+            updateConfiguration();
+        }
+    }
+
+    function validateScaleMinMax(id) {
+        const shape = shapes.find(s => s.id === id);
+        if (!shape) return;
+
+        const validationDiv = document.getElementById(`scale-validation-${id}`);
+        if (!validationDiv) return;
+
+        const min = parseFloat(shape.animation.scale.min);
+        const max = parseFloat(shape.animation.scale.max);
+
+        if (min > max) {
+            validationDiv.innerHTML = '<small style="color: #dc3545; font-weight: 600;">⚠️ Warning: Minimum scale cannot be greater than maximum scale</small>';
+            validationDiv.style.display = 'block';
+        } else {
+            validationDiv.innerHTML = '';
+            validationDiv.style.display = 'none';
         }
     }
 

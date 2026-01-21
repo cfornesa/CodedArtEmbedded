@@ -412,8 +412,10 @@ function prepareArtPieceData($type, $data, $userId, $isUpdate = false) {
             $prepared['scene_type'] = $data['scene_type'] ?? 'custom';
             $prepared['sky_color'] = $data['sky_color'] ?? '#ECECEC';
             $prepared['sky_texture'] = !empty($data['sky_texture']) ? sanitize($data['sky_texture']) : null;
+            $prepared['sky_opacity'] = isset($data['sky_opacity']) ? (float)$data['sky_opacity'] : 1.0;
             $prepared['ground_color'] = $data['ground_color'] ?? '#7BC8A4';
             $prepared['ground_texture'] = !empty($data['ground_texture']) ? sanitize($data['ground_texture']) : null;
+            $prepared['ground_opacity'] = isset($data['ground_opacity']) ? (float)$data['ground_opacity'] : 1.0;
             $prepared['configuration'] = !empty($data['configuration'])
                 ? jsonEncode($data['configuration'])
                 : null;
