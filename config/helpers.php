@@ -9,6 +9,9 @@
  * @subpackage Config
  */
 
+// Load environment functions (needed for getBaseUrl())
+require_once(__DIR__ . '/environment.php');
+
 // ==========================================
 // PATH & URL HELPERS
 // ==========================================
@@ -30,30 +33,6 @@ function rootPath() {
  */
 function resolvePath($path) {
     return rootPath() . '/' . ltrim($path, '/');
-}
-
-/**
- * Get base URL from server variables
- *
- * @return string Base URL
- */
-function getBaseUrl() {
-    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ||
-                (!empty($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443) ?
-                'https://' : 'http://';
-
-    $host = $_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_NAME'] ?? 'localhost';
-
-    // Get the directory path (remove trailing index.php or script name)
-    $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
-    $basePath = dirname($scriptName);
-
-    // Clean up base path
-    if ($basePath === '/' || $basePath === '\\') {
-        $basePath = '';
-    }
-
-    return rtrim($protocol . $host . $basePath, '/');
 }
 
 /**
