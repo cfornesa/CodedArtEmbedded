@@ -55,14 +55,17 @@ CREATE TABLE aframe_art (
     description TEXT,
     file_path VARCHAR(255),
     thumbnail_url VARCHAR(500),
-    texture_urls TEXT,                    -- JSON: Background image URLs (random selection)
-    scene_type ENUM('space', 'alt', 'custom') DEFAULT 'space',
-    configuration TEXT,                   -- JSON: Shape configurations with per-shape textures
+    scene_type ENUM('space', 'alt', 'custom') DEFAULT 'custom',
+    sky_color VARCHAR(20) DEFAULT '#ECECEC',      -- Sky/background color
+    sky_texture VARCHAR(500),                      -- Optional sky texture URL
+    ground_color VARCHAR(20) DEFAULT '#7BC8A4',   -- Ground/foreground color
+    ground_texture VARCHAR(500),                   -- Optional ground texture URL
+    configuration TEXT,                            -- JSON: Shape configurations with per-shape textures
     tags TEXT,
     created_by INT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    deleted_at DATETIME DEFAULT NULL,     -- Soft delete timestamp
+    deleted_at DATETIME DEFAULT NULL,              -- Soft delete timestamp
     status ENUM('active', 'draft', 'archived') DEFAULT 'draft',
     sort_order INT DEFAULT 0,
     FOREIGN KEY (created_by) REFERENCES users(id),
@@ -74,7 +77,10 @@ CREATE TABLE aframe_art (
 
 **Key Fields:**
 - **slug** - URL-friendly identifier (auto-generated from title if not provided)
-- **texture_urls** - Background images (one randomly selected per load)
+- **sky_color** - Sky/background color (distant environment)
+- **sky_texture** - Optional texture URL for sky sphere (360° panoramas work best)
+- **ground_color** - Ground/foreground plane color (floor)
+- **ground_texture** - Optional texture URL for ground plane (tiling textures work best)
 - **configuration** - Shape builder output with per-shape texture URLs
 - **deleted_at** - NULL = active, timestamp = soft-deleted
 
@@ -826,6 +832,24 @@ CodedArtEmbedded/
 **Solution:** Fixed `getActiveArtPieces()` to handle `'all'` status filter correctly
 **Details:** Function now treats `'all'` the same as `null` - returns all non-deleted pieces regardless of status
 
+### PHP Deprecation Warnings for htmlspecialchars()
+**Status:** ✅ FIXED
+**Solution:** Added null coalescing (`?? ''`) to all htmlspecialchars() calls that might receive null
+**Details:** Fixed in all admin pages (aframe.php, c2.php, p5.php, threejs.php) for thumbnail_url and tags fields
+**Error Message:** "Deprecated: htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated"
+
+### Shape Builder Fields Jumbled/Inaccessible
+**Status:** ✅ FIXED
+**Solution:** Added comprehensive CSS for shape configuration builders
+**Details:** Added proper grid layout, spacing, and responsive design for .shape-panel, .shape-row, .shape-field-group, .xyz-inputs classes
+**Result:** Fields now display in clean 3-column grid on desktop, 1-column on mobile
+
+### Unwanted Green Foreground Color
+**Status:** ✅ FIXED
+**Solution:** Separated sky (background) and ground (foreground) into distinct configurable fields
+**Details:** Replaced generic "Background Image URLs" with specific sky_color, sky_texture, ground_color, ground_texture fields
+**Migration:** Run `/config/migrate_sky_ground.php` to update existing databases
+
 ### Database Connection Error
 **Check:**
 1. Is `config.php` present with correct credentials?
@@ -877,6 +901,17 @@ mysqldump -u username -p codedart_db > backup_$(date +%Y%m%d).sql
 ---
 
 ## Version History
+
+**v1.0.2** - 2026-01-21 (Late Evening Update)
+- ✅ Fixed PHP 8.1+ deprecation warnings for htmlspecialchars() receiving null
+- ✅ Added comprehensive CSS for shape configuration builders (140+ lines)
+- ✅ Fixed jumbled UI - fields now properly laid out in responsive grid
+- ✅ Separated sky (background) and ground (foreground) into distinct fields
+- ✅ Removed generic "Background Image URLs" in favor of specific sky/ground controls
+- ✅ Added sky_color, sky_texture, ground_color, ground_texture to A-Frame pieces
+- ✅ Updated A-Frame view.php to render sky and ground separately
+- ✅ Created migrate_sky_ground.php for existing database updates
+- ✅ Applied fixes to all admin pages (aframe, c2, p5, threejs)
 
 **v1.0.1** - 2026-01-21 (Evening Update)
 - ✅ Fixed CORS issues with external image loading
