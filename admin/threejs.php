@@ -257,19 +257,25 @@ require_once(__DIR__ . '/includes/header.php');
 
             <div class="form-group">
                 <label for="slug" class="form-label">URL Slug</label>
-                <input
-                    type="text"
-                    id="slug"
-                    name="slug"
-                    class="form-control"
-                    placeholder="auto-generated-from-title"
-                    value="<?php echo $formData ? htmlspecialchars($formData['slug']) : ($editPiece ? htmlspecialchars($editPiece['slug']) : ''); ?>"
-                    pattern="[a-z0-9-]+"
-                    title="Only lowercase letters, numbers, and hyphens"
-                >
+                <div style="position: relative;">
+                    <input
+                        type="text"
+                        id="slug"
+                        name="slug"
+                        class="form-control"
+                        placeholder="auto-generated-from-title"
+                        value="<?php echo $formData ? htmlspecialchars($formData['slug']) : ($editPiece ? htmlspecialchars($editPiece['slug']) : ''); ?>"
+                        pattern="[a-z0-9-]+"
+                        title="Only lowercase letters, numbers, and hyphens"
+                        onkeyup="checkSlugAvailability()"
+                        onblur="checkSlugAvailability()"
+                    >
+                    <span id="slug-status" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); display: none;"></span>
+                </div>
                 <small class="form-help">
                     Leave empty to auto-generate from title. Must be unique.
                     <span id="slug-preview" style="display: none;">Preview: <code></code></span>
+                    <span id="slug-feedback" style="display: none; margin-left: 10px;"></span>
                     <?php if ($editPiece && !empty($editPiece['slug'])): ?>
                     <br><strong>Note:</strong> Changing the slug will create a redirect from the old URL.
                     <?php endif; ?>
@@ -331,7 +337,7 @@ require_once(__DIR__ . '/includes/header.php');
             </div>
 
             <div class="form-group">
-                <label class="form-label">Texture URLs (optional)</label>
+                <label class="form-label">Background Image URLs (optional)</label>
                 <div id="texture-urls-container">
                     <?php
                     $textureUrls = [];
@@ -351,14 +357,15 @@ require_once(__DIR__ . '/includes/header.php');
                         type="url"
                         name="texture_urls[]"
                         class="form-control mb-1"
-                        placeholder="https://example.com/texture.png"
+                        placeholder="https://example.com/background.png"
                         value="<?php echo htmlspecialchars($url); ?>"
                     >
                     <?php endforeach; ?>
                 </div>
                 <button type="button" class="btn btn-sm btn-secondary mt-1" onclick="addTextureUrl()">
-                    + Add Another Texture URL
+                    + Add Another Background Image URL
                 </button>
+                <small class="form-help">Background image URLs for the scene. If multiple URLs are provided, one will be randomly selected each time the piece loads. Individual geometry textures are configured in the Geometry Builder below.</small>
             </div>
 
             <div class="form-group">
@@ -1023,6 +1030,71 @@ require_once(__DIR__ . '/includes/header.php');
         } else {
             slugPreview.style.display = 'none';
         }
+    }
+
+    // Real-time slug availability checking
+    let slugCheckTimeout = null;
+    function checkSlugAvailability() {
+        const slugInput = document.getElementById('slug');
+        const slugStatus = document.getElementById('slug-status');
+        const slugFeedback = document.getElementById('slug-feedback');
+        const slug = slugInput.value.trim();
+
+        // Clear previous timeout
+        if (slugCheckTimeout) {
+            clearTimeout(slugCheckTimeout);
+        }
+
+        // Empty slug is valid (will be auto-generated)
+        if (slug === '') {
+            slugStatus.style.display = 'none';
+            slugFeedback.style.display = 'none';
+            slugInput.style.borderColor = '';
+            return;
+        }
+
+        // Show checking indicator
+        slugStatus.innerHTML = '⏳';
+        slugStatus.style.display = 'block';
+        slugStatus.style.color = '#6c757d';
+        slugFeedback.style.display = 'none';
+
+        // Debounce the AJAX request
+        slugCheckTimeout = setTimeout(() => {
+            const excludeId = <?php echo $editPiece ? $editPiece['id'] : 'null'; ?>;
+            const url = '<?php echo url('admin/includes/check-slug.php'); ?>?slug=' +
+                        encodeURIComponent(slug) +
+                        '&type=threejs' +
+                        (excludeId ? '&exclude_id=' + excludeId : '');
+
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.valid && data.available) {
+                        // Slug is available
+                        slugStatus.innerHTML = '✓';
+                        slugStatus.style.color = '#28a745';
+                        slugFeedback.textContent = data.message;
+                        slugFeedback.style.color = '#28a745';
+                        slugFeedback.style.display = 'inline';
+                        slugInput.style.borderColor = '#28a745';
+                    } else {
+                        // Slug is not available or invalid
+                        slugStatus.innerHTML = '✗';
+                        slugStatus.style.color = '#dc3545';
+                        slugFeedback.textContent = data.message;
+                        slugFeedback.style.color = '#dc3545';
+                        slugFeedback.style.display = 'inline';
+                        slugInput.style.borderColor = '#dc3545';
+                    }
+                })
+                .catch(error => {
+                    console.error('Slug check error:', error);
+                    slugStatus.style.display = 'none';
+                    slugFeedback.style.display = 'none';
+                    slugInput.style.borderColor = '';
+                });
+        }, 500); // 500ms debounce delay
     }
 
     // Initialize slug preview on page load if creating new piece
