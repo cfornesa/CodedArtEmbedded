@@ -2,7 +2,7 @@
 
 ## Project Status: ✅ PRODUCTION READY
 
-**Last Updated:** 2026-01-21 (v1.0.5)
+**Last Updated:** 2026-01-21 (v1.0.6)
 **Agent:** Claude (Sonnet 4.5)
 **Environment:** Replit Development / Hostinger Production
 
@@ -899,6 +899,68 @@ CodedArtEmbedded/
   - `/config/migrate_sky_ground.php` - Updated to support both MySQL and SQLite
 **Verification:** Run `php config/debug_aframe_piece.php` to check column existence and current values
 
+### Database Schema Error: "no such column: sky_color"
+**Status:** ✅ FIXED
+**Solution:** Non-destructive schema verification tool + proper initialization practices
+**Root Cause:** Database schema not synchronized with application code (missing columns)
+**Error Message:** "SQLSTATE[HY000]: General error: 1 no such column: sky_color"
+**Symptoms:**
+  - Updates fail with "no such column" error
+  - Error mentions sky_color, sky_texture, ground_color, or ground_texture
+  - Admin interface shows: "An error occurred while updating the art piece. Error: SQLSTATE[HY000]: General error: 1 no such column: sky_color"
+  - Direct database queries show columns exist, but admin can't access them
+**Common Causes:**
+  1. **Database not initialized** - Tables created without sky/ground columns
+  2. **Cached database connection** - Web server/PHP-FPM holding old schema in memory
+  3. **Mid-session schema change** - Database updated while user had admin page open
+  4. **Destructive initialization** - Using init_db_current.php which drops existing data
+  5. **Migration not run** - Sky/ground migration script not executed
+**Diagnosis Steps:**
+  1. Run `/config/check_admin_db.php` - Verifies columns exist in admin's database
+  2. Run `/config/test_direct_update.php` - Tests if direct database updates work
+  3. Check PHP error logs for full stack trace
+  4. Verify browser not using cached admin page
+**Solution Applied:**
+  1. ✅ Created `/config/ensure_schema.php` - NON-DESTRUCTIVE schema verification
+  2. ✅ Created `/config/check_admin_db.php` - Database connection diagnostic
+  3. ✅ Created `/config/test_direct_update.php` - Direct update test
+  4. ✅ Enhanced error logging to show actual SQL errors
+**How to Fix:**
+  ```bash
+  # Option 1: Non-destructive schema check (RECOMMENDED)
+  php config/ensure_schema.php
+
+  # Option 2: Run migration (if table exists but columns missing)
+  php config/migrate_sky_ground.php
+
+  # Option 3: Full initialization (WARNING: Drops existing data!)
+  php config/init_db_current.php
+  ```
+**Prevention:**
+  - ✅ Always use `ensure_schema.php` before `init_db_current.php`
+  - ✅ Run schema check after pulling code changes
+  - ✅ Restart web server after schema changes: `sudo systemctl restart php-fpm` or `sudo service apache2 restart`
+  - ✅ Clear browser cache and reload admin page after schema changes
+  - ✅ Use migration scripts for production (never drop tables with data)
+**Files Created:**
+  - `/config/ensure_schema.php` - Non-destructive schema verification (RECOMMENDED)
+  - `/config/check_admin_db.php` - Diagnostic tool for admin database
+  - `/config/test_direct_update.php` - Direct database update test
+**Systems Thinking:**
+  - Separation of concerns: Diagnostic tools separate from initialization
+  - Non-destructive by default: Never drop data unless explicitly requested
+  - Progressive enhancement: Check before change, add missing parts only
+  - Developer experience: Clear diagnostics, actionable error messages
+**User Experience:**
+  - No data loss from accidental schema resets
+  - Clear error messages explain what went wrong
+  - Multiple diagnostic tools to identify root cause
+  - Step-by-step recovery procedures
+**Security:**
+  - Schema verification doesn't expose sensitive data
+  - Error logs include stack traces for debugging (server-side only)
+  - No user data exposed in error messages
+
 ### Update Error: "An error occurred while updating the art piece"
 **Status:** ✅ FIXED
 **Solution:** Fixed slug preservation in update operations + enhanced error logging
@@ -1017,6 +1079,21 @@ mysqldump -u username -p codedart_db > backup_$(date +%Y%m%d).sql
 ---
 
 ## Version History
+
+**v1.0.6** - 2026-01-21 (Database Schema Management & Best Practices)
+- ✅ **CRITICAL FIX:** Resolved "no such column: sky_color" database schema errors
+- ✅ Created non-destructive schema verification tool: `/config/ensure_schema.php`
+- ✅ Created comprehensive database diagnostics: `/config/check_admin_db.php`
+- ✅ Created direct update test: `/config/test_direct_update.php`
+- ✅ Established database management best practices (non-destructive by default)
+- ✅ Added comprehensive troubleshooting guide for schema sync issues
+- ✅ Documented proper initialization workflow (check → migrate → init if needed)
+- ✅ Added prevention strategies (restart web server, clear cache, etc.)
+- 🎯 **Systems Thinking:** Separation of diagnostic, migration, and initialization tools
+- 🎯 **User Experience:** Clear error messages, step-by-step recovery, no data loss
+- 🎯 **Security:** Schema verification without data exposure, server-side logging only
+- 📚 **Documentation:** CLAUDE.md now guides all database schema decisions
+- 📚 **Best Practices:** Non-destructive operations, progressive enhancement, clear diagnostics
 
 **v1.0.5** - 2026-01-21 (Critical Update Fix)
 - ✅ **CRITICAL FIX:** Resolved "An error occurred while updating the art piece" error
