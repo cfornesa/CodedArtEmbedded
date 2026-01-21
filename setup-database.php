@@ -118,8 +118,30 @@ foreach ($missingTables as $table) {
 
 echo PHP_EOL;
 
-// Determine which init script to run
-if ($dbType === 'sqlite') {
+// Determine which script to run based on what's missing
+$totalTables = count($requiredTables);
+$existingTablesCount = count($existingTables);
+
+// Check if this is a partial initialization (most tables exist but some are missing)
+$needsMigration = false;
+if ($existingTablesCount > 0 && $existingTablesCount >= ($totalTables - 2)) {
+    // Most tables exist - likely needs migration, not full init
+    // Check if the missing table is slug_redirects (added via migration)
+    if (in_array('slug_redirects', $missingTables)) {
+        $needsMigration = true;
+    }
+}
+
+// Determine which script to run
+if ($needsMigration && $dbType === 'sqlite') {
+    $initScript = __DIR__ . '/config/migrate_add_slugs_sqlite.php';
+    $scriptName = 'migrate_add_slugs_sqlite.php';
+    output("Detected partial database - will run migration to add missing tables.", 'cyan');
+} elseif ($needsMigration && $dbType === 'mysql') {
+    $initScript = __DIR__ . '/config/migrate_add_slugs.php';
+    $scriptName = 'migrate_add_slugs.php';
+    output("Detected partial database - will run migration to add missing tables.", 'cyan');
+} elseif ($dbType === 'sqlite') {
     $initScript = __DIR__ . '/config/init_db_sqlite.php';
     $scriptName = 'init_db_sqlite.php';
 } elseif ($dbType === 'mysql') {
@@ -137,8 +159,13 @@ if (!file_exists($initScript)) {
 }
 
 // Offer to run initialization
-output("Would you like to initialize the database now?", 'cyan');
-output("This will run: config/{$scriptName}", 'blue');
+if ($needsMigration) {
+    output("Would you like to run the migration now?", 'cyan');
+    output("This will run: config/{$scriptName}", 'blue');
+} else {
+    output("Would you like to initialize the database now?", 'cyan');
+    output("This will run: config/{$scriptName}", 'blue');
+}
 echo PHP_EOL;
 
 // Check if running in CLI
@@ -164,7 +191,11 @@ if (php_sapi_name() === 'cli') {
         if ($exitCode === 0) {
             echo PHP_EOL;
             output("==========================================", 'green');
-            output("✓ Database initialization complete!", 'green');
+            if ($needsMigration) {
+                output("✓ Migration complete!", 'green');
+            } else {
+                output("✓ Database initialization complete!", 'green');
+            }
             output("==========================================", 'green');
             echo PHP_EOL;
 
@@ -174,7 +205,11 @@ if (php_sapi_name() === 'cli') {
         } else {
             echo PHP_EOL;
             output("==========================================", 'red');
-            output("✗ Database initialization failed!", 'red');
+            if ($needsMigration) {
+                output("✗ Migration failed!", 'red');
+            } else {
+                output("✗ Database initialization failed!", 'red');
+            }
             output("==========================================", 'red');
             echo PHP_EOL;
             output("Please check the error messages above.", 'yellow');
