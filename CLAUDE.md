@@ -2,7 +2,7 @@
 
 ## Project Status: ✅ PRODUCTION READY
 
-**Last Updated:** 2026-01-21 (v1.0.3)
+**Last Updated:** 2026-01-21 (v1.0.4)
 **Agent:** Claude (Sonnet 4.5)
 **Environment:** Replit Development / Hostinger Production
 
@@ -875,6 +875,58 @@ CodedArtEmbedded/
   - `/p5/index.php` - Lines 57, 68
   - `/three-js/index.php` - Lines 48, 54
 
+### Sky/Ground Colors Not Applying
+**Status:** ✅ FIXED
+**Solution:** Database columns were missing - ran database initialization with updated schema
+**Root Cause:** SQLite database was empty/uninitialized, lacking sky_color, sky_texture, ground_color, ground_texture columns
+**Symptoms:**
+  - Updated colors/textures in admin form not reflected in view pages
+  - Form appears to save successfully but changes don't persist
+  - View pages show default colors (#ECECEC sky, #7BC8A4 ground)
+**Diagnosis Steps:**
+  1. Created `/config/debug_aframe_piece.php` diagnostic script
+  2. Discovered database columns didn't exist
+  3. Found database was completely uninitialized (no tables)
+**Fix Applied:**
+  1. Created minimal `/config/config.php` for development environment
+  2. Updated `/config/migrate_sky_ground.php` to support SQLite
+  3. Created `/config/init_db_current.php` with latest schema
+  4. Initialized database with all required columns
+**Files Created/Modified:**
+  - `/config/config.php` - Minimal development configuration (NOT in Git)
+  - `/config/debug_aframe_piece.php` - Diagnostic tool for sky/ground fields
+  - `/config/init_db_current.php` - SQLite initialization with current schema
+  - `/config/migrate_sky_ground.php` - Updated to support both MySQL and SQLite
+**Verification:** Run `php config/debug_aframe_piece.php` to check column existence and current values
+
+### THREE.js useLegacyLights Deprecation Warning
+**Status:** ⚠️ KNOWN ISSUE (Not fixable in application code)
+**Warning Message:**
+```
+THREE.WebGLRenderer: The property .useLegacyLights has been deprecated.
+Migrate your lighting according to the following guide:
+https://discourse.threejs.org/t/updates-to-lighting-in-three-js-r155/53733.
+```
+**Root Cause:** A-Frame 1.6.0 uses THREE.js r164, which includes a deprecation warning for the old lighting system
+**Impact:** None - this is a console warning only and does not affect functionality
+**Details:**
+  - A-Frame internally sets `useLegacyLights` on the THREE.js renderer
+  - THREE.js r155+ deprecated this property in favor of new physically-correct lighting
+  - A-Frame has not yet updated to the new lighting system
+  - The warning appears in browser console but doesn't break anything
+**Resolution Timeline:**
+  - Short-term: No action needed - warning is cosmetic only
+  - Long-term: Will be resolved when A-Frame updates to THREE.js r155+ lighting API
+  - Alternative: Can be suppressed via browser console filters if desired
+**Official Resources:**
+  - THREE.js lighting migration guide: https://discourse.threejs.org/t/updates-to-lighting-in-three-js-r155/53733
+  - A-Frame issue tracker: https://github.com/aframevr/aframe/issues
+**Workaround:** This warning can be safely ignored. It does not affect:
+  - Scene rendering
+  - Lighting functionality
+  - Performance
+  - User experience
+
 ### Database Connection Error
 **Check:**
 1. Is `config.php` present with correct credentials?
@@ -927,7 +979,18 @@ mysqldump -u username -p codedart_db > backup_$(date +%Y%m%d).sql
 
 ## Version History
 
-**v1.0.3** - 2026-01-21 (Night Update)
+**v1.0.4** - 2026-01-21 (Late Night Update - Database Fix)
+- ✅ **CRITICAL FIX:** Fixed sky/ground colors not applying - database columns were missing
+- ✅ Created minimal config.php for development environment (SQLite-based)
+- ✅ Created diagnostic script: `/config/debug_aframe_piece.php`
+- ✅ Created initialization script: `/config/init_db_current.php` with latest schema
+- ✅ Updated migration script: `/config/migrate_sky_ground.php` to support SQLite
+- ✅ Successfully initialized SQLite database with sky_color, sky_texture, ground_color, ground_texture columns
+- ✅ Verified sky/ground color persistence to database
+- ⚠️ Documented THREE.js useLegacyLights deprecation warning (A-Frame/THREE.js compatibility issue, not fixable in app code)
+- ✅ Updated CLAUDE.md with comprehensive troubleshooting entries
+
+**v1.0.3** - 2026-01-21 (Night Update - Routing Fix)
 - ✅ **CRITICAL FIX:** Fixed piece view routing - changed relative to absolute paths in all gallery index pages
 - ✅ Updated all gallery index.php files to use absolute paths: `/[art-type]/view.php?slug=...`
 - ✅ Resolved 404 errors when clicking piece links from gallery pages
