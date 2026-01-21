@@ -25,6 +25,9 @@ $pieceId = $_GET['id'] ?? null;
 $error = '';
 $success = '';
 
+// Preserve form data on validation errors
+$formData = null;
+
 // Handle delete action (soft delete by default)
 if ($action === 'delete' && $pieceId) {
     $permanent = isset($_GET['permanent']) && $_GET['permanent'] === '1';
@@ -80,6 +83,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array($action, ['create', 'edit'
             $action = 'list';
         } else {
             $error = $result['message'];
+            // Preserve form data so user doesn't lose their work
+            $formData = $data;
+            // Also preserve array inputs in original format
+            if (isset($_POST['image_urls'])) {
+                $formData['image_urls_raw'] = $_POST['image_urls'];
+            }
+            // Preserve configuration JSON
+            if (isset($_POST['configuration_json'])) {
+                $formData['configuration_json_raw'] = $_POST['configuration_json'];
+            }
         }
     }
 }
@@ -237,7 +250,7 @@ require_once(__DIR__ . '/includes/header.php');
                     name="title"
                     class="form-control"
                     required
-                    value="<?php echo $editPiece ? htmlspecialchars($editPiece['title']) : ''; ?>"
+                    value="<?php echo $formData ? htmlspecialchars($formData['title']) : ($editPiece ? htmlspecialchars($editPiece['title']) : ''); ?>"
                     onkeyup="updateSlugPreview()"
                 >
             </div>
@@ -250,12 +263,12 @@ require_once(__DIR__ . '/includes/header.php');
                     name="slug"
                     class="form-control"
                     placeholder="auto-generated-from-title"
-                    value="<?php echo $editPiece ? htmlspecialchars($editPiece['slug']) : ''; ?>"
+                    value="<?php echo $formData ? htmlspecialchars($formData['slug']) : ($editPiece ? htmlspecialchars($editPiece['slug']) : ''); ?>"
                     pattern="[a-z0-9-]+"
                     title="Only lowercase letters, numbers, and hyphens"
                 >
                 <small class="form-help">
-                    Leave empty to auto-generate from title.
+                    Leave empty to auto-generate from title. Must be unique.
                     <span id="slug-preview" style="display: none;">Preview: <code></code></span>
                     <?php if ($editPiece && !empty($editPiece['slug'])): ?>
                     <br><strong>Note:</strong> Changing the slug will create a redirect from the old URL.
@@ -270,7 +283,7 @@ require_once(__DIR__ . '/includes/header.php');
                     name="description"
                     class="form-control"
                     rows="4"
-                ><?php echo $editPiece ? htmlspecialchars($editPiece['description']) : ''; ?></textarea>
+                ><?php echo $formData ? htmlspecialchars($formData['description']) : ($editPiece ? htmlspecialchars($editPiece['description']) : ''); ?></textarea>
             </div>
 
             <!-- File path is auto-generated from slug: /p5/view.php?slug=your-slug -->
@@ -283,7 +296,7 @@ require_once(__DIR__ . '/includes/header.php');
                     name="piece_path"
                     class="form-control"
                     placeholder="piece/1.php"
-                    value="<?php echo $editPiece ? htmlspecialchars($editPiece['piece_path']) : ''; ?>"
+                    value="<?php echo $formData ? htmlspecialchars($formData['piece_path']) : ($editPiece ? htmlspecialchars($editPiece['piece_path']) : ''); ?>"
                 >
                 <small class="form-help">Path to the piece PHP file (e.g., piece/1.php)</small>
             </div>
@@ -298,7 +311,7 @@ require_once(__DIR__ . '/includes/header.php');
                     data-type="url"
                     data-preview="thumbnail-preview"
                     placeholder="https://example.com/image.png"
-                    value="<?php echo $editPiece ? htmlspecialchars($editPiece['thumbnail_url']) : ''; ?>"
+                    value="<?php echo $formData ? htmlspecialchars($formData['thumbnail_url']) : ($editPiece ? htmlspecialchars($editPiece['thumbnail_url']) : ''); ?>"
                 >
                 <small class="form-help">URL to thumbnail image (WEBP, JPG, PNG)</small>
                 <img id="thumbnail-preview" style="display: none; max-width: 200px; margin-top: 10px;" />
@@ -313,7 +326,7 @@ require_once(__DIR__ . '/includes/header.php');
                     class="form-control"
                     data-type="url"
                     placeholder="https://example.com/screenshot.png"
-                    value="<?php echo $editPiece ? htmlspecialchars($editPiece['screenshot_url']) : ''; ?>"
+                    value="<?php echo $formData ? htmlspecialchars($formData['screenshot_url']) : ($editPiece ? htmlspecialchars($editPiece['screenshot_url']) : ''); ?>"
                 >
                 <small class="form-help">URL to PNG screenshot (optional)</small>
             </div>
@@ -323,7 +336,9 @@ require_once(__DIR__ . '/includes/header.php');
                 <div id="image-urls-container">
                     <?php
                     $imageUrls = [];
-                    if ($editPiece && !empty($editPiece['image_urls'])) {
+                    if ($formData && !empty($formData['image_urls_raw'])) {
+                        $imageUrls = $formData['image_urls_raw'];
+                    } elseif ($editPiece && !empty($editPiece['image_urls'])) {
                         $imageUrls = json_decode($editPiece['image_urls'], true) ?: [];
                     }
 
@@ -355,17 +370,20 @@ require_once(__DIR__ . '/includes/header.php');
                     name="tags"
                     class="form-control"
                     placeholder="P5.js, Processing, Generative, Animation"
-                    value="<?php echo $editPiece ? htmlspecialchars($editPiece['tags']) : ''; ?>"
+                    value="<?php echo $formData ? htmlspecialchars($formData['tags']) : ($editPiece ? htmlspecialchars($editPiece['tags']) : ''); ?>"
                 >
                 <small class="form-help">Comma-separated tags</small>
             </div>
 
             <div class="form-group">
                 <label for="status" class="form-label">Status</label>
+                <?php
+                $currentStatus = $formData ? $formData['status'] : ($editPiece ? $editPiece['status'] : 'active');
+                ?>
                 <select id="status" name="status" class="form-control">
-                    <option value="active" <?php echo (!$editPiece || $editPiece['status'] === 'active') ? 'selected' : ''; ?>>Active</option>
-                    <option value="draft" <?php echo ($editPiece && $editPiece['status'] === 'draft') ? 'selected' : ''; ?>>Draft</option>
-                    <option value="archived" <?php echo ($editPiece && $editPiece['status'] === 'archived') ? 'selected' : ''; ?>>Archived</option>
+                    <option value="active" <?php echo ($currentStatus === 'active') ? 'selected' : ''; ?>>Active</option>
+                    <option value="draft" <?php echo ($currentStatus === 'draft') ? 'selected' : ''; ?>>Draft</option>
+                    <option value="archived" <?php echo ($currentStatus === 'archived') ? 'selected' : ''; ?>>Archived</option>
                 </select>
             </div>
 
@@ -376,7 +394,7 @@ require_once(__DIR__ . '/includes/header.php');
                     id="sort_order"
                     name="sort_order"
                     class="form-control"
-                    value="<?php echo $editPiece ? $editPiece['sort_order'] : 0; ?>"
+                    value="<?php echo $formData ? htmlspecialchars($formData['sort_order']) : ($editPiece ? $editPiece['sort_order'] : 0); ?>"
                 >
                 <small class="form-help">Lower numbers appear first</small>
             </div>

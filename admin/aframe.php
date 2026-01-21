@@ -37,6 +37,9 @@ if ($action === 'delete' && $pieceId) {
     }
 }
 
+// Preserve form data on validation errors
+$formData = null;
+
 // Handle form submission (create/edit)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array($action, ['create', 'edit'])) {
     // Verify CSRF token
@@ -79,6 +82,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array($action, ['create', 'edit'
             $action = 'list';
         } else {
             $error = $result['message'];
+            // Preserve form data so user doesn't lose their work
+            $formData = $data;
+            // Also preserve texture URLs in original format
+            if (isset($_POST['texture_urls'])) {
+                $formData['texture_urls_raw'] = $_POST['texture_urls'];
+            }
+            // Preserve configuration JSON
+            if (isset($_POST['configuration_json'])) {
+                $formData['configuration_json_raw'] = $_POST['configuration_json'];
+            }
         }
     }
 }
@@ -238,7 +251,7 @@ require_once(__DIR__ . '/includes/header.php');
                     name="title"
                     class="form-control"
                     required
-                    value="<?php echo $editPiece ? htmlspecialchars($editPiece['title']) : ''; ?>"
+                    value="<?php echo $formData ? htmlspecialchars($formData['title']) : ($editPiece ? htmlspecialchars($editPiece['title']) : ''); ?>"
                     onkeyup="updateSlugPreview()"
                 >
             </div>
@@ -251,12 +264,12 @@ require_once(__DIR__ . '/includes/header.php');
                     name="slug"
                     class="form-control"
                     placeholder="auto-generated-from-title"
-                    value="<?php echo $editPiece ? htmlspecialchars($editPiece['slug']) : ''; ?>"
+                    value="<?php echo $formData ? htmlspecialchars($formData['slug']) : ($editPiece ? htmlspecialchars($editPiece['slug']) : ''); ?>"
                     pattern="[a-z0-9-]+"
                     title="Only lowercase letters, numbers, and hyphens"
                 >
                 <small class="form-help">
-                    Leave empty to auto-generate from title.
+                    Leave empty to auto-generate from title. Must be unique.
                     <span id="slug-preview" style="display: none;">Preview: <code></code></span>
                     <?php if ($editPiece && !empty($editPiece['slug'])): ?>
                     <br><strong>Note:</strong> Changing the slug will create a redirect from the old URL.
@@ -271,7 +284,7 @@ require_once(__DIR__ . '/includes/header.php');
                     name="description"
                     class="form-control"
                     rows="4"
-                ><?php echo $editPiece ? htmlspecialchars($editPiece['description']) : ''; ?></textarea>
+                ><?php echo $formData ? htmlspecialchars($formData['description']) : ($editPiece ? htmlspecialchars($editPiece['description']) : ''); ?></textarea>
             </div>
 
             <!-- File path is auto-generated from slug: /a-frame/view.php?slug=your-slug -->
@@ -286,7 +299,7 @@ require_once(__DIR__ . '/includes/header.php');
                     data-type="url"
                     data-preview="thumbnail-preview"
                     placeholder="https://example.com/image.png"
-                    value="<?php echo $editPiece ? htmlspecialchars($editPiece['thumbnail_url']) : ''; ?>"
+                    value="<?php echo $formData ? htmlspecialchars($formData['thumbnail_url']) : ($editPiece ? htmlspecialchars($editPiece['thumbnail_url']) : ''); ?>"
                 >
                 <small class="form-help">URL to thumbnail image (WEBP, JPG, PNG)</small>
                 <img id="thumbnail-preview" style="display: none; max-width: 200px; margin-top: 10px;" />
@@ -295,18 +308,21 @@ require_once(__DIR__ . '/includes/header.php');
             <div class="form-group">
                 <label for="scene_type" class="form-label">Scene Type</label>
                 <select id="scene_type" name="scene_type" class="form-control">
-                    <option value="space" <?php echo ($editPiece && $editPiece['scene_type'] === 'space') ? 'selected' : ''; ?>>Space</option>
-                    <option value="alt" <?php echo ($editPiece && $editPiece['scene_type'] === 'alt') ? 'selected' : ''; ?>>Alt</option>
-                    <option value="custom" <?php echo (!$editPiece || $editPiece['scene_type'] === 'custom') ? 'selected' : ''; ?>>Custom</option>
+                    <?php $currentSceneType = $formData ? $formData['scene_type'] : ($editPiece ? $editPiece['scene_type'] : 'custom'); ?>
+                    <option value="space" <?php echo $currentSceneType === 'space' ? 'selected' : ''; ?>>Space</option>
+                    <option value="alt" <?php echo $currentSceneType === 'alt' ? 'selected' : ''; ?>>Alt</option>
+                    <option value="custom" <?php echo $currentSceneType === 'custom' ? 'selected' : ''; ?>>Custom</option>
                 </select>
             </div>
 
             <div class="form-group">
-                <label class="form-label">Texture URLs (optional)</label>
+                <label class="form-label">Shape Texture URLs (optional)</label>
                 <div id="texture-urls-container">
                     <?php
                     $textureUrls = [];
-                    if ($editPiece && !empty($editPiece['texture_urls'])) {
+                    if ($formData && !empty($formData['texture_urls_raw'])) {
+                        $textureUrls = $formData['texture_urls_raw'];
+                    } elseif ($editPiece && !empty($editPiece['texture_urls'])) {
                         $textureUrls = json_decode($editPiece['texture_urls'], true) ?: [];
                     }
 
@@ -328,6 +344,7 @@ require_once(__DIR__ . '/includes/header.php');
                 <button type="button" class="btn btn-sm btn-secondary mt-1" onclick="addTextureUrl()">
                     + Add Another Texture URL
                 </button>
+                <small class="form-help">Image URLs to use as textures for 3D shapes in your scene.</small>
             </div>
 
             <div class="form-group">
@@ -338,7 +355,7 @@ require_once(__DIR__ . '/includes/header.php');
                     name="tags"
                     class="form-control"
                     placeholder="WebVR, A-Frame, 3D, Animation"
-                    value="<?php echo $editPiece ? htmlspecialchars($editPiece['tags']) : ''; ?>"
+                    value="<?php echo $formData ? htmlspecialchars($formData['tags']) : ($editPiece ? htmlspecialchars($editPiece['tags']) : ''); ?>"
                 >
                 <small class="form-help">Comma-separated tags</small>
             </div>
@@ -346,9 +363,10 @@ require_once(__DIR__ . '/includes/header.php');
             <div class="form-group">
                 <label for="status" class="form-label">Status</label>
                 <select id="status" name="status" class="form-control">
-                    <option value="active" <?php echo (!$editPiece || $editPiece['status'] === 'active') ? 'selected' : ''; ?>>Active</option>
-                    <option value="draft" <?php echo ($editPiece && $editPiece['status'] === 'draft') ? 'selected' : ''; ?>>Draft</option>
-                    <option value="archived" <?php echo ($editPiece && $editPiece['status'] === 'archived') ? 'selected' : ''; ?>>Archived</option>
+                    <?php $currentStatus = $formData ? $formData['status'] : ($editPiece ? $editPiece['status'] : 'active'); ?>
+                    <option value="active" <?php echo $currentStatus === 'active' ? 'selected' : ''; ?>>Active</option>
+                    <option value="draft" <?php echo $currentStatus === 'draft' ? 'selected' : ''; ?>>Draft</option>
+                    <option value="archived" <?php echo $currentStatus === 'archived' ? 'selected' : ''; ?>>Archived</option>
                 </select>
             </div>
 
@@ -359,7 +377,7 @@ require_once(__DIR__ . '/includes/header.php');
                     id="sort_order"
                     name="sort_order"
                     class="form-control"
-                    value="<?php echo $editPiece ? $editPiece['sort_order'] : 0; ?>"
+                    value="<?php echo $formData ? $formData['sort_order'] : ($editPiece ? $editPiece['sort_order'] : 0); ?>"
                 >
                 <small class="form-help">Lower numbers appear first</small>
             </div>
