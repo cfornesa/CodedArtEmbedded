@@ -850,6 +850,14 @@ CodedArtEmbedded/
 **Details:** Replaced generic "Background Image URLs" with specific sky_color, sky_texture, ground_color, ground_texture fields
 **Migration:** Run `/config/migrate_sky_ground.php` to update existing databases
 
+### Sky/Ground Changes Not Saving to Database
+**Status:** ✅ FIXED
+**Solution:** Updated `prepareArtPieceData()` to include new sky/ground fields
+**Root Cause:** Admin form collected the data, but the CRUD function wasn't passing the new fields to the database
+**Details:** The `prepareArtPieceData()` function in `admin/includes/functions.php` only handled the old `texture_urls` field. Updated to handle: sky_color, sky_texture, ground_color, ground_texture
+**Verification:** Run `php config/check_sky_ground_columns.php` to verify columns exist
+**Fix Applied:** Lines 411-419 in admin/includes/functions.php now properly prepare all sky/ground fields for database insertion
+
 ### Database Connection Error
 **Check:**
 1. Is `config.php` present with correct credentials?
@@ -912,6 +920,8 @@ mysqldump -u username -p codedart_db > backup_$(date +%Y%m%d).sql
 - ✅ Updated A-Frame view.php to render sky and ground separately
 - ✅ Created migrate_sky_ground.php for existing database updates
 - ✅ Applied fixes to all admin pages (aframe, c2, p5, threejs)
+- ✅ **CRITICAL FIX:** Updated prepareArtPieceData() to actually save sky/ground fields to database
+- ✅ Created check_sky_ground_columns.php diagnostic script
 
 **v1.0.1** - 2026-01-21 (Evening Update)
 - ✅ Fixed CORS issues with external image loading
