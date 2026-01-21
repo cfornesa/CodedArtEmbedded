@@ -306,13 +306,8 @@ function validateArtPieceData($type, $data, $existingId = null) {
         ];
     }
 
-    // File path is required for all types
-    if (empty($data['file_path'])) {
-        return [
-            'valid' => false,
-            'message' => 'File path is required.'
-        ];
-    }
+    // File path is NO LONGER required - it's auto-generated from slug
+    // Validation removed to support auto-generation system
 
     // Validate thumbnail URL if provided
     if (!empty($data['thumbnail_url']) && !isValidImageUrl($data['thumbnail_url'])) {

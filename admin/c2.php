@@ -25,6 +25,9 @@ $pieceId = $_GET['id'] ?? null;
 $error = '';
 $success = '';
 
+// Preserve form data on validation errors
+$formData = null;
+
 // Handle delete action (soft delete by default)
 if ($action === 'delete' && $pieceId) {
     $permanent = isset($_GET['permanent']) && $_GET['permanent'] === '1';
@@ -84,6 +87,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array($action, ['create', 'edit'
             $action = 'list';
         } else {
             $error = $result['message'];
+            // Preserve form data so user doesn't lose their work
+            $formData = $data;
+            // Also preserve array inputs in original format
+            if (isset($_POST['js_files'])) {
+                $formData['js_files_raw'] = $_POST['js_files'];
+            }
+            if (isset($_POST['image_urls'])) {
+                $formData['image_urls_raw'] = $_POST['image_urls'];
+            }
+            // Preserve configuration JSON
+            if (isset($_POST['configuration_json'])) {
+                $formData['configuration_json_raw'] = $_POST['configuration_json'];
+            }
         }
     }
 }
@@ -243,26 +259,32 @@ require_once(__DIR__ . '/includes/header.php');
                     name="title"
                     class="form-control"
                     required
-                    value="<?php echo $editPiece ? htmlspecialchars($editPiece['title']) : ''; ?>"
+                    value="<?php echo $formData ? htmlspecialchars($formData['title']) : ($editPiece ? htmlspecialchars($editPiece['title']) : ''); ?>"
                     onkeyup="updateSlugPreview()"
                 >
             </div>
 
             <div class="form-group">
                 <label for="slug" class="form-label">URL Slug</label>
-                <input
-                    type="text"
-                    id="slug"
-                    name="slug"
-                    class="form-control"
-                    placeholder="auto-generated-from-title"
-                    value="<?php echo $editPiece ? htmlspecialchars($editPiece['slug']) : ''; ?>"
-                    pattern="[a-z0-9-]+"
-                    title="Only lowercase letters, numbers, and hyphens"
-                >
+                <div style="position: relative;">
+                    <input
+                        type="text"
+                        id="slug"
+                        name="slug"
+                        class="form-control"
+                        placeholder="auto-generated-from-title"
+                        value="<?php echo $formData ? htmlspecialchars($formData['slug']) : ($editPiece ? htmlspecialchars($editPiece['slug']) : ''); ?>"
+                        pattern="[a-z0-9-]+"
+                        title="Only lowercase letters, numbers, and hyphens"
+                        onkeyup="checkSlugAvailability()"
+                        onblur="checkSlugAvailability()"
+                    >
+                    <span id="slug-status" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); display: none;"></span>
+                </div>
                 <small class="form-help">
-                    Leave empty to auto-generate from title.
+                    Leave empty to auto-generate from title. Must be unique.
                     <span id="slug-preview" style="display: none;">Preview: <code></code></span>
+                    <span id="slug-feedback" style="display: none; margin-left: 10px;"></span>
                     <?php if ($editPiece && !empty($editPiece['slug'])): ?>
                     <br><strong>Note:</strong> Changing the slug will create a redirect from the old URL.
                     <?php endif; ?>
@@ -276,7 +298,7 @@ require_once(__DIR__ . '/includes/header.php');
                     name="description"
                     class="form-control"
                     rows="4"
-                ><?php echo $editPiece ? htmlspecialchars($editPiece['description']) : ''; ?></textarea>
+                ><?php echo $formData ? htmlspecialchars($formData['description']) : ($editPiece ? htmlspecialchars($editPiece['description']) : ''); ?></textarea>
             </div>
 
             <!-- File path is auto-generated from slug: /c2/view.php?slug=your-slug -->
@@ -291,7 +313,7 @@ require_once(__DIR__ . '/includes/header.php');
                     data-type="url"
                     data-preview="thumbnail-preview"
                     placeholder="https://example.com/image.png"
-                    value="<?php echo $editPiece ? htmlspecialchars($editPiece['thumbnail_url']) : ''; ?>"
+                    value="<?php echo $formData ? htmlspecialchars($formData['thumbnail_url']) : ($editPiece ? htmlspecialchars($editPiece['thumbnail_url']) : ''); ?>"
                 >
                 <small class="form-help">URL to thumbnail image (WEBP, JPG, PNG)</small>
                 <img id="thumbnail-preview" style="display: none; max-width: 200px; margin-top: 10px;" />
@@ -306,7 +328,7 @@ require_once(__DIR__ . '/includes/header.php');
                     class="form-control"
                     min="1"
                     max="20"
-                    value="<?php echo $editPiece ? $editPiece['canvas_count'] : 1; ?>"
+                    value="<?php echo $formData ? htmlspecialchars($formData['canvas_count']) : ($editPiece ? $editPiece['canvas_count'] : 1); ?>"
                 >
                 <small class="form-help">Number of canvases used in this piece</small>
             </div>
@@ -316,7 +338,9 @@ require_once(__DIR__ . '/includes/header.php');
                 <div id="js-files-container">
                     <?php
                     $jsFiles = [];
-                    if ($editPiece && !empty($editPiece['js_files'])) {
+                    if ($formData && !empty($formData['js_files_raw'])) {
+                        $jsFiles = $formData['js_files_raw'];
+                    } elseif ($editPiece && !empty($editPiece['js_files'])) {
                         $jsFiles = json_decode($editPiece['js_files'], true) ?: [];
                     }
 
@@ -345,7 +369,9 @@ require_once(__DIR__ . '/includes/header.php');
                 <div id="image-urls-container">
                     <?php
                     $imageUrls = [];
-                    if ($editPiece && !empty($editPiece['image_urls'])) {
+                    if ($formData && !empty($formData['image_urls_raw'])) {
+                        $imageUrls = $formData['image_urls_raw'];
+                    } elseif ($editPiece && !empty($editPiece['image_urls'])) {
                         $imageUrls = json_decode($editPiece['image_urls'], true) ?: [];
                     }
 
@@ -377,17 +403,20 @@ require_once(__DIR__ . '/includes/header.php');
                     name="tags"
                     class="form-control"
                     placeholder="C2.js, Interactive, Canvas, Animation"
-                    value="<?php echo $editPiece ? htmlspecialchars($editPiece['tags']) : ''; ?>"
+                    value="<?php echo $formData ? htmlspecialchars($formData['tags']) : ($editPiece ? htmlspecialchars($editPiece['tags']) : ''); ?>"
                 >
                 <small class="form-help">Comma-separated tags</small>
             </div>
 
             <div class="form-group">
                 <label for="status" class="form-label">Status</label>
+                <?php
+                $currentStatus = $formData ? $formData['status'] : ($editPiece ? $editPiece['status'] : 'active');
+                ?>
                 <select id="status" name="status" class="form-control">
-                    <option value="active" <?php echo (!$editPiece || $editPiece['status'] === 'active') ? 'selected' : ''; ?>>Active</option>
-                    <option value="draft" <?php echo ($editPiece && $editPiece['status'] === 'draft') ? 'selected' : ''; ?>>Draft</option>
-                    <option value="archived" <?php echo ($editPiece && $editPiece['status'] === 'archived') ? 'selected' : ''; ?>>Archived</option>
+                    <option value="active" <?php echo ($currentStatus === 'active') ? 'selected' : ''; ?>>Active</option>
+                    <option value="draft" <?php echo ($currentStatus === 'draft') ? 'selected' : ''; ?>>Draft</option>
+                    <option value="archived" <?php echo ($currentStatus === 'archived') ? 'selected' : ''; ?>>Archived</option>
                 </select>
             </div>
 
@@ -398,7 +427,7 @@ require_once(__DIR__ . '/includes/header.php');
                     id="sort_order"
                     name="sort_order"
                     class="form-control"
-                    value="<?php echo $editPiece ? $editPiece['sort_order'] : 0; ?>"
+                    value="<?php echo $formData ? htmlspecialchars($formData['sort_order']) : ($editPiece ? $editPiece['sort_order'] : 0); ?>"
                 >
                 <small class="form-help">Lower numbers appear first</small>
             </div>
@@ -985,6 +1014,71 @@ require_once(__DIR__ . '/includes/header.php');
         } else {
             slugPreview.style.display = 'none';
         }
+    }
+
+    // Real-time slug availability checking
+    let slugCheckTimeout = null;
+    function checkSlugAvailability() {
+        const slugInput = document.getElementById('slug');
+        const slugStatus = document.getElementById('slug-status');
+        const slugFeedback = document.getElementById('slug-feedback');
+        const slug = slugInput.value.trim();
+
+        // Clear previous timeout
+        if (slugCheckTimeout) {
+            clearTimeout(slugCheckTimeout);
+        }
+
+        // Empty slug is valid (will be auto-generated)
+        if (slug === '') {
+            slugStatus.style.display = 'none';
+            slugFeedback.style.display = 'none';
+            slugInput.style.borderColor = '';
+            return;
+        }
+
+        // Show checking indicator
+        slugStatus.innerHTML = '⏳';
+        slugStatus.style.display = 'block';
+        slugStatus.style.color = '#6c757d';
+        slugFeedback.style.display = 'none';
+
+        // Debounce the AJAX request
+        slugCheckTimeout = setTimeout(() => {
+            const excludeId = <?php echo $editPiece ? $editPiece['id'] : 'null'; ?>;
+            const url = '<?php echo url('admin/includes/check-slug.php'); ?>?slug=' +
+                        encodeURIComponent(slug) +
+                        '&type=c2' +
+                        (excludeId ? '&exclude_id=' + excludeId : '');
+
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.valid && data.available) {
+                        // Slug is available
+                        slugStatus.innerHTML = '✓';
+                        slugStatus.style.color = '#28a745';
+                        slugFeedback.textContent = data.message;
+                        slugFeedback.style.color = '#28a745';
+                        slugFeedback.style.display = 'inline';
+                        slugInput.style.borderColor = '#28a745';
+                    } else {
+                        // Slug is not available or invalid
+                        slugStatus.innerHTML = '✗';
+                        slugStatus.style.color = '#dc3545';
+                        slugFeedback.textContent = data.message;
+                        slugFeedback.style.color = '#dc3545';
+                        slugFeedback.style.display = 'inline';
+                        slugInput.style.borderColor = '#dc3545';
+                    }
+                })
+                .catch(error => {
+                    console.error('Slug check error:', error);
+                    slugStatus.style.display = 'none';
+                    slugFeedback.style.display = 'none';
+                    slugInput.style.borderColor = '';
+                });
+        }, 500); // 500ms debounce delay
     }
 
     // Initialize slug preview on page load if creating new piece
