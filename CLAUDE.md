@@ -15,7 +15,7 @@ CodedArtEmbedded is a comprehensive, database-driven art gallery management syst
 ### Key Achievements
 
 ✅ **Variable consolidation** - Eliminated 23+ duplicate variable definitions
-✅ **Database architecture** - MySQL with 7 tables supporting 4 art types
+✅ **Database architecture** - MySQL with 8 tables supporting 4 art types
 ✅ **Unified admin interface** - Single login for all CRUD operations
 ✅ **Slug-based routing** - SEO-friendly URLs with auto-generation
 ✅ **Real-time validation** - Instant feedback on slug availability
@@ -24,6 +24,7 @@ CodedArtEmbedded is a comprehensive, database-driven art gallery management syst
 ✅ **Per-shape textures** - Individual texture URLs in configuration builders
 ✅ **Soft delete** - Recoverable deletion with trash management
 ✅ **Dynamic view pages** - Auto-generated piece display pages
+✅ **CORS proxy** - Automatic external image proxying for cross-origin compatibility
 
 ---
 
@@ -279,6 +280,41 @@ CREATE TABLE slug_redirects (
   ]
 }
 ```
+
+### CORS Proxy System (Automatic)
+
+**Purpose:** Enable loading of external images from domains without CORS headers
+**Status:** ✅ Fully Implemented and Automatic
+
+**How It Works:**
+1. View pages call `proxifyImageUrl($url)` on all texture/image URLs
+2. Function detects if URL is external (not from current domain)
+3. External URLs automatically wrapped with CORS proxy: `/admin/includes/cors-proxy.php?url=...`
+4. Local URLs passed through unchanged for optimal performance
+
+**Key Functions:**
+- **`isExternalUrl($url)`** - Detects if URL is from external domain
+- **`proxifyImageUrl($url)`** - Wraps external URLs, returns local URLs unchanged
+
+**Implementation Locations:**
+- `a-frame/view.php` - Shape textures proxied server-side
+- `three-js/view.php` - Geometry textures proxied server-side
+- `config/helpers.php` - Core proxy helper functions
+
+**Caching:**
+- Proxied images cached for 24 hours in `/cache/cors/`
+- Reduces bandwidth and improves load times
+- Cache automatically created if `CORS_PROXY_ENABLED = true`
+
+**Security:**
+- Only allows WEBP, JPG, JPEG, PNG image types
+- URL validation on all proxied requests
+- Max file size: 10MB (configurable)
+
+**User Experience:**
+- Completely transparent - users just enter image URLs
+- Works with any external image source (fornesus.com, imgur.com, etc.)
+- No configuration or manual proxy setup required
 
 ---
 
@@ -682,11 +718,12 @@ CodedArtEmbedded/
 12. **Per-Shape Textures** - Individual texture URLs in builders
 13. **Gallery Pages** - Database-driven index pages
 14. **Security** - CSRF, bcrypt, prepared statements, input validation
+15. **CORS Proxy** - Automatic external image proxying for cross-origin compatibility
+16. **Smart Path Resolution** - Absolute URLs for assets working from any directory depth
 
 ### 🚧 Future Enhancements (Out of Scope)
 
 - Email notifications on CRUD operations
-- CORS proxy implementation
 - Two-factor authentication (2FA)
 - Admin role permissions (all users currently equal)
 - Version control/history for art pieces
@@ -774,6 +811,21 @@ CodedArtEmbedded/
 **Status:** ✅ FIXED
 **Solution:** Real-time AJAX checking with visual feedback
 
+### CORS Errors When Loading External Images
+**Status:** ✅ FIXED
+**Solution:** Automatic CORS proxy wraps external image URLs via `proxifyImageUrl()` helper function
+**Details:** View pages now automatically detect and proxy external textures through `/admin/includes/cors-proxy.php`
+
+### Logo Image 404 Error
+**Status:** ✅ FIXED
+**Solution:** Changed relative paths (`./img/`) to absolute URLs using `url()` function in `name.php`
+**Details:** Logo now loads correctly from any directory depth (root, subdirectories, view pages)
+
+### Admin Page Shows "No Pieces" But Dashboard Shows Count
+**Status:** ✅ FIXED
+**Solution:** Fixed `getActiveArtPieces()` to handle `'all'` status filter correctly
+**Details:** Function now treats `'all'` the same as `null` - returns all non-deleted pieces regardless of status
+
 ### Database Connection Error
 **Check:**
 1. Is `config.php` present with correct credentials?
@@ -826,7 +878,15 @@ mysqldump -u username -p codedart_db > backup_$(date +%Y%m%d).sql
 
 ## Version History
 
-**v1.0.0** - 2026-01-21
+**v1.0.1** - 2026-01-21 (Evening Update)
+- ✅ Fixed CORS issues with external image loading
+- ✅ Implemented automatic CORS proxy for external textures
+- ✅ Fixed logo path resolution (relative to absolute URLs)
+- ✅ Fixed admin listing query to show all pieces regardless of status
+- ✅ Updated all view pages with proper includes and HTML structure
+- ✅ Added `proxifyImageUrl()` helper function for seamless external image handling
+
+**v1.0.0** - 2026-01-21 (Morning Release)
 - Initial production release
 - All core features implemented
 - All critical UX issues resolved
