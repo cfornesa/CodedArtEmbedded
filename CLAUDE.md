@@ -2,7 +2,7 @@
 
 ## Project Status: ✅ PRODUCTION READY
 
-**Last Updated:** 2026-01-21 (v1.0.6)
+**Last Updated:** 2026-01-21 (v1.0.7)
 **Agent:** Claude (Sonnet 4.5)
 **Environment:** Replit Development / Hostinger Production
 
@@ -726,6 +726,239 @@ CodedArtEmbedded/
 14. **Security** - CSRF, bcrypt, prepared statements, input validation
 15. **CORS Proxy** - Automatic external image proxying for cross-origin compatibility
 16. **Smart Path Resolution** - Absolute URLs for assets working from any directory depth
+17. **Sky/Ground Opacity** (Phase 1) - Opacity controls for scene environment (0-1.0 range)
+
+### 🔄 In Progress Features
+
+#### **Opacity & Granular Animation System (Phase 2 - Implementation Pending)**
+
+**Status:** Phase 1 Complete ✅ | Phase 2 Planned 📋
+
+**Phase 1 (Completed):**
+- ✅ Database schema: `sky_opacity` and `ground_opacity` fields (DECIMAL 0.00-1.00)
+- ✅ Admin UI: Sky and ground opacity sliders with real-time value display
+- ✅ Backend: Data processing and storage for opacity values
+- ✅ Migration script: `/config/migrate_opacity_fields.php` (non-destructive)
+- ✅ Testing: All Phase 1 features validated (`php config/test_phase1_opacity.php`)
+
+**Phase 2 (Planned Implementation):**
+
+**1. Per-Shape Opacity Control**
+- **Goal:** Add opacity field to each shape in the configuration builder
+- **UI:** Add opacity slider to each shape panel (0.0-1.0 range, default 1.0)
+- **Storage:** Store in `configuration` JSON: `{ opacity: 0.5 }`
+- **Validation:** Client-side HTML5 range (0-1, step 0.01), server-side float cast
+- **Rendering:** Apply to A-Frame material: `material="opacity: 0.5; transparent: true"`
+
+**2. Granular Animation Controls**
+
+**Current State:**
+- Single "Enable Animation" checkbox
+- Single property selector (rotation/position/scale)
+- Single duration setting
+- One animation at a time per shape
+
+**Planned Enhancement:**
+Replace single animation toggle with **independent animation types**:
+
+**2a. Rotation Animation**
+- ✅ Enable Rotation checkbox (independent toggle)
+- Rotation degrees: 0-360° (slider with value display)
+- Duration: milliseconds (number input, default 10000)
+- Loop: always true (A-Frame default)
+- Easing: linear (A-Frame default)
+- **Storage:** `{ rotation: { enabled: true, degrees: 360, duration: 10000 } }`
+- **Rendering:** `animation="property: rotation; to: 0 ${degrees} 0; dur: ${duration}; loop: true"`
+
+**2b. Position Animation**
+- ✅ Enable Position checkbox (independent toggle)
+- Movement range: ±50% of viewport (reasonable constraint)
+- Axis selection: X, Y, or Z (dropdown or radio buttons)
+- Distance: -50% to +50% slider
+- Duration: milliseconds (number input, default 10000)
+- **Storage:** `{ position: { enabled: true, axis: 'y', distance: 2.0, duration: 10000 } }`
+- **Rendering:** Calculate absolute position from initial position + distance
+- **Validation:** Prevent extreme values that could move shapes out of viewport
+
+**2c. Scale Animation**
+- ✅ Enable Scale checkbox (independent toggle)
+- **Minimum scale:** 0.1-10.0 slider (0.1 = 10% size, 10.0 = 1000% size)
+- **Maximum scale:** 0.1-10.0 slider (must be ≥ minimum)
+- Duration: milliseconds (number input, default 10000)
+- **Constraint validation:** Ensure min ≤ max at all times
+- **UI:** Dual-thumb range slider OR two separate sliders with live validation
+- **Storage:** `{ scale: { enabled: true, min: 0.5, max: 2.0, duration: 10000 } }`
+- **Rendering:** `animation="property: scale; from: ${min} ${min} ${min}; to: ${max} ${max} ${max}; dur: ${duration}; loop: true; dir: alternate"`
+
+**3. Multiple Simultaneous Animations**
+- **Requirement:** Shapes can have rotation + position + scale all animating at once
+- **A-Frame limitation:** Multiple `animation` components require unique IDs
+- **Solution:** Use `animation__rotation`, `animation__position`, `animation__scale` syntax
+- **Example:**
+  ```html
+  <a-box
+    animation__rotation="property: rotation; to: 0 360 0; dur: 10000; loop: true"
+    animation__scale="property: scale; from: 0.5 0.5 0.5; to: 2 2 2; dur: 5000; loop: true; dir: alternate"
+  ></a-box>
+  ```
+
+**4. Implementation Plan (Phase 2)**
+
+**Step 1: Update Shape Data Structure** (`admin/aframe.php`)
+```javascript
+const shapeData = {
+    // ... existing fields ...
+    opacity: 1.0,  // NEW
+    animation: {
+        rotation: {  // CHANGED
+            enabled: false,
+            degrees: 360,
+            duration: 10000
+        },
+        position: {  // NEW
+            enabled: false,
+            axis: 'y',
+            distance: 0,
+            duration: 10000
+        },
+        scale: {  // NEW
+            enabled: false,
+            min: 1.0,
+            max: 1.0,
+            duration: 10000
+        }
+    }
+};
+```
+
+**Step 2: Update Shape Builder UI** (`admin/aframe.php` renderShape function)
+- Add opacity slider after texture URL field
+- Replace single animation toggle with three independent sections:
+  - 📐 Rotation Animation (collapsible)
+  - 📍 Position Animation (collapsible)
+  - 📏 Scale Animation (collapsible)
+- Each section has enable checkbox + specific controls
+- Add scale min/max validation JavaScript
+- Add live value displays for all sliders
+
+**Step 3: Update Shape Builder JavaScript** (`admin/aframe.php`)
+- Add `updateShapeOpacity(id, value)` function
+- Update `updateAnimationEnabled()` to handle three types
+- Add `updateRotationAnimation(id, field, value)` function
+- Add `updatePositionAnimation(id, field, value)` function
+- Add `updateScaleAnimation(id, field, value)` function
+- Add `validateScaleMinMax(id)` function - ensures min ≤ max
+- Update `updateConfiguration()` to include all new fields
+
+**Step 4: Update View Page Rendering** (`a-frame/view.php`)
+- Read shape opacity from configuration JSON
+- Apply opacity to material:
+  ```php
+  $opacity = $shape['opacity'] ?? 1.0;
+  if ($opacity < 1.0) {
+      $materialAttrs .= " opacity: {$opacity}; transparent: true;";
+  }
+  ```
+- Render multiple animations with unique IDs:
+  ```php
+  if ($shape['animation']['rotation']['enabled']) {
+      echo " animation__rotation=\"property: rotation; to: 0 {$degrees} 0; dur: {$duration}; loop: true\"";
+  }
+  if ($shape['animation']['position']['enabled']) {
+      // Calculate absolute position
+      echo " animation__position=\"...\"";
+  }
+  if ($shape['animation']['scale']['enabled']) {
+      echo " animation__scale=\"property: scale; from: {$min} {$min} {$min}; to: {$max} {$max} {$max}; dur: {$duration}; loop: true; dir: alternate\"";
+  }
+  ```
+- Apply sky/ground opacity to scene:
+  ```php
+  <a-sky color="<?php echo $piece['sky_color']; ?>"
+         opacity="<?php echo $piece['sky_opacity']; ?>"
+         <?php if ($piece['sky_texture']): ?>
+         src="<?php echo proxifyImageUrl($piece['sky_texture']); ?>"
+         <?php endif; ?>></a-sky>
+  ```
+
+**Step 5: Testing & Validation**
+- Test per-shape opacity (0.0, 0.5, 1.0)
+- Test each animation type independently
+- Test multiple animations simultaneously
+- Test scale min/max validation (prevent min > max)
+- Test extreme values (ensure scene remains usable)
+- Test default values (backward compatibility)
+- Test form data preservation on validation errors
+
+**Step 6: Update CLAUDE.md**
+- Document new shape data structure
+- Document animation patterns (rotation/position/scale)
+- Add troubleshooting for animation issues
+- Update version history with Phase 2 completion
+
+**5. Technical Considerations**
+
+**Security:**
+- Client-side: HTML5 validation (min/max, step, type)
+- Server-side: Float casting, range validation
+- JSON encoding: Prevent injection via proper escaping
+- No user code execution: All values are data, not code
+
+**User Experience:**
+- Progressive disclosure: Collapse advanced animation settings
+- Live feedback: Show current values for all sliders
+- Sensible defaults: All animations disabled, opacity 1.0
+- Clear labels: Explain what each control does
+- Visual validation: Show errors immediately (e.g., min > max)
+- Non-destructive: Existing pieces work without changes
+
+**Systems Thinking:**
+- Follows existing pattern: Similar to sky/ground opacity
+- Extensible: Easy to add more animation types later
+- Backward compatible: Old configs with single animation still work
+- Consistent naming: `animation__type` follows A-Frame conventions
+- JSON structure: Nested objects match A-Frame component syntax
+
+**Performance:**
+- Multiple animations: No performance impact (A-Frame handles efficiently)
+- Opacity rendering: Transparent materials slightly more expensive, but negligible
+- JSON size: Minimal increase (a few bytes per shape)
+
+**6. Estimated Implementation Time**
+- Step 1 (Data structure): 15 minutes
+- Step 2 (UI update): 1-2 hours (most complex part)
+- Step 3 (JavaScript logic): 45 minutes
+- Step 4 (View rendering): 30 minutes
+- Step 5 (Testing): 30 minutes
+- Step 6 (Documentation): 15 minutes
+- **Total:** ~3-4 hours for complete Phase 2 implementation
+
+**7. Breaking Changes**
+- **None!** Old animation structure is converted automatically:
+  ```javascript
+  // Old format (still supported)
+  animation: { enabled: true, property: 'rotation', to: '0 360 0', dur: 10000 }
+
+  // Converts to new format:
+  animation: {
+      rotation: { enabled: true, degrees: 360, duration: 10000 },
+      position: { enabled: false, ... },
+      scale: { enabled: false, ... }
+  }
+  ```
+
+**8. Migration Path**
+- No database migration needed (configuration stored in JSON)
+- Admin form automatically adds new fields to new shapes
+- Existing shapes render with defaults (opacity: 1.0, animations: disabled)
+- Users can edit existing pieces to add new features
+- View.php checks for new fields, falls back to defaults if missing
+
+**9. Dependencies**
+- A-Frame 1.6.0+ (already installed)
+- No new JavaScript libraries needed
+- No new PHP extensions needed
+- Works with existing browser support
 
 ### 🚧 Future Enhancements (Out of Scope)
 
@@ -1079,6 +1312,27 @@ mysqldump -u username -p codedart_db > backup_$(date +%Y%m%d).sql
 ---
 
 ## Version History
+
+**v1.0.7** - 2026-01-21 (Opacity Controls Phase 1 + Phase 2 Implementation Plan)
+- ✅ **Phase 1 COMPLETE:** Sky and ground opacity controls (0.0-1.0 range)
+- ✅ Database schema: Added sky_opacity and ground_opacity fields
+- ✅ Admin UI: Intuitive range sliders with real-time value display
+- ✅ Backend: Type-safe float processing and storage
+- ✅ Migration: Non-destructive migration script (migrate_opacity_fields.php)
+- ✅ Testing: Comprehensive Phase 1 test suite (test_phase1_opacity.php)
+- ✅ Default values: 1.0 (fully opaque) - backward compatible
+- 📋 **Phase 2 PLANNED:** Comprehensive implementation plan created
+- 📋 Per-shape opacity control (configuration JSON)
+- 📋 Granular animation controls (rotation/position/scale independently)
+- 📋 Animation constraints (rotation 0-360°, position ±50%, scale 0.1-10x)
+- 📋 Multiple simultaneous animations per shape
+- 📋 Scale min/max validation with dual sliders
+- 📋 ~3-4 hours estimated implementation time
+- 📋 No breaking changes - fully backward compatible
+- 🎯 **Systems Thinking:** Follows existing patterns, extensible design
+- 🎯 **User Experience:** Progressive disclosure, live feedback, sensible defaults
+- 🎯 **Security:** Client + server validation, no code execution risks
+- 📚 **Documentation:** 230+ lines of comprehensive Phase 2 implementation guide in CLAUDE.md
 
 **v1.0.6** - 2026-01-21 (Database Schema Management & Best Practices)
 - ✅ **CRITICAL FIX:** Resolved "no such column: sky_color" database schema errors
