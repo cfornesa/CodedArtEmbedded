@@ -108,6 +108,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $result = registerUser($registrationData);
 
                 if ($result['success']) {
+                    $isVerified = strpos($result['message'], 'check your email') === false;
+
                     // Send verification email if token exists
                     if (isset($result['verification_token']) && $result['verification_token']) {
                         $userName = $registrationData['first_name'] . ' ' . $registrationData['last_name'];
@@ -118,14 +120,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         );
                     }
 
-                    $success = $result['message'];
+                    // Send welcome email
+                    sendWelcomeEmail(
+                        $registrationData['email'],
+                        $registrationData['first_name'],
+                        $registrationData['last_name'],
+                        $isVerified
+                    );
 
-                    // If first user (auto-verified), redirect to login
-                    if (strpos($result['message'], 'check your email') === false) {
-                        $_SESSION['registration_success'] = $result['message'];
-                        redirect(url('admin/login.php'));
-                        exit;
-                    }
+                    // Store registration info in session for thank-you page
+                    $_SESSION['registration_success'] = $result['message'];
+                    $_SESSION['registration_email'] = $registrationData['email'];
+                    $_SESSION['registration_name'] = $registrationData['first_name'];
+
+                    // Redirect to thank-you page
+                    redirect(url('admin/thank-you.php'));
+                    exit;
                 } else {
                     $error = $result['message'];
                 }
