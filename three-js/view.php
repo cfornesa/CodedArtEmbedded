@@ -34,6 +34,16 @@ try {
     $geometries = $config['geometries'] ?? [];
     $sceneSettings = $config['sceneSettings'] ?? [];
 
+    // Proxy external texture URLs for CORS compatibility
+    if (!empty($config['geometries'])) {
+        foreach ($config['geometries'] as &$geom) {
+            if (!empty($geom['texture'])) {
+                $geom['texture'] = proxifyImageUrl($geom['texture']);
+            }
+        }
+        unset($geom);
+    }
+
     // Set page metadata
     $page_name = htmlspecialchars($piece['title']);
     $tagline = htmlspecialchars($piece['description'] ?? 'Three.js WebGL Art Piece');

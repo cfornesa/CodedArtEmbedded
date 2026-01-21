@@ -625,3 +625,67 @@ function isAssocArray($array) {
     }
     return array_keys($array) !== range(0, count($array) - 1);
 }
+
+// ==========================================
+// CORS PROXY HELPERS
+// ==========================================
+
+/**
+ * Check if a URL is external (not from our domain)
+ *
+ * @param string $url URL to check
+ * @return bool True if external
+ */
+function isExternalUrl($url) {
+    if (empty($url)) {
+        return false;
+    }
+
+    // Parse the URL
+    $parsedUrl = parse_url($url);
+
+    // If no host, it's a relative URL (local)
+    if (!isset($parsedUrl['host'])) {
+        return false;
+    }
+
+    // Get our current host
+    $currentHost = $_SERVER['HTTP_HOST'] ?? '';
+
+    // Check if the URL host matches our current host
+    if ($parsedUrl['host'] === $currentHost) {
+        return false;
+    }
+
+    // Check if it's a configured local domain
+    if (defined('SITE_URL')) {
+        $siteHost = parse_url(SITE_URL, PHP_URL_HOST);
+        if ($parsedUrl['host'] === $siteHost) {
+            return false;
+        }
+    }
+
+    // It's external
+    return true;
+}
+
+/**
+ * Get CORS-proxied URL for external images
+ * Returns the original URL if it's local, otherwise wraps it with the CORS proxy
+ *
+ * @param string $url Original image URL
+ * @return string Proxied URL or original if local
+ */
+function proxifyImageUrl($url) {
+    if (empty($url)) {
+        return $url;
+    }
+
+    // If it's a local URL, return as-is
+    if (!isExternalUrl($url)) {
+        return $url;
+    }
+
+    // Return CORS proxy URL for external images
+    return url('admin/includes/cors-proxy.php') . '?url=' . urlencode($url);
+}
