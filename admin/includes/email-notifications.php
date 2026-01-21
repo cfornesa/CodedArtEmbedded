@@ -381,3 +381,161 @@ HTML;
 
     return sendEmail($email, $subject, $body);
 }
+
+/**
+ * Send welcome email to new user
+ *
+ * @param string $email User's email address
+ * @param string $firstName User's first name
+ * @param string $lastName User's last name
+ * @param bool $isVerified Whether email is verified
+ * @return bool Success status
+ */
+function sendWelcomeEmail($email, $firstName, $lastName, $isVerified = false) {
+    $subject = 'Welcome to CodedArt Admin - Your Account is Ready!';
+    $fullName = trim($firstName . ' ' . $lastName);
+
+    $verificationStatus = $isVerified 
+        ? '<p style="color: #28a745; font-weight: bold;">✓ Your email has been verified and your account is active!</p>'
+        : '<p style="color: #ffc107; font-weight: bold;">⚠️ Please check your email for a verification link to activate your account.</p>';
+
+    $body = <<<HTML
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            background: #f9f9f9;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+        }
+        .content {
+            padding: 30px;
+            background: white;
+        }
+        .button {
+            display: inline-block;
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white !important;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+        .features {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .features ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        .features li {
+            margin: 8px 0;
+        }
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            font-size: 14px;
+            background: #f0f0f0;
+        }
+        .highlight {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+            border-left: 4px solid #ffc107;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎨 Welcome to CodedArt!</h1>
+            <p>Your admin account is ready to use</p>
+        </div>
+        <div class="content">
+            <h2>Hello {$fullName}!</h2>
+            <p>Thank you for registering with CodedArt Admin. We're excited to have you on board!</p>
+
+            {$verificationStatus}
+
+            <div class="features">
+                <h3>What you can do with your account:</h3>
+                <ul>
+                    <li>🖼️ <strong>Manage A-Frame Pieces</strong> - Create and edit immersive WebVR art experiences</li>
+                    <li>🎭 <strong>Manage C2.js Art</strong> - Configure pattern-based generative art pieces</li>
+                    <li>🌈 <strong>Manage P5.js Art</strong> - Design creative coding visualizations</li>
+                    <li>🎬 <strong>Manage Three.js Pieces</strong> - Build 3D graphics and animations</li>
+                    <li>📊 <strong>Track Activity</strong> - View logs of all your changes</li>
+                    <li>📧 <strong>Email Notifications</strong> - Receive updates for all operations</li>
+                </ul>
+            </div>
+
+            <div class="highlight">
+                <p><strong>🔐 Your Account Details:</strong></p>
+                <p><strong>Email:</strong> {$email}</p>
+                <p><strong>Role:</strong> Administrator</p>
+                <p><strong>Access Level:</strong> Full access to all art management features</p>
+            </div>
+
+            <p style="text-align: center;">
+                <a href="' . (defined('SITE_URL') ? SITE_URL : 'http://localhost') . '/admin/login.php" class="button">
+                    Login to Your Account →
+                </a>
+            </p>
+
+            <div class="highlight">
+                <p><strong>📚 Getting Started:</strong></p>
+                <ol>
+                    <li>Log in to your admin panel</li>
+                    <li>Navigate to the dashboard to see all your art pieces</li>
+                    <li>Click "Add New Piece" to create your first artwork</li>
+                    <li>Use the advanced shape builders for detailed configurations</li>
+                    <li>Preview your work before publishing</li>
+                </ol>
+            </div>
+
+            <p><strong>Need Help?</strong></p>
+            <p>If you have any questions or need assistance, feel free to reply to this email. We're here to help!</p>
+
+            <p>Best regards,<br>
+            <strong>The CodedArt Team</strong></p>
+        </div>
+        <div class="footer">
+            <p><strong>CodedArt Admin System</strong></p>
+            <p>This is an automated message. Please do not reply directly to this email.</p>
+            <p style="font-size: 12px; color: #999; margin-top: 15px;">
+                If you didn't create this account, please contact us immediately.
+            </p>
+        </div>
+    </div>
+</body>
+</html>
+HTML;
+
+    return sendEmail($email, $subject, $body);
+}

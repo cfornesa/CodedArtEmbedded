@@ -407,7 +407,221 @@ require_once(__DIR__ . '/includes/header.php');
                 <small class="form-help">Lower numbers appear first</small>
             </div>
 
-            <div class="form-group">
+            <!-- Advanced Pattern Configuration Builder -->
+            <div class="card" style="margin-top: 30px; border: 2px solid #FF6B6B;">
+                <div class="card-header" style="background: linear-gradient(135deg, #FF6B6B 0%, #FF8E53 100%); color: white;">
+                    <h3 style="margin: 0; display: flex; align-items: center; justify-content: space-between;">
+                        <span>🎨 C2.js Pattern Configurator</span>
+                        <small style="opacity: 0.9; font-weight: normal;">(Generative Art Settings)</small>
+                    </h3>
+                    <p style="margin: 5px 0 0 0; font-size: 14px; opacity: 0.95;">
+                        Configure pattern generation parameters for your C2.js art piece
+                    </p>
+                </div>
+
+                <div style="padding: 20px;">
+                    <!-- Canvas Configuration -->
+                    <div class="pattern-section">
+                        <h4 class="pattern-section-title">Canvas Settings</h4>
+
+                        <div class="pattern-row">
+                            <div class="pattern-field-group">
+                                <label class="pattern-field-label">Canvas Width (px)</label>
+                                <input type="number" id="canvas-width" class="pattern-field-input" value="800" step="10">
+                            </div>
+                            <div class="pattern-field-group">
+                                <label class="pattern-field-label">Canvas Height (px)</label>
+                                <input type="number" id="canvas-height" class="pattern-field-input" value="600" step="10">
+                            </div>
+                            <div class="pattern-field-group">
+                                <label class="pattern-field-label">Background Color</label>
+                                <input type="color" id="canvas-background" class="pattern-field-input" value="#FFFFFF">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pattern Type Configuration -->
+                    <div class="pattern-section">
+                        <h4 class="pattern-section-title">Pattern Type</h4>
+
+                        <div class="pattern-row">
+                            <div class="pattern-field-group">
+                                <label class="pattern-field-label">Pattern Style</label>
+                                <select id="pattern-type" class="pattern-field-input" onchange="updatePatternFields()">
+                                    <option value="grid">Grid Pattern</option>
+                                    <option value="spiral">Spiral Pattern</option>
+                                    <option value="scatter">Random Scatter</option>
+                                    <option value="wave">Wave Pattern</option>
+                                    <option value="concentric">Concentric Circles</option>
+                                    <option value="fractal">Fractal Pattern</option>
+                                    <option value="particle">Particle System</option>
+                                    <option value="flow">Flow Field</option>
+                                    <option value="custom">Custom Pattern</option>
+                                </select>
+                            </div>
+                            <div class="pattern-field-group">
+                                <label class="pattern-field-label">Element Count</label>
+                                <input type="number" id="element-count" class="pattern-field-input" value="100" min="1" max="10000">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Color Palette -->
+                    <div class="pattern-section">
+                        <h4 class="pattern-section-title">Color Palette</h4>
+
+                        <div id="color-palette-container">
+                            <!-- Color inputs will be dynamically added here -->
+                        </div>
+                        <button type="button" class="btn btn-sm btn-success" onclick="addColorToPalette()">
+                            + Add Color
+                        </button>
+                    </div>
+
+                    <!-- Pattern Parameters -->
+                    <div class="pattern-section">
+                        <h4 class="pattern-section-title">Pattern Parameters</h4>
+
+                        <div class="pattern-row">
+                            <div class="pattern-field-group">
+                                <label class="pattern-field-label">Element Size</label>
+                                <input type="number" id="element-size" class="pattern-field-input" value="5" step="0.5" min="0.1">
+                            </div>
+                            <div class="pattern-field-group">
+                                <label class="pattern-field-label">Size Variation (%)</label>
+                                <input type="number" id="size-variation" class="pattern-field-input" value="20" min="0" max="100">
+                            </div>
+                            <div class="pattern-field-group">
+                                <label class="pattern-field-label">Spacing/Density</label>
+                                <input type="number" id="spacing" class="pattern-field-input" value="20" step="1" min="1">
+                            </div>
+                        </div>
+
+                        <div class="pattern-row">
+                            <div class="pattern-field-group">
+                                <label class="pattern-field-label">Opacity</label>
+                                <input type="range" id="opacity" class="pattern-field-input" value="80" min="0" max="100">
+                                <span id="opacity-value">80%</span>
+                            </div>
+                            <div class="pattern-field-group">
+                                <label class="pattern-field-label">Rotation (degrees)</label>
+                                <input type="number" id="rotation" class="pattern-field-input" value="0" min="0" max="360">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Animation Settings -->
+                    <div class="pattern-section">
+                        <h4 class="pattern-section-title">Animation Settings</h4>
+
+                        <div class="pattern-row">
+                            <div class="pattern-field-group">
+                                <label class="pattern-field-label">
+                                    <input type="checkbox" id="animation-enabled" onchange="updateAnimationFields()">
+                                    Enable Animation
+                                </label>
+                            </div>
+                        </div>
+
+                        <div id="animation-fields" style="display: none;">
+                            <div class="pattern-row">
+                                <div class="pattern-field-group">
+                                    <label class="pattern-field-label">Animation Type</label>
+                                    <select id="animation-type" class="pattern-field-input">
+                                        <option value="rotate">Rotation</option>
+                                        <option value="pulse">Pulse/Scale</option>
+                                        <option value="move">Movement</option>
+                                        <option value="morph">Morphing</option>
+                                        <option value="color">Color Shift</option>
+                                        <option value="flow">Flow</option>
+                                    </select>
+                                </div>
+                                <div class="pattern-field-group">
+                                    <label class="pattern-field-label">Speed</label>
+                                    <input type="number" id="animation-speed" class="pattern-field-input" value="1" step="0.1" min="0.1" max="10">
+                                </div>
+                                <div class="pattern-field-group">
+                                    <label class="pattern-field-label">
+                                        <input type="checkbox" id="animation-loop" checked>
+                                        Loop Animation
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Interaction Settings -->
+                    <div class="pattern-section">
+                        <h4 class="pattern-section-title">Interaction Settings</h4>
+
+                        <div class="pattern-row">
+                            <div class="pattern-field-group">
+                                <label class="pattern-field-label">
+                                    <input type="checkbox" id="mouse-interaction">
+                                    Enable Mouse Interaction
+                                </label>
+                            </div>
+                            <div class="pattern-field-group">
+                                <label class="pattern-field-label">Interaction Type</label>
+                                <select id="interaction-type" class="pattern-field-input">
+                                    <option value="repel">Repel</option>
+                                    <option value="attract">Attract</option>
+                                    <option value="follow">Follow</option>
+                                    <option value="change-color">Change Color</option>
+                                    <option value="change-size">Change Size</option>
+                                </select>
+                            </div>
+                            <div class="pattern-field-group">
+                                <label class="pattern-field-label">Interaction Radius</label>
+                                <input type="number" id="interaction-radius" class="pattern-field-input" value="100" min="10" max="500">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Advanced Settings -->
+                    <details style="margin-top: 20px;">
+                        <summary style="cursor: pointer; font-weight: 600; color: #FF6B6B; font-size: 16px;">
+                            ⚙️ Advanced Settings
+                        </summary>
+                        <div style="margin-top: 15px; padding: 20px; background: #f8f9fa; border-radius: 8px;">
+                            <div class="pattern-row">
+                                <div class="pattern-field-group">
+                                    <label class="pattern-field-label">Random Seed</label>
+                                    <input type="number" id="random-seed" class="pattern-field-input" value="12345">
+                                    <small class="form-help">Same seed = same pattern</small>
+                                </div>
+                                <div class="pattern-field-group">
+                                    <label class="pattern-field-label">Blend Mode</label>
+                                    <select id="blend-mode" class="pattern-field-input">
+                                        <option value="normal">Normal</option>
+                                        <option value="multiply">Multiply</option>
+                                        <option value="screen">Screen</option>
+                                        <option value="overlay">Overlay</option>
+                                        <option value="difference">Difference</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="pattern-row">
+                                <div class="pattern-field-group">
+                                    <label class="pattern-field-label">
+                                        <input type="checkbox" id="enable-trails">
+                                        Enable Motion Trails
+                                    </label>
+                                </div>
+                                <div class="pattern-field-group">
+                                    <label class="pattern-field-label">Frame Rate (FPS)</label>
+                                    <input type="number" id="frame-rate" class="pattern-field-input" value="60" min="1" max="120">
+                                </div>
+                            </div>
+                        </div>
+                    </details>
+                </div>
+            </div>
+
+            <!-- Hidden field to store pattern configuration as JSON -->
+            <input type="hidden" name="configuration_json" id="configuration_json">
+
+            <div class="form-group" style="margin-top: 30px;">
                 <button type="submit" class="btn btn-primary btn-lg">
                     <?php echo $action === 'create' ? 'Create Piece' : 'Update Piece'; ?>
                 </button>
@@ -418,7 +632,316 @@ require_once(__DIR__ . '/includes/header.php');
         </form>
     </div>
 
+    <style>
+    .pattern-section {
+        background: white;
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+
+    .pattern-section-title {
+        color: #FF6B6B;
+        font-size: 18px;
+        font-weight: 600;
+        margin: 0 0 15px 0;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #FF6B6B;
+    }
+
+    .pattern-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin-bottom: 15px;
+    }
+
+    .pattern-field-group {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .pattern-field-label {
+        font-weight: 600;
+        margin-bottom: 5px;
+        color: #495057;
+        font-size: 14px;
+    }
+
+    .pattern-field-input {
+        padding: 8px 12px;
+        border: 1px solid #ced4da;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+
+    .pattern-field-input:focus {
+        outline: none;
+        border-color: #FF6B6B;
+        box-shadow: 0 0 0 0.2rem rgba(255, 107, 107, 0.25);
+    }
+
+    .color-palette-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 10px;
+    }
+
+    .color-remove-btn {
+        background: #dc3545;
+        color: white;
+        border: none;
+        padding: 4px 8px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+    }
+
+    .color-remove-btn:hover {
+        background: #c82333;
+    }
+    </style>
+
     <script>
+    // Pattern configuration state
+    const patternConfig = {
+        canvas: {
+            width: 800,
+            height: 600,
+            background: '#FFFFFF'
+        },
+        pattern: {
+            type: 'grid',
+            elementCount: 100
+        },
+        colors: ['#FF6B6B', '#4ECDC4', '#45B7D1'],
+        parameters: {
+            elementSize: 5,
+            sizeVariation: 20,
+            spacing: 20,
+            opacity: 80,
+            rotation: 0
+        },
+        animation: {
+            enabled: false,
+            type: 'rotate',
+            speed: 1,
+            loop: true
+        },
+        interaction: {
+            enabled: false,
+            type: 'repel',
+            radius: 100
+        },
+        advanced: {
+            randomSeed: 12345,
+            blendMode: 'normal',
+            enableTrails: false,
+            frameRate: 60
+        }
+    };
+
+    // Initialize color palette
+    function initializeColorPalette() {
+        const container = document.getElementById('color-palette-container');
+        container.innerHTML = '';
+        patternConfig.colors.forEach((color, index) => {
+            addColorToPaletteWithValue(color);
+        });
+        updateConfiguration();
+    }
+
+    // Add color to palette
+    function addColorToPalette() {
+        addColorToPaletteWithValue('#' + Math.floor(Math.random()*16777215).toString(16));
+        updateConfiguration();
+    }
+
+    // Add color with specific value
+    function addColorToPaletteWithValue(color) {
+        const container = document.getElementById('color-palette-container');
+        const index = container.children.length;
+
+        const colorItem = document.createElement('div');
+        colorItem.className = 'color-palette-item';
+        colorItem.innerHTML = `
+            <input type="color" class="pattern-field-input" value="${color}"
+                   onchange="updateColor(${index}, this.value)" style="width: 60px;">
+            <input type="text" class="pattern-field-input" value="${color}"
+                   onchange="updateColor(${index}, this.value)" style="flex: 1;">
+            <button type="button" class="color-remove-btn" onclick="removeColor(${index})">Remove</button>
+        `;
+        container.appendChild(colorItem);
+
+        // Update the colors array
+        if (index >= patternConfig.colors.length) {
+            patternConfig.colors.push(color);
+        }
+    }
+
+    // Update color in palette
+    function updateColor(index, value) {
+        patternConfig.colors[index] = value;
+        // Sync both inputs
+        const colorItem = document.querySelectorAll('.color-palette-item')[index];
+        const inputs = colorItem.querySelectorAll('input');
+        inputs[0].value = value;
+        inputs[1].value = value;
+        updateConfiguration();
+    }
+
+    // Remove color from palette
+    function removeColor(index) {
+        if (patternConfig.colors.length <= 1) {
+            alert('You must have at least one color in the palette!');
+            return;
+        }
+        patternConfig.colors.splice(index, 1);
+        initializeColorPalette();
+    }
+
+    // Update pattern fields based on pattern type
+    function updatePatternFields() {
+        const patternType = document.getElementById('pattern-type').value;
+        patternConfig.pattern.type = patternType;
+        updateConfiguration();
+    }
+
+    // Update animation fields visibility
+    function updateAnimationFields() {
+        const enabled = document.getElementById('animation-enabled').checked;
+        const fields = document.getElementById('animation-fields');
+        fields.style.display = enabled ? 'block' : 'none';
+        patternConfig.animation.enabled = enabled;
+        updateConfiguration();
+    }
+
+    // Collect all form values and update configuration
+    function collectFormValues() {
+        // Canvas settings
+        patternConfig.canvas.width = parseInt(document.getElementById('canvas-width').value);
+        patternConfig.canvas.height = parseInt(document.getElementById('canvas-height').value);
+        patternConfig.canvas.background = document.getElementById('canvas-background').value;
+
+        // Pattern settings
+        patternConfig.pattern.type = document.getElementById('pattern-type').value;
+        patternConfig.pattern.elementCount = parseInt(document.getElementById('element-count').value);
+
+        // Pattern parameters
+        patternConfig.parameters.elementSize = parseFloat(document.getElementById('element-size').value);
+        patternConfig.parameters.sizeVariation = parseFloat(document.getElementById('size-variation').value);
+        patternConfig.parameters.spacing = parseFloat(document.getElementById('spacing').value);
+        patternConfig.parameters.opacity = parseFloat(document.getElementById('opacity').value);
+        patternConfig.parameters.rotation = parseFloat(document.getElementById('rotation').value);
+
+        // Animation settings
+        patternConfig.animation.enabled = document.getElementById('animation-enabled').checked;
+        patternConfig.animation.type = document.getElementById('animation-type').value;
+        patternConfig.animation.speed = parseFloat(document.getElementById('animation-speed').value);
+        patternConfig.animation.loop = document.getElementById('animation-loop').checked;
+
+        // Interaction settings
+        patternConfig.interaction.enabled = document.getElementById('mouse-interaction').checked;
+        patternConfig.interaction.type = document.getElementById('interaction-type').value;
+        patternConfig.interaction.radius = parseFloat(document.getElementById('interaction-radius').value);
+
+        // Advanced settings
+        patternConfig.advanced.randomSeed = parseInt(document.getElementById('random-seed').value);
+        patternConfig.advanced.blendMode = document.getElementById('blend-mode').value;
+        patternConfig.advanced.enableTrails = document.getElementById('enable-trails').checked;
+        patternConfig.advanced.frameRate = parseInt(document.getElementById('frame-rate').value);
+    }
+
+    // Update the hidden configuration field
+    function updateConfiguration() {
+        collectFormValues();
+        document.getElementById('configuration_json').value = JSON.stringify(patternConfig, null, 2);
+    }
+
+    // Update opacity display
+    document.addEventListener('DOMContentLoaded', function() {
+        const opacityInput = document.getElementById('opacity');
+        const opacityValue = document.getElementById('opacity-value');
+
+        if (opacityInput && opacityValue) {
+            opacityInput.addEventListener('input', function() {
+                opacityValue.textContent = this.value + '%';
+                updateConfiguration();
+            });
+        }
+
+        // Add change listeners to all inputs
+        const inputs = document.querySelectorAll('.pattern-field-input, #animation-enabled, #mouse-interaction, #animation-loop, #enable-trails');
+        inputs.forEach(input => {
+            input.addEventListener('change', updateConfiguration);
+            input.addEventListener('input', updateConfiguration);
+        });
+
+        // Initialize color palette
+        initializeColorPalette();
+
+        // Load existing configuration if editing
+        <?php if ($editPiece && !empty($editPiece['configuration'])): ?>
+        try {
+            const savedConfig = <?php echo $editPiece['configuration']; ?>;
+            if (savedConfig) {
+                // Load all values back into the form
+                if (savedConfig.canvas) {
+                    document.getElementById('canvas-width').value = savedConfig.canvas.width;
+                    document.getElementById('canvas-height').value = savedConfig.canvas.height;
+                    document.getElementById('canvas-background').value = savedConfig.canvas.background;
+                }
+
+                if (savedConfig.pattern) {
+                    document.getElementById('pattern-type').value = savedConfig.pattern.type;
+                    document.getElementById('element-count').value = savedConfig.pattern.elementCount;
+                }
+
+                if (savedConfig.colors) {
+                    patternConfig.colors = savedConfig.colors;
+                    initializeColorPalette();
+                }
+
+                if (savedConfig.parameters) {
+                    document.getElementById('element-size').value = savedConfig.parameters.elementSize;
+                    document.getElementById('size-variation').value = savedConfig.parameters.sizeVariation;
+                    document.getElementById('spacing').value = savedConfig.parameters.spacing;
+                    document.getElementById('opacity').value = savedConfig.parameters.opacity;
+                    document.getElementById('opacity-value').textContent = savedConfig.parameters.opacity + '%';
+                    document.getElementById('rotation').value = savedConfig.parameters.rotation;
+                }
+
+                if (savedConfig.animation) {
+                    document.getElementById('animation-enabled').checked = savedConfig.animation.enabled;
+                    document.getElementById('animation-type').value = savedConfig.animation.type;
+                    document.getElementById('animation-speed').value = savedConfig.animation.speed;
+                    document.getElementById('animation-loop').checked = savedConfig.animation.loop;
+                    updateAnimationFields();
+                }
+
+                if (savedConfig.interaction) {
+                    document.getElementById('mouse-interaction').checked = savedConfig.interaction.enabled;
+                    document.getElementById('interaction-type').value = savedConfig.interaction.type;
+                    document.getElementById('interaction-radius').value = savedConfig.interaction.radius;
+                }
+
+                if (savedConfig.advanced) {
+                    document.getElementById('random-seed').value = savedConfig.advanced.randomSeed;
+                    document.getElementById('blend-mode').value = savedConfig.advanced.blendMode;
+                    document.getElementById('enable-trails').checked = savedConfig.advanced.enableTrails;
+                    document.getElementById('frame-rate').value = savedConfig.advanced.frameRate;
+                }
+
+                updateConfiguration();
+            }
+        } catch (e) {
+            console.error('Error loading pattern configuration:', e);
+        }
+        <?php endif; ?>
+    });
+
     function addJsFile() {
         const container = document.getElementById('js-files-container');
         const input = document.createElement('input');
