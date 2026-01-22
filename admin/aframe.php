@@ -505,7 +505,13 @@ require_once(__DIR__ . '/includes/header.php');
             </div>
 
             <!-- Hidden field to store shape configuration as JSON -->
-            <input type="hidden" name="configuration_json" id="configuration_json">
+            <input type="hidden" name="configuration_json" id="configuration_json" value="<?php
+                if ($formData && isset($formData['configuration_json_raw'])) {
+                    echo htmlspecialchars($formData['configuration_json_raw']);
+                } elseif ($editPiece && !empty($editPiece['configuration'])) {
+                    echo htmlspecialchars($editPiece['configuration']);
+                }
+            ?>">
 
             <div class="form-group" style="margin-top: 30px;">
                 <button type="submit" class="btn btn-primary btn-lg">
@@ -793,7 +799,7 @@ require_once(__DIR__ . '/includes/header.php');
             animation: {
                 rotation: {  // CHANGED: Granular animation control
                     enabled: false,
-                    degrees: 360,
+                    counterclockwise: false,  // false = clockwise (default), true = counterclockwise
                     duration: 10000
                 },
                 position: {  // NEW: Position animation
@@ -965,22 +971,25 @@ require_once(__DIR__ . '/includes/header.php');
                             </label>
                         </div>
                         <div class="shape-field-group" style="margin-bottom: 15px;">
-                            <label class="shape-field-label">Rotation Degrees (0-360°)</label>
-                            <div style="display: flex; gap: 10px; align-items: center;">
-                                <input type="range" class="shape-field-input"
-                                       min="0" max="360" step="1"
-                                       value="${shapeData.animation.rotation.degrees}"
-                                       oninput="this.nextElementSibling.textContent = this.value + '°'; updateRotationAnimation(${shapeData.id}, 'degrees', parseInt(this.value))"
-                                       style="flex: 1;">
-                                <span style="min-width: 50px; font-weight: 600; color: #495057;">${shapeData.animation.rotation.degrees}°</span>
-                            </div>
+                            <label class="shape-field-label">
+                                <input type="checkbox" ${shapeData.animation.rotation.counterclockwise ? 'checked' : ''}
+                                       onchange="updateRotationAnimation(${shapeData.id}, 'counterclockwise', this.checked)">
+                                Enable Counterclockwise
+                            </label>
+                            <small style="display: block; margin-top: 5px; color: #6c757d; font-size: 0.875em;">
+                                Unchecked = Clockwise (default), Checked = Counterclockwise
+                            </small>
                         </div>
                         <div class="shape-field-group">
-                            <label class="shape-field-label">Duration (milliseconds)</label>
-                            <input type="number" class="shape-field-input"
-                                   value="${shapeData.animation.rotation.duration}"
-                                   step="1000" min="100"
-                                   onchange="updateRotationAnimation(${shapeData.id}, 'duration', parseInt(this.value))">
+                            <label class="shape-field-label">Duration (100-10000ms)</label>
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <input type="range" class="shape-field-input"
+                                       min="100" max="10000" step="100"
+                                       value="${shapeData.animation.rotation.duration}"
+                                       oninput="this.nextElementSibling.textContent = this.value + 'ms'; updateRotationAnimation(${shapeData.id}, 'duration', parseInt(this.value))"
+                                       style="flex: 1;">
+                                <span style="min-width: 65px; font-weight: 600; color: #495057;">${shapeData.animation.rotation.duration}ms</span>
+                            </div>
                         </div>
                     </div>
                 </details>
@@ -1018,11 +1027,15 @@ require_once(__DIR__ . '/includes/header.php');
                             </div>
                         </div>
                         <div class="shape-field-group">
-                            <label class="shape-field-label">Duration (milliseconds)</label>
-                            <input type="number" class="shape-field-input"
-                                   value="${shapeData.animation.position.duration}"
-                                   step="1000" min="100"
-                                   onchange="updatePositionAnimation(${shapeData.id}, 'duration', parseInt(this.value))">
+                            <label class="shape-field-label">Duration (100-10000ms)</label>
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <input type="range" class="shape-field-input"
+                                       min="100" max="10000" step="100"
+                                       value="${shapeData.animation.position.duration}"
+                                       oninput="this.nextElementSibling.textContent = this.value + 'ms'; updatePositionAnimation(${shapeData.id}, 'duration', parseInt(this.value))"
+                                       style="flex: 1;">
+                                <span style="min-width: 65px; font-weight: 600; color: #495057;">${shapeData.animation.position.duration}ms</span>
+                            </div>
                         </div>
                     </div>
                 </details>
@@ -1066,11 +1079,15 @@ require_once(__DIR__ . '/includes/header.php');
                         </div>
                         <div class="shape-field-group" style="margin-bottom: 15px;" id="scale-validation-${shapeData.id}"></div>
                         <div class="shape-field-group">
-                            <label class="shape-field-label">Duration (milliseconds)</label>
-                            <input type="number" class="shape-field-input"
-                                   value="${shapeData.animation.scale.duration}"
-                                   step="1000" min="100"
-                                   onchange="updateScaleAnimation(${shapeData.id}, 'duration', parseInt(this.value))">
+                            <label class="shape-field-label">Duration (100-10000ms)</label>
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <input type="range" class="shape-field-input"
+                                       min="100" max="10000" step="100"
+                                       value="${shapeData.animation.scale.duration}"
+                                       oninput="this.nextElementSibling.textContent = this.value + 'ms'; updateScaleAnimation(${shapeData.id}, 'duration', parseInt(this.value))"
+                                       style="flex: 1;">
+                                <span style="min-width: 65px; font-weight: 600; color: #495057;">${shapeData.animation.scale.duration}ms</span>
+                            </div>
                         </div>
                     </div>
                 </details>
@@ -1266,7 +1283,7 @@ require_once(__DIR__ . '/includes/header.php');
             shapeData.animation = {
                 rotation: {
                     enabled: oldAnim.enabled && property === 'rotation',
-                    degrees: 360,
+                    counterclockwise: false,  // Default to clockwise
                     duration: duration
                 },
                 position: {
@@ -1286,6 +1303,16 @@ require_once(__DIR__ . '/includes/header.php');
             console.log('Migrated old animation format for shape', shapeData.id);
         }
 
+        // Convert old "degrees" format to "counterclockwise" format (Phase 2 to v1.0.10)
+        if (shapeData.animation && shapeData.animation.rotation && typeof shapeData.animation.rotation.degrees !== 'undefined') {
+            // Old format had degrees field - convert to counterclockwise boolean
+            delete shapeData.animation.rotation.degrees;
+            if (typeof shapeData.animation.rotation.counterclockwise === 'undefined') {
+                shapeData.animation.rotation.counterclockwise = false;  // Default to clockwise
+            }
+            console.log('Migrated degrees to counterclockwise for shape', shapeData.id);
+        }
+
         // Ensure opacity field exists (default to 1.0)
         if (typeof shapeData.opacity === 'undefined') {
             shapeData.opacity = 1.0;
@@ -1296,7 +1323,10 @@ require_once(__DIR__ . '/includes/header.php');
             shapeData.animation = {};
         }
         if (!shapeData.animation.rotation) {
-            shapeData.animation.rotation = { enabled: false, degrees: 360, duration: 10000 };
+            shapeData.animation.rotation = { enabled: false, counterclockwise: false, duration: 10000 };
+        } else if (typeof shapeData.animation.rotation.counterclockwise === 'undefined') {
+            // Add counterclockwise field if missing (backward compatibility)
+            shapeData.animation.rotation.counterclockwise = false;
         }
         if (!shapeData.animation.position) {
             shapeData.animation.position = { enabled: false, axis: 'y', distance: 0, duration: 10000 };
@@ -1308,11 +1338,22 @@ require_once(__DIR__ . '/includes/header.php');
         return shapeData;
     }
 
-    // Load existing configuration when editing
-    <?php if ($editPiece && !empty($editPiece['configuration'])): ?>
+    // Load existing configuration when editing OR from preserved form data on error
+    <?php
+    $configToLoad = null;
+    if ($formData && isset($formData['configuration_json_raw'])) {
+        // Load from preserved form data (error occurred)
+        $configToLoad = $formData['configuration_json_raw'];
+    } elseif ($editPiece && !empty($editPiece['configuration'])) {
+        // Load from existing piece (normal edit)
+        $configToLoad = $editPiece['configuration'];
+    }
+
+    if ($configToLoad):
+    ?>
     document.addEventListener('DOMContentLoaded', function() {
         try {
-            const config = <?php echo $editPiece['configuration']; ?>;
+            const config = <?php echo $configToLoad; ?>;
             if (config && config.shapes) {
                 config.shapes.forEach(shapeData => {
                     // Migrate old animation format to new Phase 2 format

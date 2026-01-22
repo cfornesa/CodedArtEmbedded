@@ -158,9 +158,20 @@ require_once(__DIR__ . '/../resources/templates/head.php');
             if (!empty($shape['animation'])) {
                 // Rotation Animation
                 if (!empty($shape['animation']['rotation']['enabled'])) {
-                    $degrees = $shape['animation']['rotation']['degrees'] ?? 360;
+                    $counterclockwise = !empty($shape['animation']['rotation']['counterclockwise']);
                     $duration = $shape['animation']['rotation']['duration'] ?? 10000;
-                    $attrs[] = 'animation__rotation="property: rotation; to: 0 ' . $degrees . ' 0; dur: ' . $duration . '; loop: true; easing: linear"';
+
+                    // Backward compatibility: support old "degrees" field
+                    if (isset($shape['animation']['rotation']['degrees'])) {
+                        $degrees = $shape['animation']['rotation']['degrees'];
+                        $attrs[] = 'animation__rotation="property: rotation; to: 0 ' . $degrees . ' 0; dur: ' . $duration . '; loop: true; easing: linear"';
+                    } else {
+                        // New format: counterclockwise boolean
+                        // Counterclockwise: 360 to 0, Clockwise: 0 to 360
+                        $rotation = $counterclockwise ? '0 0 0' : '0 360 0';
+                        $from = $counterclockwise ? '0 360 0' : '0 0 0';
+                        $attrs[] = 'animation__rotation="property: rotation; from: ' . $from . '; to: ' . $rotation . '; dur: ' . $duration . '; loop: true; easing: linear"';
+                    }
                 }
 
                 // Position Animation
