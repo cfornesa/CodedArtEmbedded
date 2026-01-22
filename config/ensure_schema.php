@@ -40,8 +40,10 @@ try {
                 scene_type TEXT CHECK(scene_type IN ('space', 'alt', 'custom')) DEFAULT 'custom',
                 sky_color VARCHAR(20) DEFAULT '#ECECEC',
                 sky_texture VARCHAR(500),
+                sky_opacity REAL DEFAULT 1.0,
                 ground_color VARCHAR(20) DEFAULT '#7BC8A4',
                 ground_texture VARCHAR(500),
+                ground_opacity REAL DEFAULT 1.0,
                 configuration TEXT,
                 tags TEXT,
                 created_by INTEGER,
@@ -62,8 +64,10 @@ try {
                 scene_type ENUM('space', 'alt', 'custom') DEFAULT 'custom',
                 sky_color VARCHAR(20) DEFAULT '#ECECEC',
                 sky_texture VARCHAR(500),
+                sky_opacity DECIMAL(3,2) DEFAULT 1.00,
                 ground_color VARCHAR(20) DEFAULT '#7BC8A4',
                 ground_texture VARCHAR(500),
+                ground_opacity DECIMAL(3,2) DEFAULT 1.00,
                 configuration TEXT,
                 tags TEXT,
                 created_by INT,
@@ -93,8 +97,10 @@ try {
         $requiredColumns = [
             'sky_color' => "VARCHAR(20) DEFAULT '#ECECEC'",
             'sky_texture' => "VARCHAR(500)",
+            'sky_opacity' => "REAL DEFAULT 1.0",  // Added in v1.0.7
             'ground_color' => "VARCHAR(20) DEFAULT '#7BC8A4'",
-            'ground_texture' => "VARCHAR(500)"
+            'ground_texture' => "VARCHAR(500)",
+            'ground_opacity' => "REAL DEFAULT 1.0"  // Added in v1.0.7
         ];
 
         $missingColumns = [];
@@ -119,8 +125,10 @@ try {
                         $afterClause = match($col) {
                             'sky_color' => 'AFTER scene_type',
                             'sky_texture' => 'AFTER sky_color',
-                            'ground_color' => 'AFTER sky_texture',
+                            'sky_opacity' => 'AFTER sky_texture',
+                            'ground_color' => 'AFTER sky_opacity',
                             'ground_texture' => 'AFTER ground_color',
+                            'ground_opacity' => 'AFTER ground_texture',
                             default => ''
                         };
                         $db->exec("ALTER TABLE aframe_art ADD COLUMN $col $type $afterClause");
@@ -146,16 +154,24 @@ try {
     }
 
     $allPresent = true;
-    foreach (['sky_color', 'sky_texture', 'ground_color', 'ground_texture'] as $col) {
+    $requiredForVerification = ['sky_color', 'sky_texture', 'sky_opacity', 'ground_color', 'ground_texture', 'ground_opacity'];
+    foreach ($requiredForVerification as $col) {
         if (!in_array($col, $columnNames)) {
             echo "   ✗ $col still missing!\n";
             $allPresent = false;
+        } else {
+            echo "   ✓ $col present\n";
         }
     }
 
     if ($allPresent) {
-        echo "   ✅ All sky/ground columns verified!\n\n";
+        echo "\n✅ All sky/ground/opacity columns verified!\n\n";
         echo "✅ Database schema is correct and ready to use!\n";
+        echo "\n💡 IMPORTANT: If you still get errors, restart your web server:\n";
+        echo "   - Apache: sudo service apache2 restart\n";
+        echo "   - PHP-FPM: sudo service php-fpm restart\n";
+        echo "   - Replit: Click 'Stop' then 'Run' in the shell\n";
+        echo "   Then visit /admin/clear-cache.php in your browser.\n";
     } else {
         echo "\n❌ Some columns are still missing. Manual intervention required.\n";
         exit(1);
