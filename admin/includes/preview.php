@@ -647,7 +647,7 @@ function drawFlowPattern(count, size, colors, variation) {
 drawPattern();
 
 // Animation support
-if (config.animation && config.animation.animated && config.animation.loop) {
+if (config.animation && config.animation.enabled && config.animation.loop) {
     let animationFrame = 0;
 
     function animate() {
@@ -660,7 +660,7 @@ if (config.animation && config.animation.animated && config.animation.loop) {
         }
 
         // Modify seed for animation
-        seed = config.advanced?.randomSeed + animationFrame * (config.animation.speed || 1);
+        seed = (config.advanced?.randomSeed || 12345) + animationFrame * (config.animation.speed || 1);
 
         // Redraw pattern
         drawPattern();
@@ -669,6 +669,72 @@ if (config.animation && config.animation.animated && config.animation.loop) {
     }
 
     animate();
+}
+
+// Mouse interaction support
+if (config.interaction && config.interaction.enabled) {
+    const interactionRadius = config.interaction.radius || 100;
+    const interactionType = config.interaction.type || 'repel';
+
+    canvas.addEventListener('mousemove', function(e) {
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+
+        // Clear and redraw with mouse interaction
+        ctx.fillStyle = config.canvas?.background || '#FFFFFF';
+        ctx.fillRect(0, 0, width, height);
+
+        // Re-seed for consistency
+        seed = config.advanced?.randomSeed || 12345;
+
+        // Draw pattern with mouse influence
+        drawPatternWithInteraction(mouseX, mouseY, interactionRadius, interactionType);
+    });
+}
+
+function drawPatternWithInteraction(mouseX, mouseY, radius, type) {
+    const pattern = config.pattern?.type || 'scatter';
+    const elementCount = config.pattern?.elementCount || 100;
+    const elementSize = config.parameters?.elementSize || 5;
+    const sizeVariation = (config.parameters?.sizeVariation || 20) / 100;
+    const spacing = config.parameters?.spacing || 20;
+    const opacity = (config.parameters?.opacity || 80) / 100;
+    const colors = config.colors || ['#ED225D'];
+
+    ctx.globalAlpha = opacity;
+
+    // Simple scatter pattern with mouse interaction
+    for (let i = 0; i < elementCount; i++) {
+        const x = random() * width;
+        const y = random() * height;
+        const size = elementSize * (1 + (random() - 0.5) * sizeVariation);
+        const color = colors[i % colors.length];
+
+        // Calculate distance from mouse
+        const dx = x - mouseX;
+        const dy = y - mouseY;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        let finalX = x;
+        let finalY = y;
+
+        if (dist < radius) {
+            const force = (radius - dist) / radius;
+            if (type === 'repel') {
+                finalX += (dx / dist) * force * 50;
+                finalY += (dy / dist) * force * 50;
+            } else if (type === 'attract') {
+                finalX -= (dx / dist) * force * 50;
+                finalY -= (dy / dist) * force * 50;
+            }
+        }
+
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(finalX, finalY, size, 0, Math.PI * 2);
+        ctx.fill();
+    }
 }
     </script>
 </body>

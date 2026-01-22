@@ -58,14 +58,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array($action, ['create', 'edit'
             'sort_order' => $_POST['sort_order'] ?? 0
         ];
 
-        // Handle JS files (array input)
-        if (isset($_POST['js_files']) && is_array($_POST['js_files'])) {
-            $data['js_files'] = array_filter($_POST['js_files']);
-        }
-
-        // Handle image URLs (array input)
-        if (isset($_POST['image_urls']) && is_array($_POST['image_urls'])) {
-            $data['image_urls'] = array_filter($_POST['image_urls']);
+        // Handle background image URL (single input)
+        if (isset($_POST['background_image_url'])) {
+            $data['background_image_url'] = trim($_POST['background_image_url']);
         }
 
         // Handle configuration JSON if provided
@@ -89,13 +84,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array($action, ['create', 'edit'
             $error = $result['message'];
             // Preserve form data so user doesn't lose their work
             $formData = $data;
-            // Also preserve array inputs in original format
-            if (isset($_POST['js_files'])) {
-                $formData['js_files_raw'] = $_POST['js_files'];
-            }
-            if (isset($_POST['image_urls'])) {
-                $formData['image_urls_raw'] = $_POST['image_urls'];
-            }
             // Preserve configuration JSON
             if (isset($_POST['configuration_json'])) {
                 $formData['configuration_json_raw'] = $_POST['configuration_json'];
@@ -361,65 +349,16 @@ require_once(__DIR__ . '/includes/header.php');
             </div>
 
             <div class="form-group">
-                <label class="form-label">JavaScript Files (optional)</label>
-                <div id="js-files-container">
-                    <?php
-                    $jsFiles = [];
-                    if ($formData && !empty($formData['js_files_raw'])) {
-                        $jsFiles = $formData['js_files_raw'];
-                    } elseif ($editPiece && !empty($editPiece['js_files'])) {
-                        $jsFiles = json_decode($editPiece['js_files'], true) ?: [];
-                    }
-
-                    if (empty($jsFiles)) {
-                        $jsFiles = [''];
-                    }
-
-                    foreach ($jsFiles as $index => $file):
-                    ?>
-                    <input
-                        type="text"
-                        name="js_files[]"
-                        class="form-control mb-1"
-                        placeholder="/c2/1/script.js"
-                        value="<?php echo htmlspecialchars($file); ?>"
-                    >
-                    <?php endforeach; ?>
-                </div>
-                <button type="button" class="btn btn-sm btn-secondary mt-1" onclick="addJsFile()">
-                    + Add Another JS File
-                </button>
-            </div>
-
-            <div class="form-group">
-                <label class="form-label">Image URLs (optional)</label>
-                <div id="image-urls-container">
-                    <?php
-                    $imageUrls = [];
-                    if ($formData && !empty($formData['image_urls_raw'])) {
-                        $imageUrls = $formData['image_urls_raw'];
-                    } elseif ($editPiece && !empty($editPiece['image_urls'])) {
-                        $imageUrls = json_decode($editPiece['image_urls'], true) ?: [];
-                    }
-
-                    if (empty($imageUrls)) {
-                        $imageUrls = [''];
-                    }
-
-                    foreach ($imageUrls as $index => $url):
-                    ?>
-                    <input
-                        type="url"
-                        name="image_urls[]"
-                        class="form-control mb-1"
-                        placeholder="https://example.com/image.png"
-                        value="<?php echo htmlspecialchars($url); ?>"
-                    >
-                    <?php endforeach; ?>
-                </div>
-                <button type="button" class="btn btn-sm btn-secondary mt-1" onclick="addImageUrl()">
-                    + Add Another Image URL
-                </button>
+                <label class="form-label">Background Image URL (optional)</label>
+                <input
+                    type="url"
+                    id="background_image_url"
+                    name="background_image_url"
+                    class="form-control"
+                    placeholder="https://example.com/background.png"
+                    value="<?php echo $formData ? htmlspecialchars($formData['background_image_url'] ?? '') : ($editPiece ? htmlspecialchars($editPiece['background_image_url'] ?? '') : ''); ?>"
+                >
+                <small class="form-help">Optional background image for the canvas</small>
             </div>
 
             <div class="form-group">
@@ -518,15 +457,16 @@ require_once(__DIR__ . '/includes/header.php');
                         </div>
                     </div>
 
-                    <!-- Color Palette -->
+                    <!-- Shape & Color Palette -->
                     <div class="pattern-section">
-                        <h4 class="pattern-section-title">Color Palette</h4>
+                        <h4 class="pattern-section-title">Shape & Color Palette</h4>
+                        <p class="form-help" style="margin-bottom: 15px;">Define the shapes and colors that will be used in your pattern</p>
 
-                        <div id="color-palette-container">
-                            <!-- Color inputs will be dynamically added here -->
+                        <div id="shape-palette-container">
+                            <!-- Shape+color items will be dynamically added here -->
                         </div>
-                        <button type="button" class="btn btn-sm btn-success" onclick="addColorToPalette()">
-                            + Add Color
+                        <button type="button" class="btn btn-sm btn-success" onclick="addShapeToPalette()">
+                            + Add Shape & Color
                         </button>
                     </div>
 
@@ -537,7 +477,8 @@ require_once(__DIR__ . '/includes/header.php');
                         <div class="pattern-row">
                             <div class="pattern-field-group">
                                 <label class="pattern-field-label">Element Size</label>
-                                <input type="number" id="element-size" class="pattern-field-input" value="5" step="0.5" min="0.1">
+                                <input type="range" id="element-size" class="pattern-field-input" value="5" step="0.1" min="0.1" max="10">
+                                <span id="element-size-value" style="color: #ED225D; font-weight: bold;">5.0</span>
                             </div>
                             <div class="pattern-field-group">
                                 <label class="pattern-field-label">Size Variation (%)</label>
@@ -590,7 +531,8 @@ require_once(__DIR__ . '/includes/header.php');
                                 </div>
                                 <div class="pattern-field-group">
                                     <label class="pattern-field-label">Speed</label>
-                                    <input type="number" id="animation-speed" class="pattern-field-input" value="1" step="0.1" min="0.1" max="10">
+                                    <input type="range" id="animation-speed" class="pattern-field-input" value="1" step="0.1" min="1" max="10">
+                                    <span id="animation-speed-value" style="color: #ED225D; font-weight: bold;">1.0</span>
                                 </div>
                                 <div class="pattern-field-group">
                                     <label class="pattern-field-label">
@@ -625,7 +567,8 @@ require_once(__DIR__ . '/includes/header.php');
                             </div>
                             <div class="pattern-field-group">
                                 <label class="pattern-field-label">Interaction Radius</label>
-                                <input type="number" id="interaction-radius" class="pattern-field-input" value="100" min="10" max="500">
+                                <input type="range" id="interaction-radius" class="pattern-field-input" value="100" step="10" min="10" max="500">
+                                <span id="interaction-radius-value" style="color: #ED225D; font-weight: bold;">100</span>
                             </div>
                         </div>
                     </div>
@@ -771,7 +714,11 @@ require_once(__DIR__ . '/includes/header.php');
             type: 'grid',
             elementCount: 100
         },
-        colors: ['#FF6B6B', '#4ECDC4', '#45B7D1'],
+        shapes: [
+            { shape: 'circle', color: '#FF6B6B' },
+            { shape: 'square', color: '#4ECDC4' },
+            { shape: 'triangle', color: '#45B7D1' }
+        ],
         parameters: {
             elementSize: 5,
             sizeVariation: 20,
@@ -930,6 +877,39 @@ require_once(__DIR__ . '/includes/header.php');
             });
         }
 
+        // Update element size display
+        const elementSizeInput = document.getElementById('element-size');
+        const elementSizeValue = document.getElementById('element-size-value');
+
+        if (elementSizeInput && elementSizeValue) {
+            elementSizeInput.addEventListener('input', function() {
+                elementSizeValue.textContent = parseFloat(this.value).toFixed(1);
+                updateConfiguration();
+            });
+        }
+
+        // Update animation speed display
+        const animationSpeedInput = document.getElementById('animation-speed');
+        const animationSpeedValue = document.getElementById('animation-speed-value');
+
+        if (animationSpeedInput && animationSpeedValue) {
+            animationSpeedInput.addEventListener('input', function() {
+                animationSpeedValue.textContent = parseFloat(this.value).toFixed(1);
+                updateConfiguration();
+            });
+        }
+
+        // Update interaction radius display
+        const interactionRadiusInput = document.getElementById('interaction-radius');
+        const interactionRadiusValue = document.getElementById('interaction-radius-value');
+
+        if (interactionRadiusInput && interactionRadiusValue) {
+            interactionRadiusInput.addEventListener('input', function() {
+                interactionRadiusValue.textContent = this.value;
+                updateConfiguration();
+            });
+        }
+
         // Add change listeners to all inputs
         const inputs = document.querySelectorAll('.pattern-field-input, #animation-enabled, #mouse-interaction, #animation-loop, #enable-trails');
         inputs.forEach(input => {
@@ -964,6 +944,7 @@ require_once(__DIR__ . '/includes/header.php');
 
                 if (savedConfig.parameters) {
                     document.getElementById('element-size').value = savedConfig.parameters.elementSize;
+                    document.getElementById('element-size-value').textContent = parseFloat(savedConfig.parameters.elementSize).toFixed(1);
                     document.getElementById('size-variation').value = savedConfig.parameters.sizeVariation;
                     document.getElementById('spacing').value = savedConfig.parameters.spacing;
                     document.getElementById('opacity').value = savedConfig.parameters.opacity;
@@ -975,6 +956,7 @@ require_once(__DIR__ . '/includes/header.php');
                     document.getElementById('animation-enabled').checked = savedConfig.animation.enabled;
                     document.getElementById('animation-type').value = savedConfig.animation.type;
                     document.getElementById('animation-speed').value = savedConfig.animation.speed;
+                    document.getElementById('animation-speed-value').textContent = parseFloat(savedConfig.animation.speed).toFixed(1);
                     document.getElementById('animation-loop').checked = savedConfig.animation.loop;
                     updateAnimationFields();
                 }
@@ -983,6 +965,7 @@ require_once(__DIR__ . '/includes/header.php');
                     document.getElementById('mouse-interaction').checked = savedConfig.interaction.enabled;
                     document.getElementById('interaction-type').value = savedConfig.interaction.type;
                     document.getElementById('interaction-radius').value = savedConfig.interaction.radius;
+                    document.getElementById('interaction-radius-value').textContent = savedConfig.interaction.radius;
                 }
 
                 if (savedConfig.advanced) {
@@ -999,26 +982,6 @@ require_once(__DIR__ . '/includes/header.php');
         }
         <?php endif; ?>
     });
-
-    function addJsFile() {
-        const container = document.getElementById('js-files-container');
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.name = 'js_files[]';
-        input.className = 'form-control mb-1';
-        input.placeholder = '/c2/1/script.js';
-        container.appendChild(input);
-    }
-
-    function addImageUrl() {
-        const container = document.getElementById('image-urls-container');
-        const input = document.createElement('input');
-        input.type = 'url';
-        input.name = 'image_urls[]';
-        input.className = 'form-control mb-1';
-        input.placeholder = 'https://example.com/image.png';
-        container.appendChild(input);
-    }
 
     function updateSlugPreview() {
         const titleInput = document.getElementById('title');
