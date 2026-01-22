@@ -2,7 +2,7 @@
 
 ## Project Status: ✅ PRODUCTION READY
 
-**Last Updated:** 2026-01-21 (v1.0.9)
+**Last Updated:** 2026-01-21 (v1.0.10)
 **Agent:** Claude (Sonnet 4.5)
 **Environment:** Replit Development / Hostinger Production
 
@@ -1297,6 +1297,150 @@ mysqldump -u username -p codedart_db > backup_$(date +%Y%m%d).sql
 ---
 
 ## Version History
+
+**v1.0.10** - 2026-01-21 (Critical UX/UI Improvements + Form Preservation Fix)
+- 🐛 **CRITICAL FIX:** Form data preservation on database errors
+  - Root cause: configuration_json hidden field not preserving value on error
+  - Hidden field now checks $formData first, then $editPiece
+  - Shape loading now checks $formData (error state) before $editPiece (normal edit)
+  - **IMPACT:** Users no longer lose shape configurations when database errors occur
+  - **USER FEEDBACK:** "Extremely frustrating to lose work" → Now prevented
+
+- 🗄️ **DATABASE SCHEMA ISSUE RESOLUTION:**
+  - Created `/admin/clear-cache.php` - Web-accessible cache clear utility
+  - **Issue:** CLI PHP sees columns, web server PHP has cached schema
+  - **Solution:** Clear opcache + verify schema via web interface
+  - **Documentation:** Added to CLAUDE.md troubleshooting (recurrence of v1.0.6 issue)
+  - **Best Practice:** Always restart web server after schema changes
+
+- 🎨 **ANIMATION CONTROLS UX IMPROVEMENTS:**
+  - **Rotation:** Replaced degrees slider (0-360°) with "Enable Counterclockwise" checkbox
+    - Default: Clockwise rotation (unchecked)
+    - Checked: Counterclockwise rotation
+    - **Rationale:** Simpler, more intuitive - rotation is always 360°, direction is what matters
+    - **Data Structure:** Changed `degrees` field to `counterclockwise` boolean
+
+  - **Duration:** Changed from number input to range slider (100-10000ms, step 100)
+    - Applied to all three animation types (rotation, position, scale)
+    - Live value display shows current duration with "ms" suffix
+    - **Validation:** HTML5 range enforces min/max, prevents invalid values
+    - **USER FEEDBACK:** "1000ms showed error" → Now impossible with slider
+
+  - **Position:** Kept current axis + distance slider implementation
+    - Already uses intuitive slider interface
+    - ±5 units range with 0.1 step precision
+    - Axis selection dropdown (X/Y/Z)
+
+- 🔄 **BACKWARD COMPATIBILITY (Migration Layer):**
+  - **Old → New Format Migration:**
+    - Detects old `degrees` field, converts to `counterclockwise` boolean
+    - Removes obsolete `degrees` field
+    - Defaults to clockwise (false) if not specified
+
+  - **View Rendering Compatibility:**
+    - `a-frame/view.php` checks for `degrees` field (old format)
+    - If found, renders with degrees-based rotation (backward compatible)
+    - If not found, uses new `counterclockwise` boolean format
+    - Same logic applied to `admin/includes/preview.php`
+
+  - **Migration Console Logging:**
+    - "Migrated degrees to counterclockwise for shape {id}"
+    - Helps debugging during transition period
+
+- 🎯 **SYSTEMS THINKING LESSONS:**
+  1. **Form Preservation Pattern:**
+     - ALWAYS preserve hidden fields on errors
+     - Check error state ($formData) before normal state ($editPiece)
+     - Test error scenarios, not just happy path
+
+  2. **Input Validation Best Practices:**
+     - Range sliders eliminate invalid input (impossible to enter "1000" in 100-10000 range with step 100)
+     - Client-side validation should match server-side expectations
+     - Sliders provide better UX than number inputs for bounded ranges
+
+  3. **Schema Cache Management:**
+     - Web server PHP process != CLI PHP process
+     - Always provide web-accessible cache clear utility
+     - Document cache clearing in troubleshooting section
+     - Restart web server after schema migrations
+
+  4. **Data Structure Evolution:**
+     - `degrees` (0-360 integer) → `counterclockwise` (boolean)
+     - **Why:** Simpler data model, clearer user intent
+     - **Migration:** Automatic, non-destructive, logged
+
+- 👤 **USER EXPERIENCE IMPROVEMENTS:**
+  - **Never Lose Work:** Form preservation now bulletproof
+  - **No Invalid Input:** Sliders prevent out-of-range values
+  - **Clearer Controls:** Checkbox vs slider - direction vs magnitude
+  - **Visual Feedback:** Live value displays on all sliders
+  - **Intuitive Labeling:** "Enable Counterclockwise" vs "Rotation Degrees"
+
+- 🔒 **SECURITY:**
+  - `/admin/clear-cache.php` requires authentication
+  - Only clears cache, never modifies data
+  - Schema verification read-only
+  - No user input processing in cache clear
+
+- 📚 **FILES MODIFIED:**
+  - `admin/aframe.php`:
+    - Fixed configuration_json hidden field preservation
+    - Updated shape data structure (removed degrees, added counterclockwise)
+    - Replaced duration number inputs with range sliders
+    - Updated rotation UI (checkbox instead of degrees slider)
+    - Enhanced migrateAnimationFormat() function
+  - `admin/clear-cache.php` (NEW):
+    - Web-accessible opcache/APCu cache clear
+    - Schema verification diagnostics
+    - Authentication required
+  - `a-frame/view.php`:
+    - Rotation rendering supports both old (degrees) and new (counterclockwise) formats
+    - Backward compatibility preserved
+  - `admin/includes/preview.php`:
+    - Same rotation rendering compatibility as view.php
+  - `config/check_opacity_columns.php` (NEW):
+    - Diagnostic script for opacity column verification
+  - `CLAUDE.md`:
+    - Updated to v1.0.10
+    - Comprehensive documentation of all changes
+    - Lessons learned section expanded
+
+- 📖 **CRITICAL LESSONS FOR FUTURE DEVELOPMENT:**
+  1. **Hidden Fields Must Preserve:**
+     - Check $formData FIRST, then $editPiece
+     - Apply to ALL hidden fields, not just visible inputs
+     - Test error scenarios explicitly
+
+  2. **Cache Invalidation is Hard:**
+     - Web server caches schema
+     - CLI sees changes, web doesn't
+     - Provide web-accessible cache clear tool
+     - Document in troubleshooting
+
+  3. **UX Drives Data Structure:**
+     - User said "clockwise/counterclockwise" not "degrees"
+     - Simpler UX → Simpler data model
+     - Boolean > Integer when intent is binary
+
+  4. **Validation Should Match UI:**
+     - Slider with range="100-10000" → Can't enter invalid value
+     - Number input → User can type anything
+     - Use appropriate input type for data constraints
+
+  5. **Migration Layers Are Essential:**
+     - Never break old data
+     - Detect old format, convert automatically
+     - Log migrations for debugging
+     - Keep backward compat for 2-3 versions
+
+- 🧪 **TESTING RECOMMENDATIONS:**
+  - Test form submission with database errors
+  - Verify shapes persist on validation errors
+  - Test rotation clockwise/counterclockwise
+  - Test duration slider (100, 1000, 5000, 10000ms)
+  - Test with old pieces (degrees format)
+  - Test cache clear via web interface
+  - Verify schema after cache clear
 
 **v1.0.9** - 2026-01-21 (Critical Bug Fixes + Live Preview Feature)
 - 🐛 **CRITICAL FIX:** Resolved shapes not loading in edit mode
