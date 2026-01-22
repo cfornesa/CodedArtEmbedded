@@ -44,10 +44,29 @@ try {
     die('Error loading art piece.');
 }
 
-// Include head (DOCTYPE, HTML, A-Frame library)
-require_once(__DIR__ . '/../resources/templates/head.php');
 ?>
-<body style="margin: 0; overflow: hidden;">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?php echo htmlspecialchars($page_name); ?></title>
+    <meta name="description" content="<?php echo htmlspecialchars($tagline); ?>">
+    <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
 <!-- Fullscreen immersive view - no header/navigation for distraction-free viewing -->
 
 <!-- A-Frame Scene -->
