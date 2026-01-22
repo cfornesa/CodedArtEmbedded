@@ -1704,6 +1704,54 @@ require_once(__DIR__ . '/includes/header.php');
         setTimeout(() => {
             updateLivePreview();
         }, 1000);
+
+        // ============================================
+        // LIVE PREVIEW: Environment Field Listeners
+        // ============================================
+        // Add event listeners to all environment/background fields
+        // so they trigger live preview updates
+
+        const envFields = [
+            'sky_color',        // Sky color picker
+            'sky_texture',      // Sky texture URL
+            'sky_opacity',      // Sky opacity slider
+            'ground_color',     // Ground color picker
+            'ground_texture',   // Ground texture URL
+            'ground_opacity'    // Ground opacity slider
+        ];
+
+        envFields.forEach(fieldId => {
+            const field = document.getElementById(fieldId);
+            if (field) {
+                // Determine which event to listen for based on field type
+                const eventType = field.type === 'range' ? 'input' : 'change';
+
+                field.addEventListener(eventType, function() {
+                    // Trigger live preview update
+                    updateLivePreview();
+                });
+            }
+        });
+
+        // Special handling for sky color text input (synced with color picker)
+        const skyColorTextInputs = document.querySelectorAll('input[onchange*="sky_color"]');
+        skyColorTextInputs.forEach(input => {
+            if (input.type === 'text') {
+                input.addEventListener('change', function() {
+                    updateLivePreview();
+                });
+            }
+        });
+
+        // Special handling for ground color text input (synced with color picker)
+        const groundColorTextInputs = document.querySelectorAll('input[onchange*="ground_color"]');
+        groundColorTextInputs.forEach(input => {
+            if (input.type === 'text') {
+                input.addEventListener('change', function() {
+                    updateLivePreview();
+                });
+            }
+        });
     });
 
     </script>
