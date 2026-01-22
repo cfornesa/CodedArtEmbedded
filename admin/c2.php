@@ -58,14 +58,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array($action, ['create', 'edit'
             'sort_order' => $_POST['sort_order'] ?? 0
         ];
 
-        // Handle JS files (array input)
-        if (isset($_POST['js_files']) && is_array($_POST['js_files'])) {
-            $data['js_files'] = array_filter($_POST['js_files']);
-        }
-
-        // Handle image URLs (array input)
-        if (isset($_POST['image_urls']) && is_array($_POST['image_urls'])) {
-            $data['image_urls'] = array_filter($_POST['image_urls']);
+        // Handle background image URL (single input)
+        if (isset($_POST['background_image_url'])) {
+            $data['background_image_url'] = trim($_POST['background_image_url']);
         }
 
         // Handle configuration JSON if provided
@@ -89,13 +84,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array($action, ['create', 'edit'
             $error = $result['message'];
             // Preserve form data so user doesn't lose their work
             $formData = $data;
-            // Also preserve array inputs in original format
-            if (isset($_POST['js_files'])) {
-                $formData['js_files_raw'] = $_POST['js_files'];
-            }
-            if (isset($_POST['image_urls'])) {
-                $formData['image_urls_raw'] = $_POST['image_urls'];
-            }
             // Preserve configuration JSON
             if (isset($_POST['configuration_json'])) {
                 $formData['configuration_json_raw'] = $_POST['configuration_json'];
@@ -361,65 +349,16 @@ require_once(__DIR__ . '/includes/header.php');
             </div>
 
             <div class="form-group">
-                <label class="form-label">JavaScript Files (optional)</label>
-                <div id="js-files-container">
-                    <?php
-                    $jsFiles = [];
-                    if ($formData && !empty($formData['js_files_raw'])) {
-                        $jsFiles = $formData['js_files_raw'];
-                    } elseif ($editPiece && !empty($editPiece['js_files'])) {
-                        $jsFiles = json_decode($editPiece['js_files'], true) ?: [];
-                    }
-
-                    if (empty($jsFiles)) {
-                        $jsFiles = [''];
-                    }
-
-                    foreach ($jsFiles as $index => $file):
-                    ?>
-                    <input
-                        type="text"
-                        name="js_files[]"
-                        class="form-control mb-1"
-                        placeholder="/c2/1/script.js"
-                        value="<?php echo htmlspecialchars($file); ?>"
-                    >
-                    <?php endforeach; ?>
-                </div>
-                <button type="button" class="btn btn-sm btn-secondary mt-1" onclick="addJsFile()">
-                    + Add Another JS File
-                </button>
-            </div>
-
-            <div class="form-group">
-                <label class="form-label">Image URLs (optional)</label>
-                <div id="image-urls-container">
-                    <?php
-                    $imageUrls = [];
-                    if ($formData && !empty($formData['image_urls_raw'])) {
-                        $imageUrls = $formData['image_urls_raw'];
-                    } elseif ($editPiece && !empty($editPiece['image_urls'])) {
-                        $imageUrls = json_decode($editPiece['image_urls'], true) ?: [];
-                    }
-
-                    if (empty($imageUrls)) {
-                        $imageUrls = [''];
-                    }
-
-                    foreach ($imageUrls as $index => $url):
-                    ?>
-                    <input
-                        type="url"
-                        name="image_urls[]"
-                        class="form-control mb-1"
-                        placeholder="https://example.com/image.png"
-                        value="<?php echo htmlspecialchars($url); ?>"
-                    >
-                    <?php endforeach; ?>
-                </div>
-                <button type="button" class="btn btn-sm btn-secondary mt-1" onclick="addImageUrl()">
-                    + Add Another Image URL
-                </button>
+                <label class="form-label">Background Image URL (optional)</label>
+                <input
+                    type="url"
+                    id="background_image_url"
+                    name="background_image_url"
+                    class="form-control"
+                    placeholder="https://example.com/background.png"
+                    value="<?php echo $formData ? htmlspecialchars($formData['background_image_url'] ?? '') : ($editPiece ? htmlspecialchars($editPiece['background_image_url'] ?? '') : ''); ?>"
+                >
+                <small class="form-help">Optional background image for the canvas</small>
             </div>
 
             <div class="form-group">
@@ -518,15 +457,16 @@ require_once(__DIR__ . '/includes/header.php');
                         </div>
                     </div>
 
-                    <!-- Color Palette -->
+                    <!-- Shape & Color Palette -->
                     <div class="pattern-section">
-                        <h4 class="pattern-section-title">Color Palette</h4>
+                        <h4 class="pattern-section-title">Shape & Color Palette</h4>
+                        <p class="form-help" style="margin-bottom: 15px;">Define the shapes and colors that will be used in your pattern</p>
 
-                        <div id="color-palette-container">
-                            <!-- Color inputs will be dynamically added here -->
+                        <div id="shape-palette-container">
+                            <!-- Shape+color items will be dynamically added here -->
                         </div>
-                        <button type="button" class="btn btn-sm btn-success" onclick="addColorToPalette()">
-                            + Add Color
+                        <button type="button" class="btn btn-sm btn-success" onclick="addShapeToPalette()">
+                            + Add Shape & Color
                         </button>
                     </div>
 
@@ -537,7 +477,8 @@ require_once(__DIR__ . '/includes/header.php');
                         <div class="pattern-row">
                             <div class="pattern-field-group">
                                 <label class="pattern-field-label">Element Size</label>
-                                <input type="number" id="element-size" class="pattern-field-input" value="5" step="0.5" min="0.1">
+                                <input type="range" id="element-size" class="pattern-field-input" value="5" step="0.1" min="0.1" max="10">
+                                <span id="element-size-value" style="color: #ED225D; font-weight: bold;">5.0</span>
                             </div>
                             <div class="pattern-field-group">
                                 <label class="pattern-field-label">Size Variation (%)</label>
@@ -565,41 +506,125 @@ require_once(__DIR__ . '/includes/header.php');
                     <!-- Animation Settings -->
                     <div class="pattern-section">
                         <h4 class="pattern-section-title">Animation Settings</h4>
+                        <p class="form-help" style="margin-bottom: 15px;">Enable independent animations for your pattern. Multiple animations can run simultaneously.</p>
 
-                        <div class="pattern-row">
-                            <div class="pattern-field-group">
-                                <label class="pattern-field-label">
-                                    <input type="checkbox" id="animation-enabled" onchange="updateAnimationFields()">
-                                    Enable Animation
-                                </label>
+                        <!-- Rotation Animation -->
+                        <details class="animation-details" style="margin-bottom: 15px; border: 1px solid #ddd; border-radius: 6px; padding: 10px; background: #f8f9fa;">
+                            <summary style="cursor: pointer; font-weight: bold; color: #ED225D;">📐 Rotation Animation</summary>
+                            <div style="margin-top: 15px; padding-left: 20px;">
+                                <div class="pattern-row">
+                                    <div class="pattern-field-group">
+                                        <label class="pattern-field-label">
+                                            <input type="checkbox" id="animation-rotation-enabled" onchange="updateConfiguration()">
+                                            Enable Rotation
+                                        </label>
+                                    </div>
+                                    <div class="pattern-field-group">
+                                        <label class="pattern-field-label">
+                                            <input type="checkbox" id="animation-rotation-loop" checked onchange="updateConfiguration()">
+                                            Loop
+                                        </label>
+                                    </div>
+                                    <div class="pattern-field-group">
+                                        <label class="pattern-field-label">
+                                            <input type="checkbox" id="animation-rotation-counterclockwise" onchange="updateConfiguration()">
+                                            Counterclockwise
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="pattern-row">
+                                    <div class="pattern-field-group">
+                                        <label class="pattern-field-label">Speed</label>
+                                        <input type="range" id="animation-rotation-speed" class="pattern-field-input" value="1" step="0.1" min="1" max="10" onchange="updateConfiguration()">
+                                        <span id="animation-rotation-speed-value" style="color: #ED225D; font-weight: bold;">1.0</span>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
+                        </details>
 
-                        <div id="animation-fields" style="display: none;">
-                            <div class="pattern-row">
-                                <div class="pattern-field-group">
-                                    <label class="pattern-field-label">Animation Type</label>
-                                    <select id="animation-type" class="pattern-field-input">
-                                        <option value="rotate">Rotation</option>
-                                        <option value="pulse">Pulse/Scale</option>
-                                        <option value="move">Movement</option>
-                                        <option value="morph">Morphing</option>
-                                        <option value="color">Color Shift</option>
-                                        <option value="flow">Flow</option>
-                                    </select>
+                        <!-- Pulse/Scale Animation -->
+                        <details class="animation-details" style="margin-bottom: 15px; border: 1px solid #ddd; border-radius: 6px; padding: 10px; background: #f8f9fa;">
+                            <summary style="cursor: pointer; font-weight: bold; color: #ED225D;">📏 Pulse/Scale Animation</summary>
+                            <div style="margin-top: 15px; padding-left: 20px;">
+                                <div class="pattern-row">
+                                    <div class="pattern-field-group">
+                                        <label class="pattern-field-label">
+                                            <input type="checkbox" id="animation-pulse-enabled" onchange="updateConfiguration()">
+                                            Enable Pulse
+                                        </label>
+                                    </div>
+                                    <div class="pattern-field-group">
+                                        <label class="pattern-field-label">
+                                            <input type="checkbox" id="animation-pulse-loop" checked onchange="updateConfiguration()">
+                                            Loop
+                                        </label>
+                                    </div>
                                 </div>
-                                <div class="pattern-field-group">
-                                    <label class="pattern-field-label">Speed</label>
-                                    <input type="number" id="animation-speed" class="pattern-field-input" value="1" step="0.1" min="0.1" max="10">
-                                </div>
-                                <div class="pattern-field-group">
-                                    <label class="pattern-field-label">
-                                        <input type="checkbox" id="animation-loop" checked>
-                                        Loop Animation
-                                    </label>
+                                <div class="pattern-row">
+                                    <div class="pattern-field-group">
+                                        <label class="pattern-field-label">Speed</label>
+                                        <input type="range" id="animation-pulse-speed" class="pattern-field-input" value="1" step="0.1" min="1" max="10" onchange="updateConfiguration()">
+                                        <span id="animation-pulse-speed-value" style="color: #ED225D; font-weight: bold;">1.0</span>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                        </details>
+
+                        <!-- Movement Animation -->
+                        <details class="animation-details" style="margin-bottom: 15px; border: 1px solid #ddd; border-radius: 6px; padding: 10px; background: #f8f9fa;">
+                            <summary style="cursor: pointer; font-weight: bold; color: #ED225D;">📍 Movement Animation</summary>
+                            <div style="margin-top: 15px; padding-left: 20px;">
+                                <div class="pattern-row">
+                                    <div class="pattern-field-group">
+                                        <label class="pattern-field-label">
+                                            <input type="checkbox" id="animation-move-enabled" onchange="updateConfiguration()">
+                                            Enable Movement
+                                        </label>
+                                    </div>
+                                    <div class="pattern-field-group">
+                                        <label class="pattern-field-label">
+                                            <input type="checkbox" id="animation-move-loop" checked onchange="updateConfiguration()">
+                                            Loop
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="pattern-row">
+                                    <div class="pattern-field-group">
+                                        <label class="pattern-field-label">Speed</label>
+                                        <input type="range" id="animation-move-speed" class="pattern-field-input" value="1" step="0.1" min="1" max="10" onchange="updateConfiguration()">
+                                        <span id="animation-move-speed-value" style="color: #ED225D; font-weight: bold;">1.0</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </details>
+
+                        <!-- Color Shift Animation -->
+                        <details class="animation-details" style="margin-bottom: 15px; border: 1px solid #ddd; border-radius: 6px; padding: 10px; background: #f8f9fa;">
+                            <summary style="cursor: pointer; font-weight: bold; color: #ED225D;">🎨 Color Shift Animation</summary>
+                            <div style="margin-top: 15px; padding-left: 20px;">
+                                <div class="pattern-row">
+                                    <div class="pattern-field-group">
+                                        <label class="pattern-field-label">
+                                            <input type="checkbox" id="animation-color-enabled" onchange="updateConfiguration()">
+                                            Enable Color Shift
+                                        </label>
+                                    </div>
+                                    <div class="pattern-field-group">
+                                        <label class="pattern-field-label">
+                                            <input type="checkbox" id="animation-color-loop" checked onchange="updateConfiguration()">
+                                            Loop
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="pattern-row">
+                                    <div class="pattern-field-group">
+                                        <label class="pattern-field-label">Speed</label>
+                                        <input type="range" id="animation-color-speed" class="pattern-field-input" value="1" step="0.1" min="1" max="10" onchange="updateConfiguration()">
+                                        <span id="animation-color-speed-value" style="color: #ED225D; font-weight: bold;">1.0</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </details>
                     </div>
 
                     <!-- Interaction Settings -->
@@ -625,7 +650,8 @@ require_once(__DIR__ . '/includes/header.php');
                             </div>
                             <div class="pattern-field-group">
                                 <label class="pattern-field-label">Interaction Radius</label>
-                                <input type="number" id="interaction-radius" class="pattern-field-input" value="100" min="10" max="500">
+                                <input type="range" id="interaction-radius" class="pattern-field-input" value="100" step="10" min="10" max="500">
+                                <span id="interaction-radius-value" style="color: #ED225D; font-weight: bold;">100</span>
                             </div>
                         </div>
                     </div>
@@ -771,7 +797,11 @@ require_once(__DIR__ . '/includes/header.php');
             type: 'grid',
             elementCount: 100
         },
-        colors: ['#FF6B6B', '#4ECDC4', '#45B7D1'],
+        shapes: [
+            { shape: 'circle', color: '#FF6B6B' },
+            { shape: 'square', color: '#4ECDC4' },
+            { shape: 'triangle', color: '#45B7D1' }
+        ],
         parameters: {
             elementSize: 5,
             sizeVariation: 20,
@@ -780,10 +810,27 @@ require_once(__DIR__ . '/includes/header.php');
             rotation: 0
         },
         animation: {
-            enabled: false,
-            type: 'rotate',
-            speed: 1,
-            loop: true
+            rotation: {
+                enabled: false,
+                loop: true,
+                counterclockwise: false,
+                speed: 1
+            },
+            pulse: {
+                enabled: false,
+                loop: true,
+                speed: 1
+            },
+            move: {
+                enabled: false,
+                loop: true,
+                speed: 1
+            },
+            color: {
+                enabled: false,
+                loop: true,
+                speed: 1
+            }
         },
         interaction: {
             enabled: false,
@@ -798,63 +845,78 @@ require_once(__DIR__ . '/includes/header.php');
         }
     };
 
-    // Initialize color palette
-    function initializeColorPalette() {
-        const container = document.getElementById('color-palette-container');
+    // Initialize shape palette
+    function initializeShapePalette() {
+        const container = document.getElementById('shape-palette-container');
         container.innerHTML = '';
-        patternConfig.colors.forEach((color, index) => {
-            addColorToPaletteWithValue(color);
+        patternConfig.shapes.forEach((item, index) => {
+            addShapeToPaletteWithValue(item.shape, item.color);
         });
         updateConfiguration();
     }
 
-    // Add color to palette
-    function addColorToPalette() {
-        addColorToPaletteWithValue('#' + Math.floor(Math.random()*16777215).toString(16));
+    // Add shape to palette
+    function addShapeToPalette() {
+        const shapes = ['circle', 'square', 'triangle'];
+        const randomShape = shapes[Math.floor(Math.random() * shapes.length)];
+        const randomColor = '#' + Math.floor(Math.random()*16777215).toString(16);
+        addShapeToPaletteWithValue(randomShape, randomColor);
         updateConfiguration();
     }
 
-    // Add color with specific value
-    function addColorToPaletteWithValue(color) {
-        const container = document.getElementById('color-palette-container');
+    // Add shape with specific values
+    function addShapeToPaletteWithValue(shape, color) {
+        const container = document.getElementById('shape-palette-container');
         const index = container.children.length;
 
-        const colorItem = document.createElement('div');
-        colorItem.className = 'color-palette-item';
-        colorItem.innerHTML = `
-            <input type="color" class="pattern-field-input" value="${color}"
-                   onchange="updateColor(${index}, this.value)" style="width: 60px;">
-            <input type="text" class="pattern-field-input" value="${color}"
-                   onchange="updateColor(${index}, this.value)" style="flex: 1;">
-            <button type="button" class="color-remove-btn" onclick="removeColor(${index})">Remove</button>
+        const shapeItem = document.createElement('div');
+        shapeItem.className = 'color-palette-item';
+        shapeItem.style.cssText = 'display: flex; align-items: center; margin-bottom: 10px; background: #f8f9fa; padding: 10px; border-radius: 6px;';
+        shapeItem.innerHTML = `
+            <select onchange="updateShape(${index}, this.value)" style="width: 140px; padding: 8px; border: 1px solid #ddd; border-radius: 4px; margin-right: 10px; font-size: 14px;">
+                <option value="circle" ${shape === 'circle' ? 'selected' : ''}>● Circle</option>
+                <option value="square" ${shape === 'square' ? 'selected' : ''}>■ Square</option>
+                <option value="triangle" ${shape === 'triangle' ? 'selected' : ''}>▲ Triangle</option>
+                <option value="hexagon" ${shape === 'hexagon' ? 'selected' : ''}>⬢ Hexagon</option>
+                <option value="star" ${shape === 'star' ? 'selected' : ''}>★ Star</option>
+            </select>
+            <input type="color" value="${color}" onchange="updateShapeColor(${index}, this.value)" style="width: 60px; height: 40px; border: 1px solid #ddd; border-radius: 4px; cursor: pointer;">
+            <input type="text" value="${color}" onchange="updateShapeColor(${index}, this.value)" style="flex: 1; margin: 0 10px; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-family: monospace; font-size: 14px;">
+            <button type="button" class="color-remove-btn" onclick="removeShape(${index})" style="background: #dc3545; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold;">✕</button>
         `;
-        container.appendChild(colorItem);
+        container.appendChild(shapeItem);
 
-        // Update the colors array
-        if (index >= patternConfig.colors.length) {
-            patternConfig.colors.push(color);
+        // Update the shapes array
+        if (index >= patternConfig.shapes.length) {
+            patternConfig.shapes.push({ shape: shape, color: color });
         }
     }
 
-    // Update color in palette
-    function updateColor(index, value) {
-        patternConfig.colors[index] = value;
-        // Sync both inputs
-        const colorItem = document.querySelectorAll('.color-palette-item')[index];
-        const inputs = colorItem.querySelectorAll('input');
-        inputs[0].value = value;
-        inputs[1].value = value;
+    // Update shape type in palette
+    function updateShape(index, shape) {
+        patternConfig.shapes[index].shape = shape;
         updateConfiguration();
     }
 
-    // Remove color from palette
-    function removeColor(index) {
-        if (patternConfig.colors.length <= 1) {
-            alert('You must have at least one color in the palette!');
+    // Update shape color in palette
+    function updateShapeColor(index, color) {
+        patternConfig.shapes[index].color = color;
+        // Sync both inputs
+        const shapeItem = document.querySelectorAll('.color-palette-item')[index];
+        const inputs = shapeItem.querySelectorAll('input');
+        inputs[0].value = color;
+        inputs[1].value = color;
+        updateConfiguration();
+    }
+
+    // Remove shape from palette
+    function removeShape(index) {
+        if (patternConfig.shapes.length <= 1) {
+            alert('You must have at least one shape in the palette!');
             return;
         }
-        patternConfig.colors.splice(index, 1);
-        initializeColorPalette();
+        patternConfig.shapes.splice(index, 1);
+        initializeShapePalette();
     }
 
     // Update pattern fields based on pattern type
@@ -891,11 +953,23 @@ require_once(__DIR__ . '/includes/header.php');
         patternConfig.parameters.opacity = parseFloat(document.getElementById('opacity').value);
         patternConfig.parameters.rotation = parseFloat(document.getElementById('rotation').value);
 
-        // Animation settings
-        patternConfig.animation.enabled = document.getElementById('animation-enabled').checked;
-        patternConfig.animation.type = document.getElementById('animation-type').value;
-        patternConfig.animation.speed = parseFloat(document.getElementById('animation-speed').value);
-        patternConfig.animation.loop = document.getElementById('animation-loop').checked;
+        // Animation settings - granular controls
+        patternConfig.animation.rotation.enabled = document.getElementById('animation-rotation-enabled').checked;
+        patternConfig.animation.rotation.loop = document.getElementById('animation-rotation-loop').checked;
+        patternConfig.animation.rotation.counterclockwise = document.getElementById('animation-rotation-counterclockwise').checked;
+        patternConfig.animation.rotation.speed = parseFloat(document.getElementById('animation-rotation-speed').value);
+
+        patternConfig.animation.pulse.enabled = document.getElementById('animation-pulse-enabled').checked;
+        patternConfig.animation.pulse.loop = document.getElementById('animation-pulse-loop').checked;
+        patternConfig.animation.pulse.speed = parseFloat(document.getElementById('animation-pulse-speed').value);
+
+        patternConfig.animation.move.enabled = document.getElementById('animation-move-enabled').checked;
+        patternConfig.animation.move.loop = document.getElementById('animation-move-loop').checked;
+        patternConfig.animation.move.speed = parseFloat(document.getElementById('animation-move-speed').value);
+
+        patternConfig.animation.color.enabled = document.getElementById('animation-color-enabled').checked;
+        patternConfig.animation.color.loop = document.getElementById('animation-color-loop').checked;
+        patternConfig.animation.color.speed = parseFloat(document.getElementById('animation-color-speed').value);
 
         // Interaction settings
         patternConfig.interaction.enabled = document.getElementById('mouse-interaction').checked;
@@ -930,15 +1004,81 @@ require_once(__DIR__ . '/includes/header.php');
             });
         }
 
+        // Update element size display
+        const elementSizeInput = document.getElementById('element-size');
+        const elementSizeValue = document.getElementById('element-size-value');
+
+        if (elementSizeInput && elementSizeValue) {
+            elementSizeInput.addEventListener('input', function() {
+                elementSizeValue.textContent = parseFloat(this.value).toFixed(1);
+                updateConfiguration();
+            });
+        }
+
+        // Update animation speed display
+        const animationSpeedInput = document.getElementById('animation-speed');
+        const animationSpeedValue = document.getElementById('animation-speed-value');
+
+        if (animationSpeedInput && animationSpeedValue) {
+            animationSpeedInput.addEventListener('input', function() {
+                animationSpeedValue.textContent = parseFloat(this.value).toFixed(1);
+                updateConfiguration();
+            });
+        }
+
+        // Update interaction radius display
+        const interactionRadiusInput = document.getElementById('interaction-radius');
+        const interactionRadiusValue = document.getElementById('interaction-radius-value');
+
+        if (interactionRadiusInput && interactionRadiusValue) {
+            interactionRadiusInput.addEventListener('input', function() {
+                interactionRadiusValue.textContent = this.value;
+                updateConfiguration();
+            });
+        }
+
+        // Update animation speed displays
+        const rotationSpeedInput = document.getElementById('animation-rotation-speed');
+        const rotationSpeedValue = document.getElementById('animation-rotation-speed-value');
+        if (rotationSpeedInput && rotationSpeedValue) {
+            rotationSpeedInput.addEventListener('input', function() {
+                rotationSpeedValue.textContent = parseFloat(this.value).toFixed(1);
+            });
+        }
+
+        const pulseSpeedInput = document.getElementById('animation-pulse-speed');
+        const pulseSpeedValue = document.getElementById('animation-pulse-speed-value');
+        if (pulseSpeedInput && pulseSpeedValue) {
+            pulseSpeedInput.addEventListener('input', function() {
+                pulseSpeedValue.textContent = parseFloat(this.value).toFixed(1);
+            });
+        }
+
+        const moveSpeedInput = document.getElementById('animation-move-speed');
+        const moveSpeedValue = document.getElementById('animation-move-speed-value');
+        if (moveSpeedInput && moveSpeedValue) {
+            moveSpeedInput.addEventListener('input', function() {
+                moveSpeedValue.textContent = parseFloat(this.value).toFixed(1);
+            });
+        }
+
+        const colorSpeedInput = document.getElementById('animation-color-speed');
+        const colorSpeedValue = document.getElementById('animation-color-speed-value');
+        if (colorSpeedInput && colorSpeedValue) {
+            colorSpeedInput.addEventListener('input', function() {
+                colorSpeedValue.textContent = parseFloat(this.value).toFixed(1);
+            });
+        }
+
         // Add change listeners to all inputs
-        const inputs = document.querySelectorAll('.pattern-field-input, #animation-enabled, #mouse-interaction, #animation-loop, #enable-trails');
+        const inputs = document.querySelectorAll('.pattern-field-input, #mouse-interaction, #enable-trails');
         inputs.forEach(input => {
             input.addEventListener('change', updateConfiguration);
             input.addEventListener('input', updateConfiguration);
         });
 
         // Initialize color palette
-        initializeColorPalette();
+        initializeShapePalette();
 
         // Load existing configuration if editing
         <?php if ($editPiece && !empty($editPiece['configuration'])): ?>
@@ -957,13 +1097,22 @@ require_once(__DIR__ . '/includes/header.php');
                     document.getElementById('element-count').value = savedConfig.pattern.elementCount;
                 }
 
-                if (savedConfig.colors) {
-                    patternConfig.colors = savedConfig.colors;
-                    initializeColorPalette();
+                // Load shapes (with backward compatibility for old colors format)
+                if (savedConfig.shapes) {
+                    patternConfig.shapes = savedConfig.shapes;
+                    initializeShapePalette();
+                } else if (savedConfig.colors) {
+                    // Migrate old colors format to new shapes format
+                    patternConfig.shapes = savedConfig.colors.map(color => ({
+                        shape: 'circle',
+                        color: color
+                    }));
+                    initializeShapePalette();
                 }
 
                 if (savedConfig.parameters) {
                     document.getElementById('element-size').value = savedConfig.parameters.elementSize;
+                    document.getElementById('element-size-value').textContent = parseFloat(savedConfig.parameters.elementSize).toFixed(1);
                     document.getElementById('size-variation').value = savedConfig.parameters.sizeVariation;
                     document.getElementById('spacing').value = savedConfig.parameters.spacing;
                     document.getElementById('opacity').value = savedConfig.parameters.opacity;
@@ -972,17 +1121,95 @@ require_once(__DIR__ . '/includes/header.php');
                 }
 
                 if (savedConfig.animation) {
-                    document.getElementById('animation-enabled').checked = savedConfig.animation.enabled;
-                    document.getElementById('animation-type').value = savedConfig.animation.type;
-                    document.getElementById('animation-speed').value = savedConfig.animation.speed;
-                    document.getElementById('animation-loop').checked = savedConfig.animation.loop;
-                    updateAnimationFields();
+                    // Check for new granular format
+                    if (savedConfig.animation.rotation) {
+                        // New format with granular controls
+                        patternConfig.animation = savedConfig.animation;
+
+                        // Load rotation animation
+                        if (savedConfig.animation.rotation) {
+                            document.getElementById('animation-rotation-enabled').checked = savedConfig.animation.rotation.enabled || false;
+                            document.getElementById('animation-rotation-loop').checked = savedConfig.animation.rotation.loop !== false;
+                            document.getElementById('animation-rotation-counterclockwise').checked = savedConfig.animation.rotation.counterclockwise || false;
+                            document.getElementById('animation-rotation-speed').value = savedConfig.animation.rotation.speed || 1;
+                            document.getElementById('animation-rotation-speed-value').textContent = parseFloat(savedConfig.animation.rotation.speed || 1).toFixed(1);
+                        }
+
+                        // Load pulse animation
+                        if (savedConfig.animation.pulse) {
+                            document.getElementById('animation-pulse-enabled').checked = savedConfig.animation.pulse.enabled || false;
+                            document.getElementById('animation-pulse-loop').checked = savedConfig.animation.pulse.loop !== false;
+                            document.getElementById('animation-pulse-speed').value = savedConfig.animation.pulse.speed || 1;
+                            document.getElementById('animation-pulse-speed-value').textContent = parseFloat(savedConfig.animation.pulse.speed || 1).toFixed(1);
+                        }
+
+                        // Load move animation
+                        if (savedConfig.animation.move) {
+                            document.getElementById('animation-move-enabled').checked = savedConfig.animation.move.enabled || false;
+                            document.getElementById('animation-move-loop').checked = savedConfig.animation.move.loop !== false;
+                            document.getElementById('animation-move-speed').value = savedConfig.animation.move.speed || 1;
+                            document.getElementById('animation-move-speed-value').textContent = parseFloat(savedConfig.animation.move.speed || 1).toFixed(1);
+                        }
+
+                        // Load color animation
+                        if (savedConfig.animation.color) {
+                            document.getElementById('animation-color-enabled').checked = savedConfig.animation.color.enabled || false;
+                            document.getElementById('animation-color-loop').checked = savedConfig.animation.color.loop !== false;
+                            document.getElementById('animation-color-speed').value = savedConfig.animation.color.speed || 1;
+                            document.getElementById('animation-color-speed-value').textContent = parseFloat(savedConfig.animation.color.speed || 1).toFixed(1);
+                        }
+                    } else {
+                        // Old format - migrate to new format
+                        console.log('Migrating old animation format to granular format');
+                        const oldType = savedConfig.animation.type || 'rotate';
+                        const oldSpeed = savedConfig.animation.speed || 1;
+                        const oldLoop = savedConfig.animation.loop !== false;
+                        const oldEnabled = savedConfig.animation.enabled || false;
+
+                        // Map old type to new format
+                        if (oldEnabled) {
+                            if (oldType === 'rotate') {
+                                patternConfig.animation.rotation.enabled = true;
+                                patternConfig.animation.rotation.speed = oldSpeed;
+                                patternConfig.animation.rotation.loop = oldLoop;
+                                document.getElementById('animation-rotation-enabled').checked = true;
+                                document.getElementById('animation-rotation-speed').value = oldSpeed;
+                                document.getElementById('animation-rotation-speed-value').textContent = parseFloat(oldSpeed).toFixed(1);
+                                document.getElementById('animation-rotation-loop').checked = oldLoop;
+                            } else if (oldType === 'pulse') {
+                                patternConfig.animation.pulse.enabled = true;
+                                patternConfig.animation.pulse.speed = oldSpeed;
+                                patternConfig.animation.pulse.loop = oldLoop;
+                                document.getElementById('animation-pulse-enabled').checked = true;
+                                document.getElementById('animation-pulse-speed').value = oldSpeed;
+                                document.getElementById('animation-pulse-speed-value').textContent = parseFloat(oldSpeed).toFixed(1);
+                                document.getElementById('animation-pulse-loop').checked = oldLoop;
+                            } else if (oldType === 'move') {
+                                patternConfig.animation.move.enabled = true;
+                                patternConfig.animation.move.speed = oldSpeed;
+                                patternConfig.animation.move.loop = oldLoop;
+                                document.getElementById('animation-move-enabled').checked = true;
+                                document.getElementById('animation-move-speed').value = oldSpeed;
+                                document.getElementById('animation-move-speed-value').textContent = parseFloat(oldSpeed).toFixed(1);
+                                document.getElementById('animation-move-loop').checked = oldLoop;
+                            } else if (oldType === 'color') {
+                                patternConfig.animation.color.enabled = true;
+                                patternConfig.animation.color.speed = oldSpeed;
+                                patternConfig.animation.color.loop = oldLoop;
+                                document.getElementById('animation-color-enabled').checked = true;
+                                document.getElementById('animation-color-speed').value = oldSpeed;
+                                document.getElementById('animation-color-speed-value').textContent = parseFloat(oldSpeed).toFixed(1);
+                                document.getElementById('animation-color-loop').checked = oldLoop;
+                            }
+                        }
+                    }
                 }
 
                 if (savedConfig.interaction) {
                     document.getElementById('mouse-interaction').checked = savedConfig.interaction.enabled;
                     document.getElementById('interaction-type').value = savedConfig.interaction.type;
                     document.getElementById('interaction-radius').value = savedConfig.interaction.radius;
+                    document.getElementById('interaction-radius-value').textContent = savedConfig.interaction.radius;
                 }
 
                 if (savedConfig.advanced) {
@@ -999,26 +1226,6 @@ require_once(__DIR__ . '/includes/header.php');
         }
         <?php endif; ?>
     });
-
-    function addJsFile() {
-        const container = document.getElementById('js-files-container');
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.name = 'js_files[]';
-        input.className = 'form-control mb-1';
-        input.placeholder = '/c2/1/script.js';
-        container.appendChild(input);
-    }
-
-    function addImageUrl() {
-        const container = document.getElementById('image-urls-container');
-        const input = document.createElement('input');
-        input.type = 'url';
-        input.name = 'image_urls[]';
-        input.className = 'form-control mb-1';
-        input.placeholder = 'https://example.com/image.png';
-        container.appendChild(input);
-    }
 
     function updateSlugPreview() {
         const titleInput = document.getElementById('title');

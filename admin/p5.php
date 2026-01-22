@@ -510,7 +510,8 @@ require_once(__DIR__ . '/includes/header.php');
                             </div>
                             <div class="sketch-field-group">
                                 <label class="sketch-field-label">Shape Size</label>
-                                <input type="number" id="p5-shape-size" class="sketch-field-input" value="20" step="1" min="1">
+                                <input type="range" id="p5-shape-size" class="sketch-field-input" value="20" step="0.1" min="0.1" max="100">
+                                <span id="p5-shape-size-value" style="color: #ED225D; font-weight: bold;">20.0</span>
                             </div>
                         </div>
 
@@ -550,20 +551,21 @@ require_once(__DIR__ . '/includes/header.php');
                         </div>
                     </div>
 
-                    <!-- Color Palette -->
+                    <!-- Shape & Color Palette -->
                     <div class="sketch-section">
-                        <h4 class="sketch-section-title">Color Palette</h4>
+                        <h4 class="sketch-section-title">Shape & Color Palette</h4>
+                        <p class="form-help" style="margin-bottom: 15px;">Define the shapes and colors that will be used in your sketch</p>
 
-                        <div id="p5-color-palette-container">
-                            <!-- Color inputs will be dynamically added here -->
+                        <div id="p5-shape-palette-container">
+                            <!-- Shape+color items will be dynamically added here -->
                         </div>
-                        <button type="button" class="btn btn-sm btn-success" onclick="addP5Color()">
-                            + Add Color
+                        <button type="button" class="btn btn-sm btn-success" onclick="addP5Shape()">
+                            + Add Shape & Color
                         </button>
                         <div class="sketch-field-group" style="margin-top: 15px;">
                             <label class="sketch-field-label">
                                 <input type="checkbox" id="p5-use-palette">
-                                Use Random Colors from Palette
+                                Use Random Shapes from Palette
                             </label>
                         </div>
                     </div>
@@ -612,47 +614,134 @@ require_once(__DIR__ . '/includes/header.php');
                     <!-- Animation Settings -->
                     <div class="sketch-section">
                         <h4 class="sketch-section-title">Animation Settings</h4>
+                        <p class="form-help" style="margin-bottom: 15px;">Enable independent animations for your sketch. Multiple animations can run simultaneously.</p>
 
                         <div class="sketch-row">
                             <div class="sketch-field-group">
                                 <label class="sketch-field-label">
-                                    <input type="checkbox" id="p5-animated" checked onchange="updateP5AnimationFields()">
-                                    Animated (use draw loop)
-                                </label>
-                            </div>
-                            <div class="sketch-field-group">
-                                <label class="sketch-field-label">
-                                    <input type="checkbox" id="p5-loop" checked>
-                                    Loop Animation
+                                    <input type="checkbox" id="p5-clear-background">
+                                    Clear Background Each Frame
                                 </label>
                             </div>
                         </div>
 
-                        <div id="p5-animation-fields">
-                            <div class="sketch-row">
-                                <div class="sketch-field-group">
-                                    <label class="sketch-field-label">Animation Type</label>
-                                    <select id="p5-animation-type" class="sketch-field-input">
-                                        <option value="rotation">Rotation</option>
-                                        <option value="translation">Translation</option>
-                                        <option value="scale">Scale/Pulse</option>
-                                        <option value="morph">Morph</option>
-                                        <option value="noise">Noise-based</option>
-                                        <option value="sine">Sine Wave</option>
-                                    </select>
+                        <!-- Rotation Animation -->
+                        <details class="animation-details" style="margin-bottom: 15px; border: 1px solid #ddd; border-radius: 6px; padding: 10px; background: #f8f9fa;">
+                            <summary style="cursor: pointer; font-weight: bold; color: #ED225D;">📐 Rotation Animation</summary>
+                            <div style="margin-top: 15px; padding-left: 20px;">
+                                <div class="sketch-row">
+                                    <div class="sketch-field-group">
+                                        <label class="sketch-field-label">
+                                            <input type="checkbox" id="p5-animation-rotation-enabled" onchange="updateP5Configuration()">
+                                            Enable Rotation
+                                        </label>
+                                    </div>
+                                    <div class="sketch-field-group">
+                                        <label class="sketch-field-label">
+                                            <input type="checkbox" id="p5-animation-rotation-loop" checked onchange="updateP5Configuration()">
+                                            Loop
+                                        </label>
+                                    </div>
+                                    <div class="sketch-field-group">
+                                        <label class="sketch-field-label">
+                                            <input type="checkbox" id="p5-animation-rotation-counterclockwise" onchange="updateP5Configuration()">
+                                            Counterclockwise
+                                        </label>
+                                    </div>
                                 </div>
-                                <div class="sketch-field-group">
-                                    <label class="sketch-field-label">Animation Speed</label>
-                                    <input type="number" id="p5-animation-speed" class="sketch-field-input" value="1" step="0.1" min="0.1" max="10">
-                                </div>
-                                <div class="sketch-field-group">
-                                    <label class="sketch-field-label">
-                                        <input type="checkbox" id="p5-clear-background">
-                                        Clear Background Each Frame
-                                    </label>
+                                <div class="sketch-row">
+                                    <div class="sketch-field-group">
+                                        <label class="sketch-field-label">Speed</label>
+                                        <input type="range" id="p5-animation-rotation-speed" class="sketch-field-input" value="1" step="0.1" min="1" max="10" onchange="updateP5Configuration()">
+                                        <span id="p5-animation-rotation-speed-value" style="color: #ED225D; font-weight: bold;">1.0</span>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                        </details>
+
+                        <!-- Scale/Pulse Animation -->
+                        <details class="animation-details" style="margin-bottom: 15px; border: 1px solid #ddd; border-radius: 6px; padding: 10px; background: #f8f9fa;">
+                            <summary style="cursor: pointer; font-weight: bold; color: #ED225D;">📏 Scale/Pulse Animation</summary>
+                            <div style="margin-top: 15px; padding-left: 20px;">
+                                <div class="sketch-row">
+                                    <div class="sketch-field-group">
+                                        <label class="sketch-field-label">
+                                            <input type="checkbox" id="p5-animation-scale-enabled" onchange="updateP5Configuration()">
+                                            Enable Scale/Pulse
+                                        </label>
+                                    </div>
+                                    <div class="sketch-field-group">
+                                        <label class="sketch-field-label">
+                                            <input type="checkbox" id="p5-animation-scale-loop" checked onchange="updateP5Configuration()">
+                                            Loop
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="sketch-row">
+                                    <div class="sketch-field-group">
+                                        <label class="sketch-field-label">Speed</label>
+                                        <input type="range" id="p5-animation-scale-speed" class="sketch-field-input" value="1" step="0.1" min="1" max="10" onchange="updateP5Configuration()">
+                                        <span id="p5-animation-scale-speed-value" style="color: #ED225D; font-weight: bold;">1.0</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </details>
+
+                        <!-- Translation/Movement Animation -->
+                        <details class="animation-details" style="margin-bottom: 15px; border: 1px solid #ddd; border-radius: 6px; padding: 10px; background: #f8f9fa;">
+                            <summary style="cursor: pointer; font-weight: bold; color: #ED225D;">📍 Translation/Movement Animation</summary>
+                            <div style="margin-top: 15px; padding-left: 20px;">
+                                <div class="sketch-row">
+                                    <div class="sketch-field-group">
+                                        <label class="sketch-field-label">
+                                            <input type="checkbox" id="p5-animation-translation-enabled" onchange="updateP5Configuration()">
+                                            Enable Translation
+                                        </label>
+                                    </div>
+                                    <div class="sketch-field-group">
+                                        <label class="sketch-field-label">
+                                            <input type="checkbox" id="p5-animation-translation-loop" checked onchange="updateP5Configuration()">
+                                            Loop
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="sketch-row">
+                                    <div class="sketch-field-group">
+                                        <label class="sketch-field-label">Speed</label>
+                                        <input type="range" id="p5-animation-translation-speed" class="sketch-field-input" value="1" step="0.1" min="1" max="10" onchange="updateP5Configuration()">
+                                        <span id="p5-animation-translation-speed-value" style="color: #ED225D; font-weight: bold;">1.0</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </details>
+
+                        <!-- Color Shift Animation -->
+                        <details class="animation-details" style="margin-bottom: 15px; border: 1px solid #ddd; border-radius: 6px; padding: 10px; background: #f8f9fa;">
+                            <summary style="cursor: pointer; font-weight: bold; color: #ED225D;">🎨 Color Shift Animation</summary>
+                            <div style="margin-top: 15px; padding-left: 20px;">
+                                <div class="sketch-row">
+                                    <div class="sketch-field-group">
+                                        <label class="sketch-field-label">
+                                            <input type="checkbox" id="p5-animation-color-enabled" onchange="updateP5Configuration()">
+                                            Enable Color Shift
+                                        </label>
+                                    </div>
+                                    <div class="sketch-field-group">
+                                        <label class="sketch-field-label">
+                                            <input type="checkbox" id="p5-animation-color-loop" checked onchange="updateP5Configuration()">
+                                            Loop
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="sketch-row">
+                                    <div class="sketch-field-group">
+                                        <label class="sketch-field-label">Speed</label>
+                                        <input type="range" id="p5-animation-color-speed" class="sketch-field-input" value="1" step="0.1" min="1" max="10" onchange="updateP5Configuration()">
+                                        <span id="p5-animation-color-speed-value" style="color: #ED225D; font-weight: bold;">1.0</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </details>
                     </div>
 
                     <!-- Interaction Settings -->
@@ -851,7 +940,11 @@ require_once(__DIR__ . '/includes/header.php');
             fillOpacity: 255,
             noFill: false
         },
-        colors: ['#ED225D', '#F06292', '#BA68C8', '#9575CD'],
+        shapes: [
+            { shape: 'ellipse', color: '#ED225D' },
+            { shape: 'rect', color: '#F06292' },
+            { shape: 'triangle', color: '#BA68C8' }
+        ],
         usePalette: false,
         pattern: {
             type: 'grid',
@@ -861,10 +954,27 @@ require_once(__DIR__ . '/includes/header.php');
             noiseDetail: 4
         },
         animation: {
-            animated: true,
-            loop: true,
-            type: 'rotation',
-            speed: 1,
+            rotation: {
+                enabled: false,
+                loop: true,
+                counterclockwise: false,
+                speed: 1
+            },
+            scale: {
+                enabled: false,
+                loop: true,
+                speed: 1
+            },
+            translation: {
+                enabled: false,
+                loop: true,
+                speed: 1
+            },
+            color: {
+                enabled: false,
+                loop: true,
+                speed: 1
+            },
             clearBackground: true
         },
         interaction: {
@@ -880,72 +990,84 @@ require_once(__DIR__ . '/includes/header.php');
         }
     };
 
-    // Initialize P5 color palette
-    function initializeP5ColorPalette() {
-        const container = document.getElementById('p5-color-palette-container');
+    // Initialize P5 shape palette
+    function initializeP5ShapePalette() {
+        const container = document.getElementById('p5-shape-palette-container');
         container.innerHTML = '';
-        p5Config.colors.forEach((color, index) => {
-            addP5ColorWithValue(color);
+        p5Config.shapes.forEach((item, index) => {
+            addP5ShapeWithValue(item.shape, item.color);
         });
         updateP5Configuration();
     }
 
-    // Add color to P5 palette
-    function addP5Color() {
-        addP5ColorWithValue('#' + Math.floor(Math.random()*16777215).toString(16));
+    // Add shape to P5 palette
+    function addP5Shape() {
+        const shapes = ['ellipse', 'rect', 'triangle'];
+        const randomShape = shapes[Math.floor(Math.random() * shapes.length)];
+        const randomColor = '#' + Math.floor(Math.random()*16777215).toString(16);
+        addP5ShapeWithValue(randomShape, randomColor);
         updateP5Configuration();
     }
 
-    // Add color with specific value
-    function addP5ColorWithValue(color) {
-        const container = document.getElementById('p5-color-palette-container');
+    // Add shape with specific values
+    function addP5ShapeWithValue(shape, color) {
+        const container = document.getElementById('p5-shape-palette-container');
         const index = container.children.length;
 
-        const colorItem = document.createElement('div');
-        colorItem.className = 'p5-color-item';
-        colorItem.innerHTML = `
-            <input type="color" class="sketch-field-input" value="${color}"
-                   onchange="updateP5Color(${index}, this.value)" style="width: 60px;">
-            <input type="text" class="sketch-field-input" value="${color}"
-                   onchange="updateP5Color(${index}, this.value)" style="flex: 1;">
-            <button type="button" class="p5-color-remove-btn" onclick="removeP5Color(${index})">Remove</button>
+        const shapeItem = document.createElement('div');
+        shapeItem.className = 'p5-shape-item';
+        shapeItem.style.cssText = 'display: flex; align-items: center; margin-bottom: 10px; background: #f8f9fa; padding: 10px; border-radius: 6px;';
+        shapeItem.innerHTML = `
+            <select onchange="updateP5Shape(${index}, this.value)" style="width: 140px; padding: 8px; border: 1px solid #ddd; border-radius: 4px; margin-right: 10px; font-size: 14px;">
+                <option value="ellipse" ${shape === 'ellipse' ? 'selected' : ''}>● Ellipse</option>
+                <option value="rect" ${shape === 'rect' ? 'selected' : ''}>■ Rectangle</option>
+                <option value="triangle" ${shape === 'triangle' ? 'selected' : ''}>▲ Triangle</option>
+                <option value="polygon" ${shape === 'polygon' ? 'selected' : ''}>⬢ Polygon</option>
+                <option value="line" ${shape === 'line' ? 'selected' : ''}>━ Line</option>
+            </select>
+            <input type="color" value="${color}" onchange="updateP5ShapeColor(${index}, this.value)" style="width: 60px; height: 40px; border: 1px solid #ddd; border-radius: 4px; cursor: pointer;">
+            <input type="text" value="${color}" onchange="updateP5ShapeColor(${index}, this.value)" style="flex: 1; margin: 0 10px; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-family: monospace; font-size: 14px;">
+            <button type="button" class="p5-shape-remove-btn" onclick="removeP5Shape(${index})" style="background: #dc3545; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold;">✕</button>
         `;
-        container.appendChild(colorItem);
+        container.appendChild(shapeItem);
 
-        // Update the colors array
-        if (index >= p5Config.colors.length) {
-            p5Config.colors.push(color);
+        // Update the shapes array
+        if (index >= p5Config.shapes.length) {
+            p5Config.shapes.push({ shape: shape, color: color });
         }
     }
 
-    // Update color in P5 palette
-    function updateP5Color(index, value) {
-        p5Config.colors[index] = value;
+    // Update shape type in P5 palette
+    function updateP5Shape(index, shape) {
+        p5Config.shapes[index].shape = shape;
+        updateP5Configuration();
+    }
+
+    // Update shape color in P5 palette
+    function updateP5ShapeColor(index, value) {
+        p5Config.shapes[index].color = value;
         // Sync both inputs
-        const colorItem = document.querySelectorAll('.p5-color-item')[index];
-        const inputs = colorItem.querySelectorAll('input');
+        const shapeItem = document.querySelectorAll('.p5-shape-item')[index];
+        const inputs = shapeItem.querySelectorAll('input');
         inputs[0].value = value;
         inputs[1].value = value;
         updateP5Configuration();
     }
 
-    // Remove color from P5 palette
-    function removeP5Color(index) {
-        if (p5Config.colors.length <= 1) {
-            alert('You must have at least one color in the palette!');
+    // Remove shape from P5 palette
+    function removeP5Shape(index) {
+        if (p5Config.shapes.length <= 1) {
+            alert('You must have at least one shape in the palette!');
             return;
         }
-        p5Config.colors.splice(index, 1);
-        initializeP5ColorPalette();
+        p5Config.shapes.splice(index, 1);
+        initializeP5ShapePalette();
     }
 
-    // Update animation fields visibility
+    // Legacy function - no longer needed with granular animation controls
+    // Kept for backward compatibility
     function updateP5AnimationFields() {
-        const animated = document.getElementById('p5-animated').checked;
-        const fields = document.getElementById('p5-animation-fields');
-        fields.style.display = animated ? 'block' : 'none';
-        p5Config.animation.animated = animated;
-        updateP5Configuration();
+        // No-op - granular controls are always visible
     }
 
     // Collect all P5 form values and update configuration
@@ -979,11 +1101,24 @@ require_once(__DIR__ . '/includes/header.php');
         p5Config.pattern.noiseScale = parseFloat(document.getElementById('p5-noise-scale').value);
         p5Config.pattern.noiseDetail = parseInt(document.getElementById('p5-noise-detail').value);
 
-        // Animation settings
-        p5Config.animation.animated = document.getElementById('p5-animated').checked;
-        p5Config.animation.loop = document.getElementById('p5-loop').checked;
-        p5Config.animation.type = document.getElementById('p5-animation-type').value;
-        p5Config.animation.speed = parseFloat(document.getElementById('p5-animation-speed').value);
+        // Animation settings - granular controls
+        p5Config.animation.rotation.enabled = document.getElementById('p5-animation-rotation-enabled').checked;
+        p5Config.animation.rotation.loop = document.getElementById('p5-animation-rotation-loop').checked;
+        p5Config.animation.rotation.counterclockwise = document.getElementById('p5-animation-rotation-counterclockwise').checked;
+        p5Config.animation.rotation.speed = parseFloat(document.getElementById('p5-animation-rotation-speed').value);
+
+        p5Config.animation.scale.enabled = document.getElementById('p5-animation-scale-enabled').checked;
+        p5Config.animation.scale.loop = document.getElementById('p5-animation-scale-loop').checked;
+        p5Config.animation.scale.speed = parseFloat(document.getElementById('p5-animation-scale-speed').value);
+
+        p5Config.animation.translation.enabled = document.getElementById('p5-animation-translation-enabled').checked;
+        p5Config.animation.translation.loop = document.getElementById('p5-animation-translation-loop').checked;
+        p5Config.animation.translation.speed = parseFloat(document.getElementById('p5-animation-translation-speed').value);
+
+        p5Config.animation.color.enabled = document.getElementById('p5-animation-color-enabled').checked;
+        p5Config.animation.color.loop = document.getElementById('p5-animation-color-loop').checked;
+        p5Config.animation.color.speed = parseFloat(document.getElementById('p5-animation-color-speed').value);
+
         p5Config.animation.clearBackground = document.getElementById('p5-clear-background').checked;
 
         // Interaction settings
@@ -1018,18 +1153,59 @@ require_once(__DIR__ . '/includes/header.php');
             });
         }
 
+        // Update shape size display
+        const shapeSizeInput = document.getElementById('p5-shape-size');
+        const shapeSizeValue = document.getElementById('p5-shape-size-value');
+
+        if (shapeSizeInput && shapeSizeValue) {
+            shapeSizeInput.addEventListener('input', function() {
+                shapeSizeValue.textContent = parseFloat(this.value).toFixed(1);
+                updateP5Configuration();
+            });
+        }
+
+        // Update animation speed displays
+        const rotationSpeedInput = document.getElementById('p5-animation-rotation-speed');
+        const rotationSpeedValue = document.getElementById('p5-animation-rotation-speed-value');
+        if (rotationSpeedInput && rotationSpeedValue) {
+            rotationSpeedInput.addEventListener('input', function() {
+                rotationSpeedValue.textContent = parseFloat(this.value).toFixed(1);
+            });
+        }
+
+        const scaleSpeedInput = document.getElementById('p5-animation-scale-speed');
+        const scaleSpeedValue = document.getElementById('p5-animation-scale-speed-value');
+        if (scaleSpeedInput && scaleSpeedValue) {
+            scaleSpeedInput.addEventListener('input', function() {
+                scaleSpeedValue.textContent = parseFloat(this.value).toFixed(1);
+            });
+        }
+
+        const translationSpeedInput = document.getElementById('p5-animation-translation-speed');
+        const translationSpeedValue = document.getElementById('p5-animation-translation-speed-value');
+        if (translationSpeedInput && translationSpeedValue) {
+            translationSpeedInput.addEventListener('input', function() {
+                translationSpeedValue.textContent = parseFloat(this.value).toFixed(1);
+            });
+        }
+
+        const colorSpeedInput = document.getElementById('p5-animation-color-speed');
+        const colorSpeedValue = document.getElementById('p5-animation-color-speed-value');
+        if (colorSpeedInput && colorSpeedValue) {
+            colorSpeedInput.addEventListener('input', function() {
+                colorSpeedValue.textContent = parseFloat(this.value).toFixed(1);
+            });
+        }
+
         // Add change listeners to all inputs
-        const inputs = document.querySelectorAll('.sketch-field-input, #p5-animated, #p5-loop, #p5-no-stroke, #p5-no-fill, #p5-use-palette, #p5-clear-background, #p5-mouse-interaction, #p5-keyboard-interaction');
+        const inputs = document.querySelectorAll('.sketch-field-input, #p5-no-stroke, #p5-no-fill, #p5-use-palette, #p5-clear-background, #p5-mouse-interaction, #p5-keyboard-interaction');
         inputs.forEach(input => {
             input.addEventListener('change', updateP5Configuration);
             input.addEventListener('input', updateP5Configuration);
         });
 
-        // Initialize color palette
-        initializeP5ColorPalette();
-
-        // Initialize animation fields visibility
-        updateP5AnimationFields();
+        // Initialize shape palette
+        initializeP5ShapePalette();
 
         // Load existing configuration if editing
         <?php if ($editPiece && !empty($editPiece['configuration'])): ?>
@@ -1051,6 +1227,7 @@ require_once(__DIR__ . '/includes/header.php');
                     document.getElementById('p5-shape-type').value = savedConfig.drawing.shapeType;
                     document.getElementById('p5-shape-count').value = savedConfig.drawing.shapeCount;
                     document.getElementById('p5-shape-size').value = savedConfig.drawing.shapeSize;
+                    document.getElementById('p5-shape-size-value').textContent = parseFloat(savedConfig.drawing.shapeSize).toFixed(1);
                     document.getElementById('p5-stroke-weight').value = savedConfig.drawing.strokeWeight;
                     document.getElementById('p5-stroke-color').value = savedConfig.drawing.strokeColor;
                     document.getElementById('p5-no-stroke').checked = savedConfig.drawing.noStroke;
@@ -1078,14 +1255,105 @@ require_once(__DIR__ . '/includes/header.php');
                     document.getElementById('p5-noise-detail').value = savedConfig.pattern.noiseDetail;
                 }
 
+                // Load shapes (with backward compatibility for old colors format)
+                if (savedConfig.shapes) {
+                    p5Config.shapes = savedConfig.shapes;
+                    initializeP5ShapePalette();
+                } else if (savedConfig.colors) {
+                    // Migrate old colors format to new shapes format
+                    p5Config.shapes = savedConfig.colors.map(color => ({
+                        shape: 'ellipse',
+                        color: color
+                    }));
+                    initializeP5ShapePalette();
+                }
+
                 // Load animation settings
                 if (savedConfig.animation) {
-                    document.getElementById('p5-animated').checked = savedConfig.animation.animated;
-                    document.getElementById('p5-loop').checked = savedConfig.animation.loop;
-                    document.getElementById('p5-animation-type').value = savedConfig.animation.type;
-                    document.getElementById('p5-animation-speed').value = savedConfig.animation.speed;
-                    document.getElementById('p5-clear-background').checked = savedConfig.animation.clearBackground;
-                    updateP5AnimationFields();
+                    // Check for new granular format
+                    if (savedConfig.animation.rotation) {
+                        // New format with granular controls
+                        p5Config.animation = savedConfig.animation;
+
+                        // Load rotation animation
+                        if (savedConfig.animation.rotation) {
+                            document.getElementById('p5-animation-rotation-enabled').checked = savedConfig.animation.rotation.enabled || false;
+                            document.getElementById('p5-animation-rotation-loop').checked = savedConfig.animation.rotation.loop !== false;
+                            document.getElementById('p5-animation-rotation-counterclockwise').checked = savedConfig.animation.rotation.counterclockwise || false;
+                            document.getElementById('p5-animation-rotation-speed').value = savedConfig.animation.rotation.speed || 1;
+                            document.getElementById('p5-animation-rotation-speed-value').textContent = parseFloat(savedConfig.animation.rotation.speed || 1).toFixed(1);
+                        }
+
+                        // Load scale animation
+                        if (savedConfig.animation.scale) {
+                            document.getElementById('p5-animation-scale-enabled').checked = savedConfig.animation.scale.enabled || false;
+                            document.getElementById('p5-animation-scale-loop').checked = savedConfig.animation.scale.loop !== false;
+                            document.getElementById('p5-animation-scale-speed').value = savedConfig.animation.scale.speed || 1;
+                            document.getElementById('p5-animation-scale-speed-value').textContent = parseFloat(savedConfig.animation.scale.speed || 1).toFixed(1);
+                        }
+
+                        // Load translation animation
+                        if (savedConfig.animation.translation) {
+                            document.getElementById('p5-animation-translation-enabled').checked = savedConfig.animation.translation.enabled || false;
+                            document.getElementById('p5-animation-translation-loop').checked = savedConfig.animation.translation.loop !== false;
+                            document.getElementById('p5-animation-translation-speed').value = savedConfig.animation.translation.speed || 1;
+                            document.getElementById('p5-animation-translation-speed-value').textContent = parseFloat(savedConfig.animation.translation.speed || 1).toFixed(1);
+                        }
+
+                        // Load color animation
+                        if (savedConfig.animation.color) {
+                            document.getElementById('p5-animation-color-enabled').checked = savedConfig.animation.color.enabled || false;
+                            document.getElementById('p5-animation-color-loop').checked = savedConfig.animation.color.loop !== false;
+                            document.getElementById('p5-animation-color-speed').value = savedConfig.animation.color.speed || 1;
+                            document.getElementById('p5-animation-color-speed-value').textContent = parseFloat(savedConfig.animation.color.speed || 1).toFixed(1);
+                        }
+
+                        // Load clearBackground
+                        if (savedConfig.animation.clearBackground !== undefined) {
+                            document.getElementById('p5-clear-background').checked = savedConfig.animation.clearBackground;
+                        }
+                    } else {
+                        // Old format - migrate to new format
+                        console.log('Migrating old animation format to granular format');
+                        const oldType = savedConfig.animation.type || 'rotation';
+                        const oldSpeed = savedConfig.animation.speed || 1;
+                        const oldLoop = savedConfig.animation.loop !== false;
+                        const oldAnimated = savedConfig.animation.animated || false;
+
+                        // Map old type to new format
+                        if (oldAnimated) {
+                            if (oldType === 'rotation') {
+                                p5Config.animation.rotation.enabled = true;
+                                p5Config.animation.rotation.speed = oldSpeed;
+                                p5Config.animation.rotation.loop = oldLoop;
+                                document.getElementById('p5-animation-rotation-enabled').checked = true;
+                                document.getElementById('p5-animation-rotation-speed').value = oldSpeed;
+                                document.getElementById('p5-animation-rotation-speed-value').textContent = parseFloat(oldSpeed).toFixed(1);
+                                document.getElementById('p5-animation-rotation-loop').checked = oldLoop;
+                            } else if (oldType === 'scale') {
+                                p5Config.animation.scale.enabled = true;
+                                p5Config.animation.scale.speed = oldSpeed;
+                                p5Config.animation.scale.loop = oldLoop;
+                                document.getElementById('p5-animation-scale-enabled').checked = true;
+                                document.getElementById('p5-animation-scale-speed').value = oldSpeed;
+                                document.getElementById('p5-animation-scale-speed-value').textContent = parseFloat(oldSpeed).toFixed(1);
+                                document.getElementById('p5-animation-scale-loop').checked = oldLoop;
+                            } else if (oldType === 'translation') {
+                                p5Config.animation.translation.enabled = true;
+                                p5Config.animation.translation.speed = oldSpeed;
+                                p5Config.animation.translation.loop = oldLoop;
+                                document.getElementById('p5-animation-translation-enabled').checked = true;
+                                document.getElementById('p5-animation-translation-speed').value = oldSpeed;
+                                document.getElementById('p5-animation-translation-speed-value').textContent = parseFloat(oldSpeed).toFixed(1);
+                                document.getElementById('p5-animation-translation-loop').checked = oldLoop;
+                            }
+                        }
+
+                        // Load clearBackground
+                        if (savedConfig.animation.clearBackground !== undefined) {
+                            document.getElementById('p5-clear-background').checked = savedConfig.animation.clearBackground;
+                        }
+                    }
                 }
 
                 // Load interaction settings

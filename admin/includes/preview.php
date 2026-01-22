@@ -469,6 +469,55 @@ function random() {
     return x - Math.floor(x);
 }
 
+// Helper function to draw different shapes
+function drawShape(x, y, size, shape, color) {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+
+    switch (shape) {
+        case 'circle':
+            ctx.arc(x, y, size, 0, Math.PI * 2);
+            ctx.fill();
+            break;
+        case 'square':
+            ctx.fillRect(x - size, y - size, size * 2, size * 2);
+            break;
+        case 'triangle':
+            ctx.moveTo(x, y - size);
+            ctx.lineTo(x - size, y + size);
+            ctx.lineTo(x + size, y + size);
+            ctx.closePath();
+            ctx.fill();
+            break;
+        case 'hexagon':
+            for (let i = 0; i < 6; i++) {
+                const angle = (Math.PI / 3) * i;
+                const hx = x + size * Math.cos(angle);
+                const hy = y + size * Math.sin(angle);
+                if (i === 0) ctx.moveTo(hx, hy);
+                else ctx.lineTo(hx, hy);
+            }
+            ctx.closePath();
+            ctx.fill();
+            break;
+        case 'star':
+            for (let i = 0; i < 10; i++) {
+                const angle = (Math.PI / 5) * i - Math.PI / 2;
+                const radius = i % 2 === 0 ? size : size / 2;
+                const sx = x + radius * Math.cos(angle);
+                const sy = y + radius * Math.sin(angle);
+                if (i === 0) ctx.moveTo(sx, sy);
+                else ctx.lineTo(sx, sy);
+            }
+            ctx.closePath();
+            ctx.fill();
+            break;
+        default:
+            ctx.arc(x, y, size, 0, Math.PI * 2);
+            ctx.fill();
+    }
+}
+
 // Draw pattern based on configuration
 function drawPattern() {
     const pattern = config.pattern?.type || 'scatter';
@@ -477,41 +526,43 @@ function drawPattern() {
     const sizeVariation = (config.parameters?.sizeVariation || 20) / 100;
     const spacing = config.parameters?.spacing || 20;
     const opacity = (config.parameters?.opacity || 80) / 100;
-    const colors = config.colors || ['#ED225D'];
+
+    // Support both new shapes format and old colors format (backward compatibility)
+    const shapes = config.shapes || (config.colors ? config.colors.map(c => ({ shape: 'circle', color: c })) : [{ shape: 'circle', color: '#ED225D' }]);
 
     ctx.globalAlpha = opacity;
 
     switch (pattern) {
         case 'grid':
-            drawGridPattern(elementCount, elementSize, spacing, colors, sizeVariation);
+            drawGridPattern(elementCount, elementSize, spacing, shapes, sizeVariation);
             break;
         case 'spiral':
-            drawSpiralPattern(elementCount, elementSize, colors, sizeVariation);
+            drawSpiralPattern(elementCount, elementSize, shapes, sizeVariation);
             break;
         case 'scatter':
-            drawScatterPattern(elementCount, elementSize, colors, sizeVariation);
+            drawScatterPattern(elementCount, elementSize, shapes, sizeVariation);
             break;
         case 'wave':
-            drawWavePattern(elementCount, elementSize, spacing, colors, sizeVariation);
+            drawWavePattern(elementCount, elementSize, spacing, shapes, sizeVariation);
             break;
         case 'concentric':
-            drawConcentricPattern(elementCount, elementSize, colors, sizeVariation);
+            drawConcentricPattern(elementCount, elementSize, shapes, sizeVariation);
             break;
         case 'fractal':
-            drawFractalPattern(elementCount, elementSize, colors, sizeVariation);
+            drawFractalPattern(elementCount, elementSize, shapes, sizeVariation);
             break;
         case 'particle':
-            drawParticlePattern(elementCount, elementSize, colors, sizeVariation);
+            drawParticlePattern(elementCount, elementSize, shapes, sizeVariation);
             break;
         case 'flow':
-            drawFlowPattern(elementCount, elementSize, colors, sizeVariation);
+            drawFlowPattern(elementCount, elementSize, shapes, sizeVariation);
             break;
         default:
-            drawScatterPattern(elementCount, elementSize, colors, sizeVariation);
+            drawScatterPattern(elementCount, elementSize, shapes, sizeVariation);
     }
 }
 
-function drawGridPattern(count, size, spacing, colors, variation) {
+function drawGridPattern(count, size, spacing, shapes, variation) {
     const cols = Math.ceil(width / spacing);
     const rows = Math.ceil(height / spacing);
 
@@ -520,15 +571,13 @@ function drawGridPattern(count, size, spacing, colors, variation) {
             const x = j * spacing + spacing / 2;
             const y = i * spacing + spacing / 2;
             const s = size * (1 + (random() - 0.5) * variation);
-            ctx.fillStyle = colors[Math.floor(random() * colors.length)];
-            ctx.beginPath();
-            ctx.arc(x, y, s, 0, Math.PI * 2);
-            ctx.fill();
+            const shapeItem = shapes[Math.floor(random() * shapes.length)];
+            drawShape(x, y, s, shapeItem.shape, shapeItem.color);
         }
     }
 }
 
-function drawSpiralPattern(count, size, colors, variation) {
+function drawSpiralPattern(count, size, shapes, variation) {
     const centerX = width / 2;
     const centerY = height / 2;
     const maxRadius = Math.min(width, height) / 2;
@@ -541,27 +590,23 @@ function drawSpiralPattern(count, size, colors, variation) {
         const y = centerY + Math.sin(angle) * radius;
         const s = size * (1 + (random() - 0.5) * variation);
 
-        ctx.fillStyle = colors[Math.floor(random() * colors.length)];
-        ctx.beginPath();
-        ctx.arc(x, y, s, 0, Math.PI * 2);
-        ctx.fill();
+        const shapeItem = shapes[i % shapes.length];
+        drawShape(x, y, s, shapeItem.shape, shapeItem.color);
     }
 }
 
-function drawScatterPattern(count, size, colors, variation) {
+function drawScatterPattern(count, size, shapes, variation) {
     for (let i = 0; i < count; i++) {
         const x = random() * width;
         const y = random() * height;
         const s = size * (1 + (random() - 0.5) * variation);
 
-        ctx.fillStyle = colors[Math.floor(random() * colors.length)];
-        ctx.beginPath();
-        ctx.arc(x, y, s, 0, Math.PI * 2);
-        ctx.fill();
+        const shapeItem = shapes[Math.floor(random() * shapes.length)];
+        drawShape(x, y, s, shapeItem.shape, shapeItem.color);
     }
 }
 
-function drawWavePattern(count, size, spacing, colors, variation) {
+function drawWavePattern(count, size, spacing, shapes, variation) {
     const rows = Math.ceil(height / spacing);
     const amplitude = 50;
 
@@ -572,15 +617,13 @@ function drawWavePattern(count, size, spacing, colors, variation) {
             const y = i * spacing;
             const s = size * (1 + (random() - 0.5) * variation);
 
-            ctx.fillStyle = colors[Math.floor(random() * colors.length)];
-            ctx.beginPath();
-            ctx.arc(x, y, s, 0, Math.PI * 2);
-            ctx.fill();
+            const shapeItem = shapes[Math.floor(random() * shapes.length)];
+            drawShape(x, y, s, shapeItem.shape, shapeItem.color);
         }
     }
 }
 
-function drawConcentricPattern(count, size, colors, variation) {
+function drawConcentricPattern(count, size, shapes, variation) {
     const centerX = width / 2;
     const centerY = height / 2;
     const maxRadius = Math.min(width, height) / 2;
@@ -595,21 +638,18 @@ function drawConcentricPattern(count, size, colors, variation) {
             const y = centerY + Math.sin(angle) * radius;
             const s = size * (1 + (random() - 0.5) * variation);
 
-            ctx.fillStyle = colors[Math.floor(random() * colors.length)];
-            ctx.beginPath();
-            ctx.arc(x, y, s, 0, Math.PI * 2);
-            ctx.fill();
+            const shapeItem = shapes[Math.floor(random() * shapes.length)];
+            drawShape(x, y, s, shapeItem.shape, shapeItem.color);
         }
     }
 }
 
-function drawFractalPattern(count, size, colors, variation) {
+function drawFractalPattern(count, size, shapes, variation) {
     function branch(x, y, angle, length, depth) {
         if (depth === 0) {
-            ctx.fillStyle = colors[Math.floor(random() * colors.length)];
-            ctx.beginPath();
-            ctx.arc(x, y, size * (1 + (random() - 0.5) * variation), 0, Math.PI * 2);
-            ctx.fill();
+            const s = size * (1 + (random() - 0.5) * variation);
+            const shapeItem = shapes[Math.floor(random() * shapes.length)];
+            drawShape(x, y, s, shapeItem.shape, shapeItem.color);
             return;
         }
 
@@ -623,23 +663,32 @@ function drawFractalPattern(count, size, colors, variation) {
     branch(width / 2, height, -Math.PI / 2, 100, 5);
 }
 
-function drawParticlePattern(count, size, colors, variation) {
-    drawScatterPattern(count, size, colors, variation);
+function drawParticlePattern(count, size, shapes, variation) {
+    drawScatterPattern(count, size, shapes, variation);
 }
 
-function drawFlowPattern(count, size, colors, variation) {
+function drawFlowPattern(count, size, shapes, variation) {
     for (let i = 0; i < count; i++) {
         const x = random() * width;
         const y = random() * height;
         const angle = random() * Math.PI * 2;
         const length = random() * 50;
+        const s = size * (1 + (random() - 0.5) * variation);
 
-        ctx.strokeStyle = colors[Math.floor(random() * colors.length)];
-        ctx.lineWidth = size * (1 + (random() - 0.5) * variation);
+        const shapeItem = shapes[Math.floor(random() * shapes.length)];
+
+        // Draw line with shape color
+        ctx.strokeStyle = shapeItem.color;
+        ctx.lineWidth = s / 2;
         ctx.beginPath();
         ctx.moveTo(x, y);
         ctx.lineTo(x + Math.cos(angle) * length, y + Math.sin(angle) * length);
         ctx.stroke();
+
+        // Draw shape at endpoint for visual interest
+        const endX = x + Math.cos(angle) * length;
+        const endY = y + Math.sin(angle) * length;
+        drawShape(endX, endY, s, shapeItem.shape, shapeItem.color);
     }
 }
 
@@ -647,7 +696,7 @@ function drawFlowPattern(count, size, colors, variation) {
 drawPattern();
 
 // Animation support
-if (config.animation && config.animation.animated && config.animation.loop) {
+if (config.animation && config.animation.enabled && config.animation.loop) {
     let animationFrame = 0;
 
     function animate() {
@@ -660,7 +709,7 @@ if (config.animation && config.animation.animated && config.animation.loop) {
         }
 
         // Modify seed for animation
-        seed = config.advanced?.randomSeed + animationFrame * (config.animation.speed || 1);
+        seed = (config.advanced?.randomSeed || 12345) + animationFrame * (config.animation.speed || 1);
 
         // Redraw pattern
         drawPattern();
@@ -669,6 +718,71 @@ if (config.animation && config.animation.animated && config.animation.loop) {
     }
 
     animate();
+}
+
+// Mouse interaction support
+if (config.interaction && config.interaction.enabled) {
+    const interactionRadius = config.interaction.radius || 100;
+    const interactionType = config.interaction.type || 'repel';
+
+    canvas.addEventListener('mousemove', function(e) {
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+
+        // Clear and redraw with mouse interaction
+        ctx.fillStyle = config.canvas?.background || '#FFFFFF';
+        ctx.fillRect(0, 0, width, height);
+
+        // Re-seed for consistency
+        seed = config.advanced?.randomSeed || 12345;
+
+        // Draw pattern with mouse influence
+        drawPatternWithInteraction(mouseX, mouseY, interactionRadius, interactionType);
+    });
+}
+
+function drawPatternWithInteraction(mouseX, mouseY, radius, type) {
+    const pattern = config.pattern?.type || 'scatter';
+    const elementCount = config.pattern?.elementCount || 100;
+    const elementSize = config.parameters?.elementSize || 5;
+    const sizeVariation = (config.parameters?.sizeVariation || 20) / 100;
+    const spacing = config.parameters?.spacing || 20;
+    const opacity = (config.parameters?.opacity || 80) / 100;
+
+    // Support both new shapes format and old colors format (backward compatibility)
+    const shapes = config.shapes || (config.colors ? config.colors.map(c => ({ shape: 'circle', color: c })) : [{ shape: 'circle', color: '#ED225D' }]);
+
+    ctx.globalAlpha = opacity;
+
+    // Simple scatter pattern with mouse interaction
+    for (let i = 0; i < elementCount; i++) {
+        const x = random() * width;
+        const y = random() * height;
+        const size = elementSize * (1 + (random() - 0.5) * sizeVariation);
+        const shapeItem = shapes[i % shapes.length];
+
+        // Calculate distance from mouse
+        const dx = x - mouseX;
+        const dy = y - mouseY;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        let finalX = x;
+        let finalY = y;
+
+        if (dist < radius) {
+            const force = (radius - dist) / radius;
+            if (type === 'repel') {
+                finalX += (dx / dist) * force * 50;
+                finalY += (dy / dist) * force * 50;
+            } else if (type === 'attract') {
+                finalX -= (dx / dist) * force * 50;
+                finalY -= (dy / dist) * force * 50;
+            }
+        }
+
+        drawShape(finalX, finalY, size, shapeItem.shape, shapeItem.color);
+    }
 }
     </script>
 </body>
@@ -687,9 +801,22 @@ function renderP5Preview($piece) {
     // Extract configuration sections
     $canvasConfig = $config['canvas'] ?? [];
     $drawingConfig = $config['drawing'] ?? [];
-    $colorsConfig = $config['colors'] ?? [];
+    $shapesConfig = $config['shapes'] ?? [];
+    $colorsConfig = $config['colors'] ?? [];  // For backward compatibility
     $animationConfig = $config['animation'] ?? [];
     $advancedConfig = $config['advanced'] ?? [];
+
+    // Support both new shapes format and old colors format (backward compatibility)
+    if (!empty($shapesConfig)) {
+        $shapes = $shapesConfig;
+    } elseif (!empty($colorsConfig)) {
+        // Migrate old colors to shapes with default ellipse
+        $shapes = array_map(function($color) {
+            return ['shape' => 'ellipse', 'color' => $color];
+        }, $colorsConfig);
+    } else {
+        $shapes = [['shape' => 'ellipse', 'color' => '#ED225D']];
+    }
 
     // Canvas settings
     $canvasWidth = $canvasConfig['width'] ?? 800;
@@ -795,9 +922,9 @@ const clearBg = <?php echo $clearBackground ? 'true' : 'false'; ?>;
 const randomSeedValue = <?php echo $randomSeed; ?>;
 <?php endif; ?>
 
-// Color palette
-const usePalette = <?php echo $usePalette ? 'true' : 'false'; ?>;
-const palette = <?php echo json_encode($palette); ?>;
+// Shapes palette (backward compatible with old colors)
+const shapes = <?php echo json_encode($shapes); ?>;
+const usePalette = config.usePalette || false;
 
 // Animation variables
 let animationFrame = 0;
@@ -831,55 +958,11 @@ function draw() {
         background(bgColor);
     }
 
-    // Set stroke and fill
-    if (noStrokeEnabled) {
-        noStroke();
+    // Use shapes from palette (with use-palette enabled) or draw in fixed pattern
+    if (usePalette && shapes.length > 0) {
+        drawWithShapesPalette();
     } else {
-        stroke(strokeColor);
-        strokeWeight(strokeWeight);
-    }
-
-    if (noFillEnabled) {
-        noFill();
-    } else {
-        // Use palette or single color
-        if (usePalette && palette.length > 0) {
-            const colorIndex = floor(animationFrame / 10) % palette.length;
-            const c = color(palette[colorIndex]);
-            c.setAlpha(fillOpacity);
-            fill(c);
-        } else {
-            const c = color(fillColor);
-            c.setAlpha(fillOpacity);
-            fill(c);
-        }
-    }
-
-    // Drawing mode
-    switch (drawingMode) {
-        case 'ellipse':
-            drawEllipses();
-            break;
-        case 'rect':
-            drawRectangles();
-            break;
-        case 'triangle':
-            drawTriangles();
-            break;
-        case 'line':
-            drawLines();
-            break;
-        case 'points':
-            drawPoints();
-            break;
-        case 'spiral':
-            drawSpiral();
-            break;
-        case 'grid':
-            drawGrid();
-            break;
-        default:
-            drawEllipses();
+        drawWithConfiguredStyle();
     }
 
     // Update animation
@@ -889,86 +972,96 @@ function draw() {
     }
 }
 
-function drawEllipses() {
+// Helper function to draw a specific P5.js shape
+function drawP5Shape(shapeType, x, y, size) {
+    switch (shapeType) {
+        case 'ellipse':
+            ellipse(x, y, size, size);
+            break;
+        case 'rect':
+            rect(x - size/2, y - size/2, size, size);
+            break;
+        case 'triangle':
+            triangle(x - size/2, y + size/2, x, y - size/2, x + size/2, y + size/2);
+            break;
+        case 'polygon':
+            // Draw hexagon
+            beginShape();
+            for (let i = 0; i < 6; i++) {
+                const angle = TWO_PI / 6 * i;
+                const sx = x + cos(angle) * size/2;
+                const sy = y + sin(angle) * size/2;
+                vertex(sx, sy);
+            }
+            endShape(CLOSE);
+            break;
+        case 'line':
+            line(x - size/2, y, x + size/2, y);
+            break;
+        default:
+            ellipse(x, y, size, size);
+    }
+}
+
+// Draw using shapes palette
+function drawWithShapesPalette() {
     const size = animated ? 50 + sin(offset * 0.05) * 30 : 50;
+
     for (let i = 0; i < 5; i++) {
         const x = (i + 1) * (width / 6);
         const y = height / 2 + (animated ? sin(offset * 0.1 + i) * 50 : 0);
-        ellipse(x, y, size, size);
+
+        // Select shape from palette (cycle through)
+        const shapeItem = shapes[i % shapes.length];
+
+        // Set stroke
+        if (noStrokeEnabled) {
+            noStroke();
+        } else {
+            stroke(strokeColor);
+            strokeWeight(strokeWeight);
+        }
+
+        // Set fill with shape's color
+        if (noFillEnabled) {
+            noFill();
+        } else {
+            const c = color(shapeItem.color);
+            c.setAlpha(fillOpacity);
+            fill(c);
+        }
+
+        // Draw the shape
+        drawP5Shape(shapeItem.shape, x, y, size);
     }
 }
 
-function drawRectangles() {
+// Draw with configured style (single shape type, single color)
+function drawWithConfiguredStyle() {
     const size = animated ? 50 + sin(offset * 0.05) * 30 : 50;
-    for (let i = 0; i < 5; i++) {
-        const x = (i + 1) * (width / 6) - size / 2;
-        const y = height / 2 - size / 2 + (animated ? sin(offset * 0.1 + i) * 50 : 0);
-        rect(x, y, size, size);
-    }
-}
 
-function drawTriangles() {
-    const size = animated ? 50 + sin(offset * 0.05) * 30 : 50;
+    // Set stroke
+    if (noStrokeEnabled) {
+        noStroke();
+    } else {
+        stroke(strokeColor);
+        strokeWeight(strokeWeight);
+    }
+
+    // Set fill
+    if (noFillEnabled) {
+        noFill();
+    } else {
+        const c = color(fillColor);
+        c.setAlpha(fillOpacity);
+        fill(c);
+    }
+
+    // Draw shapes based on configured drawing mode
     for (let i = 0; i < 5; i++) {
         const x = (i + 1) * (width / 6);
         const y = height / 2 + (animated ? sin(offset * 0.1 + i) * 50 : 0);
-        triangle(x, y - size / 2, x - size / 2, y + size / 2, x + size / 2, y + size / 2);
-    }
-}
-
-function drawLines() {
-    for (let i = 0; i < 10; i++) {
-        const x1 = i * (width / 10);
-        const y1 = animated ? height / 2 + sin(offset * 0.1 + i * 0.5) * height / 4 : height / 4;
-        const x2 = x1;
-        const y2 = animated ? height / 2 + sin(offset * 0.1 + i * 0.5 + PI) * height / 4 : height * 3 / 4;
-        line(x1, y1, x2, y2);
-    }
-}
-
-function drawPoints() {
-    strokeWeight(8);
-    for (let i = 0; i < width; i += 20) {
-        for (let j = 0; j < height; j += 20) {
-            const x = i + (animated ? sin(offset * 0.05 + i * 0.1) * 10 : 0);
-            const y = j + (animated ? cos(offset * 0.05 + j * 0.1) * 10 : 0);
-            point(x, y);
-        }
-    }
-}
-
-function drawSpiral() {
-    const centerX = width / 2;
-    const centerY = height / 2;
-    const maxRadius = min(width, height) / 2 - 20;
-    const turns = 5;
-    const segments = 200;
-
-    beginShape();
-    for (let i = 0; i <= segments; i++) {
-        const angle = (i / segments) * turns * TWO_PI + (animated ? offset * 0.02 : 0);
-        const radius = (i / segments) * maxRadius;
-        const x = centerX + cos(angle) * radius;
-        const y = centerY + sin(angle) * radius;
-        vertex(x, y);
-    }
-    endShape();
-}
-
-function drawGrid() {
-    const cols = 8;
-    const rows = 6;
-    const cellWidth = width / cols;
-    const cellHeight = height / rows;
-    const size = min(cellWidth, cellHeight) * 0.6;
-
-    for (let i = 0; i < cols; i++) {
-        for (let j = 0; j < rows; j++) {
-            const x = i * cellWidth + cellWidth / 2;
-            const y = j * cellHeight + cellHeight / 2;
-            const s = size + (animated ? sin(offset * 0.1 + i + j) * size * 0.3 : 0);
-            ellipse(x, y, s, s);
-        }
+        drawP5Shape(drawingMode, x, y, size);
     }
 }
 
