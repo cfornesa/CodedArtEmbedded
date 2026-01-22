@@ -54,23 +54,36 @@ try {
     die('Error loading art piece.');
 }
 
-// Include head (DOCTYPE, HTML, libraries)
-require_once(__DIR__ . '/../resources/templates/head.php');
 ?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?php echo htmlspecialchars($page_name); ?></title>
+    <meta name="description" content="<?php echo htmlspecialchars($tagline); ?>">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        #threejs-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: <?php echo htmlspecialchars($sceneSettings['background'] ?? '#000000'); ?>;
+        }
+    </style>
+</head>
 <body>
-<?php require_once(__DIR__ . '/../resources/templates/header.php'); ?>
-
-<style>
-    #threejs-container {
-        width: 100%;
-        height: 600px;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        background: <?php echo htmlspecialchars($sceneSettings['background'] ?? '#000000'); ?>;
-    }
-</style>
-
 <div id="threejs-container"></div>
 
 <script src="<?php echo url('js/three.min.js'); ?>"></script>
@@ -443,7 +456,5 @@ container.addEventListener('wheel', (e) => {
     camera.position.z = Math.max(1, Math.min(20, camera.position.z));
 });
 </script>
-
-<?php require_once(__DIR__ . '/../resources/templates/footer.php'); ?>
 </body>
 </html>

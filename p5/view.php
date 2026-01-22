@@ -42,13 +42,36 @@ try {
     die('Error loading art piece.');
 }
 
-// Include head (DOCTYPE, HTML, libraries)
-require_once(__DIR__ . '/../resources/templates/head.php');
 ?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?php echo htmlspecialchars($page_name); ?></title>
+    <meta name="description" content="<?php echo htmlspecialchars($tagline); ?>">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        #p5-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
 <body>
-<?php require_once(__DIR__ . '/../resources/templates/header.php'); ?>
-
-<div id="p5-container" style="display: flex; justify-content: center; align-items: center; min-height: 400px;"></div>
+<div id="p5-container"></div>
 
 <script src="<?php echo url('js/p5.min.js'); ?>"></script>
 <script>
@@ -60,7 +83,9 @@ const sketch = (p) => {
     // Extract configuration
     const canvasConfig = config.canvas || {};
     const drawingConfig = config.drawing || {};
-    const colors = config.colors || ['#ED225D'];
+
+    // Backward compatibility: Support both new shapes format and old colors format
+    const shapes = config.shapes || (config.colors ? config.colors.map(c => ({ shape: 'ellipse', color: c })) : [{ shape: 'ellipse', color: '#ED225D' }]);
     const usePalette = config.usePalette || false;
     const patternConfig = config.pattern || {};
     const animationConfig = config.animation || {};
@@ -174,15 +199,48 @@ const sketch = (p) => {
         elements = [];
 
         for (let i = 0; i < shapeCount; i++) {
+            const shapeData = usePalette ? p.random(shapes) : shapes[0];
             elements.push({
                 x: p.random(p.width),
                 y: p.random(p.height),
                 vx: p.random(-2, 2),
                 vy: p.random(-2, 2),
                 size: drawingConfig.shapeSize || 20,
-                color: usePalette ? p.random(colors) : (drawingConfig.fillColor || '#ED225D'),
+                shapeType: shapeData.shape,
+                color: shapeData.color,
                 offset: p.random(1000)
             });
+        }
+    }
+
+    // Helper function to draw P5.js shapes
+    function drawP5Shape(shapeType, x, y, size) {
+        switch (shapeType) {
+            case 'ellipse':
+                p.ellipse(x, y, size, size);
+                break;
+            case 'rect':
+                p.rect(x - size/2, y - size/2, size, size);
+                break;
+            case 'triangle':
+                p.triangle(x, y - size/2, x - size/2, y + size/2, x + size/2, y + size/2);
+                break;
+            case 'polygon':
+                const sides = 6;
+                p.beginShape();
+                for (let i = 0; i < sides; i++) {
+                    const angle = p.TWO_PI / sides * i;
+                    const px = x + p.cos(angle) * size/2;
+                    const py = y + p.sin(angle) * size/2;
+                    p.vertex(px, py);
+                }
+                p.endShape(p.CLOSE);
+                break;
+            case 'line':
+                p.line(x - size/2, y, x + size/2, y);
+                break;
+            default:
+                p.ellipse(x, y, size, size);
         }
     }
 
@@ -226,10 +284,12 @@ const sketch = (p) => {
                 const size = drawingConfig.shapeSize || 20;
 
                 if (usePalette) {
-                    p.fill(colors[(i * cols + j) % colors.length]);
+                    const shapeData = shapes[(i * cols + j) % shapes.length];
+                    p.fill(shapeData.color);
+                    drawP5Shape(shapeData.shape, x, y, size);
+                } else {
+                    drawP5Shape(shapeType, x, y, size);
                 }
-
-                drawShape(shapeType, x, y, size);
             }
         }
     }
@@ -257,7 +317,8 @@ const sketch = (p) => {
                 el.y = y;
             }
 
-            drawShape(shapeType, x, y, el.size);
+            const elShape = usePalette ? el.shapeType : shapeType;
+            drawP5Shape(elShape, x, y, el.size);
         });
     }
 
@@ -269,11 +330,13 @@ const sketch = (p) => {
             const size = el.size * (0.5 + noiseVal);
 
             if (usePalette) {
-                const colorIndex = Math.floor(noiseVal * colors.length);
-                p.fill(colors[colorIndex % colors.length]);
+                const colorIndex = Math.floor(noiseVal * shapes.length);
+                const shapeData = shapes[colorIndex % shapes.length];
+                p.fill(shapeData.color);
+                drawP5Shape(shapeData.shape, el.x, el.y, size);
+            } else {
+                drawP5Shape(shapeType, el.x, el.y, size);
             }
-
-            drawShape(shapeType, el.x, el.y, size);
         });
     }
 
@@ -292,10 +355,12 @@ const sketch = (p) => {
             const size = drawingConfig.shapeSize || 10;
 
             if (usePalette) {
-                p.fill(colors[i % colors.length]);
+                const shapeData = shapes[i % shapes.length];
+                p.fill(shapeData.color);
+                drawP5Shape(shapeData.shape, x, y, size);
+            } else {
+                drawP5Shape(shapeType, x, y, size);
             }
-
-            drawShape(shapeType, x, y, size);
         }
     }
 
@@ -313,10 +378,12 @@ const sketch = (p) => {
             const size = drawingConfig.shapeSize || 10;
 
             if (usePalette) {
-                p.fill(colors[i % colors.length]);
+                const shapeData = shapes[i % shapes.length];
+                p.fill(shapeData.color);
+                drawP5Shape(shapeData.shape, x, y, size);
+            } else {
+                drawP5Shape(shapeType, x, y, size);
             }
-
-            drawShape(shapeType, x, y, size);
         }
     }
 
@@ -341,31 +408,11 @@ const sketch = (p) => {
                 p.fill(el.color);
             }
 
-            drawShape(shapeType, el.x, el.y, el.size);
+            const elShape = usePalette ? el.shapeType : shapeType;
+            drawP5Shape(elShape, el.x, el.y, el.size);
         });
     }
 
-    function drawShape(type, x, y, size) {
-        switch (type) {
-            case 'ellipse':
-                p.ellipse(x, y, size, size);
-                break;
-            case 'rect':
-                p.rect(x, y, size, size);
-                break;
-            case 'triangle':
-                p.triangle(x, y - size/2, x - size/2, y + size/2, x + size/2, y + size/2);
-                break;
-            case 'line':
-                p.line(x - size/2, y, x + size/2, y);
-                break;
-            case 'point':
-                p.point(x, y);
-                break;
-            default:
-                p.ellipse(x, y, size, size);
-        }
-    }
 
     // Mouse interaction
     if (interactionConfig.mouse) {
@@ -398,7 +445,5 @@ const sketch = (p) => {
 // Create P5 instance
 new p5(sketch);
 </script>
-
-<?php require_once(__DIR__ . '/../resources/templates/footer.php'); ?>
 </body>
 </html>
