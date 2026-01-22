@@ -248,8 +248,35 @@ require_once(__DIR__ . '/includes/header.php');
             <h2><?php echo $action === 'create' ? 'Add New' : 'Edit'; ?> C2.js Piece</h2>
         </div>
 
-        <form method="POST" action="" data-validate>
+        <form method="POST" action="" data-validate id="art-form">
             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
+
+            <!-- LIVE PREVIEW SECTION (matching A-Frame pattern) -->
+            <div id="live-preview-section" style="margin: 20px; padding: 20px; background: #fff0f5; border: 3px solid #ED225D; border-radius: 8px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h3 style="margin: 0; color: #ED225D; font-size: 20px;">
+                        🎬 LIVE PREVIEW
+                    </h3>
+                    <div>
+                        <button type="button" class="btn btn-sm btn-secondary" id="toggle-preview-btn" onclick="toggleLivePreview()">
+                            Hide Preview
+                        </button>
+                    </div>
+                </div>
+
+                <p style="margin: 0 0 15px 0; color: #6c757d; font-size: 14px;">
+                    See your C2.js pattern in real-time as you configure it. Preview updates automatically with 500ms debounce.
+                </p>
+
+                <div id="live-preview-container" style="background: #fff; border: 2px solid #dee2e6; border-radius: 4px; overflow: hidden; position: relative;">
+                    <iframe id="live-preview-iframe" src="" style="width: 100%; height: 600px; border: none;"></iframe>
+                    <div id="live-preview-loading" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; background: rgba(255,255,255,0.95); padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                        <div style="font-size: 18px; font-weight: 600; color: #ED225D;">
+                            🔄 Loading Preview...
+                        </div>
+                    </div>
+                </div>
+            </div>
 
             <div class="form-group">
                 <label for="title" class="form-label required">Title</label>
@@ -883,6 +910,9 @@ require_once(__DIR__ . '/includes/header.php');
     function updateConfiguration() {
         collectFormValues();
         document.getElementById('configuration_json').value = JSON.stringify(patternConfig, null, 2);
+
+        // Update live preview automatically (debounced)
+        updateLivePreview();
     }
 
     // Update opacity display
@@ -1087,6 +1117,125 @@ require_once(__DIR__ . '/includes/header.php');
         updateSlugPreview();
     });
     <?php endif; ?>
+
+    // ============================================
+    // LIVE PREVIEW FUNCTIONS (matching A-Frame pattern)
+    // ============================================
+
+    let livePreviewTimeout = null;
+    let livePreviewHidden = false;
+
+    function updateLivePreview() {
+        // Skip if preview is hidden
+        if (livePreviewHidden) return;
+
+        // Debounce: Clear previous timeout
+        if (livePreviewTimeout) {
+            clearTimeout(livePreviewTimeout);
+        }
+
+        // Set new timeout (500ms debounce)
+        livePreviewTimeout = setTimeout(() => {
+            const previewIframe = document.getElementById('live-preview-iframe');
+            const previewLoading = document.getElementById('live-preview-loading');
+
+            if (!previewIframe || !previewLoading) return;
+
+            // Show loading indicator
+            previewLoading.style.display = 'block';
+
+            // Get current form data
+            const formData = new FormData(document.getElementById('art-form'));
+
+            // Send data to preview endpoint via POST
+            fetch('<?php echo url('admin/includes/preview.php'); ?>', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams(formData)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Preview failed: ' + response.statusText);
+                }
+                return response.text();
+            })
+            .then(html => {
+                // Create a blob URL for the preview content
+                const blob = new Blob([html], { type: 'text/html' });
+                const blobUrl = URL.createObjectURL(blob);
+
+                // Load preview in iframe
+                previewIframe.src = blobUrl;
+
+                // Hide loading indicator after iframe loads
+                previewIframe.onload = function() {
+                    previewLoading.style.display = 'none';
+                };
+            })
+            .catch(error => {
+                console.error('Live preview error:', error);
+                previewLoading.innerHTML = `
+                    <div style="color: #dc3545; font-weight: 600;">
+                        ❌ Preview failed
+                    </div>
+                    <div style="font-size: 14px; color: #6c757d; margin-top: 10px;">
+                        ${error.message}
+                    </div>
+                `;
+
+                setTimeout(() => {
+                    previewLoading.style.display = 'none';
+                }, 3000);
+            });
+        }, 500);  // 500ms debounce
+    }
+
+    function toggleLivePreview() {
+        const previewContainer = document.getElementById('live-preview-container');
+        const toggleBtn = document.getElementById('toggle-preview-btn');
+
+        livePreviewHidden = !livePreviewHidden;
+
+        if (livePreviewHidden) {
+            previewContainer.style.display = 'none';
+            toggleBtn.textContent = 'Show Preview';
+        } else {
+            previewContainer.style.display = 'block';
+            toggleBtn.textContent = 'Hide Preview';
+            // Update preview when showing
+            updateLivePreview();
+        }
+    }
+
+    // Scroll to live preview (for the button at bottom)
+    function scrollToLivePreview() {
+        const previewSection = document.getElementById('live-preview-section');
+        if (previewSection) {
+            previewSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
+
+    // Initialize live preview on page load (1 second delay to allow pattern to load)
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(() => {
+            updateLivePreview();
+        }, 1000);
+
+        // Add event listeners to all pattern configurator inputs
+        // so they trigger live preview updates
+        const inputs = document.querySelectorAll('#c2-canvas-count, #c2-width, #c2-height, #c2-background, ' +
+            '#c2-pattern-type, #c2-element-size, #c2-size-variation, #c2-spacing, #c2-opacity, ' +
+            '#c2-rotation, #c2-animated, #c2-animation-type, #c2-animation-speed, #c2-loop, ' +
+            '#c2-mouse-enabled, #c2-interaction-type, #c2-interaction-radius, #c2-random-seed, ' +
+            '#c2-blend-mode, #c2-enable-trails, #c2-frame-rate');
+
+        inputs.forEach(input => {
+            input.addEventListener('change', updateC2Configuration);
+            input.addEventListener('input', updateC2Configuration);
+        });
+    });
     </script>
 
 <?php endif; ?>

@@ -14,7 +14,23 @@ session_start();
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Store preview data in session
     $_SESSION['preview_data'] = $_POST;
-    $_SESSION['preview_type'] = 'aframe'; // Hardcoded for now, can be made dynamic
+
+    // Detect art type from configuration structure
+    $artType = 'aframe'; // default
+    if (isset($_POST['configuration_json'])) {
+        $config = json_decode($_POST['configuration_json'], true);
+        if (isset($config['canvas']) && isset($config['pattern'])) {
+            $artType = 'c2';
+        } elseif (isset($config['canvas']) && isset($config['drawing'])) {
+            $artType = 'p5';
+        } elseif (isset($config['geometries']) && isset($config['sceneSettings'])) {
+            $artType = 'threejs';
+        } elseif (isset($config['shapes'])) {
+            $artType = 'aframe';
+        }
+    }
+
+    $_SESSION['preview_type'] = $artType;
 
     // Set timestamp for cache busting
     $_SESSION['preview_timestamp'] = time();
@@ -73,12 +89,10 @@ switch ($artType) {
         renderAFramePreview($piece, $shapes);
         break;
     case 'c2':
-        // TODO: Implement C2 preview
-        echo "<h1>C2.js Preview</h1><p>Coming soon...</p>";
+        renderC2Preview($piece);
         break;
     case 'p5':
-        // TODO: Implement P5 preview
-        echo "<h1>P5.js Preview</h1><p>Coming soon...</p>";
+        renderP5Preview($piece);
         break;
     case 'threejs':
         // TODO: Implement Three.js preview
@@ -368,6 +382,621 @@ function renderAFramePreview($piece, $shapes) {
                       "
         ></a-sky>
     </a-scene>
+</body>
+</html>
+    <?php
+}
+
+/**
+ * Render C2.js preview
+ */
+function renderC2Preview($piece) {
+    $config = $piece['configuration'] ?? [];
+    $canvasConfig = $config['canvas'] ?? [];
+    $patternConfig = $config['pattern'] ?? [];
+    $colors = $config['colors'] ?? ['#FF6B6B'];
+    $parameters = $config['parameters'] ?? [];
+    $animation = $config['animation'] ?? [];
+    $interaction = $config['interaction'] ?? [];
+    $advanced = $config['advanced'] ?? [];
+    ?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Preview: <?php echo htmlspecialchars($piece['title'] ?? 'Untitled'); ?></title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: #f5f5f5;
+        }
+        .preview-badge {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(237, 34, 93, 0.95);
+            color: #fff;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            font-weight: bold;
+            z-index: 9999;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+        #c2-canvas {
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="preview-badge">⚠️ PREVIEW MODE - Changes not saved</div>
+
+    <canvas id="c2-canvas"
+            width="<?php echo $canvasConfig['width'] ?? 800; ?>"
+            height="<?php echo $canvasConfig['height'] ?? 600; ?>">
+    </canvas>
+
+    <script>
+// C2.js Pattern Configuration
+const config = <?php echo json_encode($config); ?>;
+
+// Initialize canvas
+const canvas = document.getElementById('c2-canvas');
+const ctx = canvas.getContext('2d');
+const width = canvas.width;
+const height = canvas.height;
+
+// Apply background
+ctx.fillStyle = config.canvas?.background || '#FFFFFF';
+ctx.fillRect(0, 0, width, height);
+
+// Set blend mode
+if (config.advanced && config.advanced.blendMode) {
+    ctx.globalCompositeOperation = config.advanced.blendMode;
+}
+
+// Random seed for reproducible patterns
+let seed = config.advanced?.randomSeed || 12345;
+function random() {
+    const x = Math.sin(seed++) * 10000;
+    return x - Math.floor(x);
+}
+
+// Draw pattern based on configuration
+function drawPattern() {
+    const pattern = config.pattern?.type || 'scatter';
+    const elementCount = config.pattern?.elementCount || 100;
+    const elementSize = config.parameters?.elementSize || 5;
+    const sizeVariation = (config.parameters?.sizeVariation || 20) / 100;
+    const spacing = config.parameters?.spacing || 20;
+    const opacity = (config.parameters?.opacity || 80) / 100;
+    const colors = config.colors || ['#ED225D'];
+
+    ctx.globalAlpha = opacity;
+
+    switch (pattern) {
+        case 'grid':
+            drawGridPattern(elementCount, elementSize, spacing, colors, sizeVariation);
+            break;
+        case 'spiral':
+            drawSpiralPattern(elementCount, elementSize, colors, sizeVariation);
+            break;
+        case 'scatter':
+            drawScatterPattern(elementCount, elementSize, colors, sizeVariation);
+            break;
+        case 'wave':
+            drawWavePattern(elementCount, elementSize, spacing, colors, sizeVariation);
+            break;
+        case 'concentric':
+            drawConcentricPattern(elementCount, elementSize, colors, sizeVariation);
+            break;
+        case 'fractal':
+            drawFractalPattern(elementCount, elementSize, colors, sizeVariation);
+            break;
+        case 'particle':
+            drawParticlePattern(elementCount, elementSize, colors, sizeVariation);
+            break;
+        case 'flow':
+            drawFlowPattern(elementCount, elementSize, colors, sizeVariation);
+            break;
+        default:
+            drawScatterPattern(elementCount, elementSize, colors, sizeVariation);
+    }
+}
+
+function drawGridPattern(count, size, spacing, colors, variation) {
+    const cols = Math.ceil(width / spacing);
+    const rows = Math.ceil(height / spacing);
+
+    for (let i = 0; i < rows; i++) {
+        for (let j = 0; j < cols; j++) {
+            const x = j * spacing + spacing / 2;
+            const y = i * spacing + spacing / 2;
+            const s = size * (1 + (random() - 0.5) * variation);
+            ctx.fillStyle = colors[Math.floor(random() * colors.length)];
+            ctx.beginPath();
+            ctx.arc(x, y, s, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+}
+
+function drawSpiralPattern(count, size, colors, variation) {
+    const centerX = width / 2;
+    const centerY = height / 2;
+    const maxRadius = Math.min(width, height) / 2;
+
+    for (let i = 0; i < count; i++) {
+        const t = i / count;
+        const angle = t * Math.PI * 8;
+        const radius = t * maxRadius;
+        const x = centerX + Math.cos(angle) * radius;
+        const y = centerY + Math.sin(angle) * radius;
+        const s = size * (1 + (random() - 0.5) * variation);
+
+        ctx.fillStyle = colors[Math.floor(random() * colors.length)];
+        ctx.beginPath();
+        ctx.arc(x, y, s, 0, Math.PI * 2);
+        ctx.fill();
+    }
+}
+
+function drawScatterPattern(count, size, colors, variation) {
+    for (let i = 0; i < count; i++) {
+        const x = random() * width;
+        const y = random() * height;
+        const s = size * (1 + (random() - 0.5) * variation);
+
+        ctx.fillStyle = colors[Math.floor(random() * colors.length)];
+        ctx.beginPath();
+        ctx.arc(x, y, s, 0, Math.PI * 2);
+        ctx.fill();
+    }
+}
+
+function drawWavePattern(count, size, spacing, colors, variation) {
+    const rows = Math.ceil(height / spacing);
+    const amplitude = 50;
+
+    for (let i = 0; i < rows; i++) {
+        for (let j = 0; j < count; j++) {
+            const t = j / count;
+            const x = t * width + Math.sin(i * 0.5) * amplitude;
+            const y = i * spacing;
+            const s = size * (1 + (random() - 0.5) * variation);
+
+            ctx.fillStyle = colors[Math.floor(random() * colors.length)];
+            ctx.beginPath();
+            ctx.arc(x, y, s, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+}
+
+function drawConcentricPattern(count, size, colors, variation) {
+    const centerX = width / 2;
+    const centerY = height / 2;
+    const maxRadius = Math.min(width, height) / 2;
+
+    for (let i = 0; i < count; i++) {
+        const radius = (i / count) * maxRadius;
+        const points = Math.floor(radius * 2);
+
+        for (let j = 0; j < points; j++) {
+            const angle = (j / points) * Math.PI * 2;
+            const x = centerX + Math.cos(angle) * radius;
+            const y = centerY + Math.sin(angle) * radius;
+            const s = size * (1 + (random() - 0.5) * variation);
+
+            ctx.fillStyle = colors[Math.floor(random() * colors.length)];
+            ctx.beginPath();
+            ctx.arc(x, y, s, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+}
+
+function drawFractalPattern(count, size, colors, variation) {
+    function branch(x, y, angle, length, depth) {
+        if (depth === 0) {
+            ctx.fillStyle = colors[Math.floor(random() * colors.length)];
+            ctx.beginPath();
+            ctx.arc(x, y, size * (1 + (random() - 0.5) * variation), 0, Math.PI * 2);
+            ctx.fill();
+            return;
+        }
+
+        const newX = x + Math.cos(angle) * length;
+        const newY = y + Math.sin(angle) * length;
+
+        branch(newX, newY, angle - 0.3, length * 0.7, depth - 1);
+        branch(newX, newY, angle + 0.3, length * 0.7, depth - 1);
+    }
+
+    branch(width / 2, height, -Math.PI / 2, 100, 5);
+}
+
+function drawParticlePattern(count, size, colors, variation) {
+    drawScatterPattern(count, size, colors, variation);
+}
+
+function drawFlowPattern(count, size, colors, variation) {
+    for (let i = 0; i < count; i++) {
+        const x = random() * width;
+        const y = random() * height;
+        const angle = random() * Math.PI * 2;
+        const length = random() * 50;
+
+        ctx.strokeStyle = colors[Math.floor(random() * colors.length)];
+        ctx.lineWidth = size * (1 + (random() - 0.5) * variation);
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + Math.cos(angle) * length, y + Math.sin(angle) * length);
+        ctx.stroke();
+    }
+}
+
+// Draw initial pattern
+drawPattern();
+
+// Animation support
+if (config.animation && config.animation.animated && config.animation.loop) {
+    let animationFrame = 0;
+
+    function animate() {
+        animationFrame++;
+
+        // Clear canvas based on settings
+        if (!config.advanced?.enableTrails) {
+            ctx.fillStyle = config.canvas?.background || '#FFFFFF';
+            ctx.fillRect(0, 0, width, height);
+        }
+
+        // Modify seed for animation
+        seed = config.advanced?.randomSeed + animationFrame * (config.animation.speed || 1);
+
+        // Redraw pattern
+        drawPattern();
+
+        requestAnimationFrame(animate);
+    }
+
+    animate();
+}
+    </script>
+</body>
+</html>
+    <?php
+}
+
+/**
+ * Render P5.js sketch preview
+ *
+ * @param array $piece The piece data with configuration
+ */
+function renderP5Preview($piece) {
+    $config = is_array($piece['configuration']) ? $piece['configuration'] : [];
+
+    // Extract configuration sections
+    $canvasConfig = $config['canvas'] ?? [];
+    $drawingConfig = $config['drawing'] ?? [];
+    $colorsConfig = $config['colors'] ?? [];
+    $animationConfig = $config['animation'] ?? [];
+    $advancedConfig = $config['advanced'] ?? [];
+
+    // Canvas settings
+    $canvasWidth = $canvasConfig['width'] ?? 800;
+    $canvasHeight = $canvasConfig['height'] ?? 600;
+    $renderer = $canvasConfig['renderer'] ?? 'P2D';
+    $background = $canvasConfig['background'] ?? '#FFFFFF';
+
+    // Drawing settings
+    $drawingMode = $drawingConfig['mode'] ?? 'ellipse';
+    $fillColor = $drawingConfig['fillColor'] ?? '#ED225D';
+    $fillOpacity = isset($drawingConfig['fillOpacity']) ? (int)$drawingConfig['fillOpacity'] : 255;
+    $strokeColor = $drawingConfig['strokeColor'] ?? '#000000';
+    $strokeWeight = isset($drawingConfig['strokeWeight']) ? (int)$drawingConfig['strokeWeight'] : 1;
+    $noStroke = !empty($drawingConfig['noStroke']);
+    $noFill = !empty($drawingConfig['noFill']);
+
+    // Animation settings
+    $animated = !empty($animationConfig['animated']);
+    $loop = !empty($animationConfig['loop']);
+    $speed = $animationConfig['speed'] ?? 1;
+
+    // Advanced settings
+    $mouseInteraction = !empty($advancedConfig['mouseInteraction']);
+    $keyboardInteraction = !empty($advancedConfig['keyboardInteraction']);
+    $clearBackground = isset($advancedConfig['clearBackground']) ? (bool)$advancedConfig['clearBackground'] : true;
+    $randomSeed = isset($advancedConfig['randomSeed']) ? (int)$advancedConfig['randomSeed'] : null;
+
+    // Color palette
+    $usePalette = !empty($colorsConfig['usePalette']);
+    $palette = $colorsConfig['palette'] ?? [];
+
+    ?>
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Preview: <?php echo htmlspecialchars($piece['title'] ?? 'Untitled'); ?></title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: #f0f0f0;
+        }
+        .preview-badge {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: #ED225D;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            font-weight: bold;
+            z-index: 1000;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        main {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="preview-badge">⚠️ PREVIEW MODE - Changes not saved</div>
+    <main></main>
+
+    <script>
+// P5.js Configuration
+const config = <?php echo json_encode($config); ?>;
+
+// Canvas settings
+const canvasWidth = <?php echo $canvasWidth; ?>;
+const canvasHeight = <?php echo $canvasHeight; ?>;
+const renderer = '<?php echo $renderer; ?>';
+const bgColor = '<?php echo $background; ?>';
+
+// Drawing settings
+const drawingMode = '<?php echo $drawingMode; ?>';
+const fillColor = '<?php echo $fillColor; ?>';
+const fillOpacity = <?php echo $fillOpacity; ?>;
+const strokeColor = '<?php echo $strokeColor; ?>';
+const strokeWeight = <?php echo $strokeWeight; ?>;
+const noStrokeEnabled = <?php echo $noStroke ? 'true' : 'false'; ?>;
+const noFillEnabled = <?php echo $noFill ? 'true' : 'false'; ?>;
+
+// Animation settings
+const animated = <?php echo $animated ? 'true' : 'false'; ?>;
+const loopEnabled = <?php echo $loop ? 'true' : 'false'; ?>;
+const animSpeed = <?php echo $speed; ?>;
+
+// Advanced settings
+const mouseEnabled = <?php echo $mouseInteraction ? 'true' : 'false'; ?>;
+const keyboardEnabled = <?php echo $keyboardInteraction ? 'true' : 'false'; ?>;
+const clearBg = <?php echo $clearBackground ? 'true' : 'false'; ?>;
+<?php if ($randomSeed !== null): ?>
+const randomSeedValue = <?php echo $randomSeed; ?>;
+<?php endif; ?>
+
+// Color palette
+const usePalette = <?php echo $usePalette ? 'true' : 'false'; ?>;
+const palette = <?php echo json_encode($palette); ?>;
+
+// Animation variables
+let animationFrame = 0;
+let offset = 0;
+
+function setup() {
+    // Create canvas
+    if (renderer === 'WEBGL') {
+        createCanvas(canvasWidth, canvasHeight, WEBGL);
+    } else {
+        createCanvas(canvasWidth, canvasHeight);
+    }
+
+    // Set background
+    background(bgColor);
+
+    // Set random seed if specified
+    <?php if ($randomSeed !== null): ?>
+    randomSeed(randomSeedValue);
+    <?php endif; ?>
+
+    // Set loop behavior
+    if (!loopEnabled && !animated) {
+        noLoop();
+    }
+}
+
+function draw() {
+    // Clear background if enabled
+    if (clearBg || animated) {
+        background(bgColor);
+    }
+
+    // Set stroke and fill
+    if (noStrokeEnabled) {
+        noStroke();
+    } else {
+        stroke(strokeColor);
+        strokeWeight(strokeWeight);
+    }
+
+    if (noFillEnabled) {
+        noFill();
+    } else {
+        // Use palette or single color
+        if (usePalette && palette.length > 0) {
+            const colorIndex = floor(animationFrame / 10) % palette.length;
+            const c = color(palette[colorIndex]);
+            c.setAlpha(fillOpacity);
+            fill(c);
+        } else {
+            const c = color(fillColor);
+            c.setAlpha(fillOpacity);
+            fill(c);
+        }
+    }
+
+    // Drawing mode
+    switch (drawingMode) {
+        case 'ellipse':
+            drawEllipses();
+            break;
+        case 'rect':
+            drawRectangles();
+            break;
+        case 'triangle':
+            drawTriangles();
+            break;
+        case 'line':
+            drawLines();
+            break;
+        case 'points':
+            drawPoints();
+            break;
+        case 'spiral':
+            drawSpiral();
+            break;
+        case 'grid':
+            drawGrid();
+            break;
+        default:
+            drawEllipses();
+    }
+
+    // Update animation
+    if (animated) {
+        animationFrame++;
+        offset += animSpeed;
+    }
+}
+
+function drawEllipses() {
+    const size = animated ? 50 + sin(offset * 0.05) * 30 : 50;
+    for (let i = 0; i < 5; i++) {
+        const x = (i + 1) * (width / 6);
+        const y = height / 2 + (animated ? sin(offset * 0.1 + i) * 50 : 0);
+        ellipse(x, y, size, size);
+    }
+}
+
+function drawRectangles() {
+    const size = animated ? 50 + sin(offset * 0.05) * 30 : 50;
+    for (let i = 0; i < 5; i++) {
+        const x = (i + 1) * (width / 6) - size / 2;
+        const y = height / 2 - size / 2 + (animated ? sin(offset * 0.1 + i) * 50 : 0);
+        rect(x, y, size, size);
+    }
+}
+
+function drawTriangles() {
+    const size = animated ? 50 + sin(offset * 0.05) * 30 : 50;
+    for (let i = 0; i < 5; i++) {
+        const x = (i + 1) * (width / 6);
+        const y = height / 2 + (animated ? sin(offset * 0.1 + i) * 50 : 0);
+        triangle(x, y - size / 2, x - size / 2, y + size / 2, x + size / 2, y + size / 2);
+    }
+}
+
+function drawLines() {
+    for (let i = 0; i < 10; i++) {
+        const x1 = i * (width / 10);
+        const y1 = animated ? height / 2 + sin(offset * 0.1 + i * 0.5) * height / 4 : height / 4;
+        const x2 = x1;
+        const y2 = animated ? height / 2 + sin(offset * 0.1 + i * 0.5 + PI) * height / 4 : height * 3 / 4;
+        line(x1, y1, x2, y2);
+    }
+}
+
+function drawPoints() {
+    strokeWeight(8);
+    for (let i = 0; i < width; i += 20) {
+        for (let j = 0; j < height; j += 20) {
+            const x = i + (animated ? sin(offset * 0.05 + i * 0.1) * 10 : 0);
+            const y = j + (animated ? cos(offset * 0.05 + j * 0.1) * 10 : 0);
+            point(x, y);
+        }
+    }
+}
+
+function drawSpiral() {
+    const centerX = width / 2;
+    const centerY = height / 2;
+    const maxRadius = min(width, height) / 2 - 20;
+    const turns = 5;
+    const segments = 200;
+
+    beginShape();
+    for (let i = 0; i <= segments; i++) {
+        const angle = (i / segments) * turns * TWO_PI + (animated ? offset * 0.02 : 0);
+        const radius = (i / segments) * maxRadius;
+        const x = centerX + cos(angle) * radius;
+        const y = centerY + sin(angle) * radius;
+        vertex(x, y);
+    }
+    endShape();
+}
+
+function drawGrid() {
+    const cols = 8;
+    const rows = 6;
+    const cellWidth = width / cols;
+    const cellHeight = height / rows;
+    const size = min(cellWidth, cellHeight) * 0.6;
+
+    for (let i = 0; i < cols; i++) {
+        for (let j = 0; j < rows; j++) {
+            const x = i * cellWidth + cellWidth / 2;
+            const y = j * cellHeight + cellHeight / 2;
+            const s = size + (animated ? sin(offset * 0.1 + i + j) * size * 0.3 : 0);
+            ellipse(x, y, s, s);
+        }
+    }
+}
+
+// Mouse interaction
+if (mouseEnabled) {
+    function mouseMoved() {
+        redraw();
+    }
+
+    function mousePressed() {
+        redraw();
+    }
+}
+
+// Keyboard interaction
+if (keyboardEnabled) {
+    function keyPressed() {
+        if (key === ' ') {
+            if (loopEnabled) {
+                noLoop();
+            } else {
+                loop();
+            }
+        }
+        redraw();
+    }
+}
+    </script>
 </body>
 </html>
     <?php
