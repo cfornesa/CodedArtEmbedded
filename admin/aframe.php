@@ -514,8 +514,31 @@ require_once(__DIR__ . '/includes/header.php');
                 <a href="<?php echo url('admin/aframe.php'); ?>" class="btn btn-secondary btn-lg">
                     Cancel
                 </a>
+                <button type="button" id="preview-btn" class="btn btn-info btn-lg" style="margin-left: 10px;" onclick="showPreview()">
+                    🔍 Show Preview
+                </button>
             </div>
         </form>
+
+        <!-- Preview Section -->
+        <div id="preview-section" style="display: none; margin-top: 30px; border: 3px solid #17a2b8; border-radius: 8px; padding: 20px; background: #f8f9fa;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 style="margin: 0; color: #17a2b8;">
+                    🔍 Live Preview
+                    <small style="font-size: 14px; color: #6c757d; font-weight: normal; margin-left: 10px;">
+                        (Changes not saved until you click "Update Piece")
+                    </small>
+                </h3>
+                <button type="button" class="btn btn-sm btn-secondary" onclick="hidePreview()">Close Preview</button>
+            </div>
+            <div style="background: #fff; border: 2px solid #dee2e6; border-radius: 4px; overflow: hidden; position: relative;">
+                <iframe id="preview-iframe" src="" style="width: 100%; height: 600px; border: none;"></iframe>
+                <div id="preview-loading" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; text-align: center; background: rgba(255,255,255,0.95); padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                    <div style="font-size: 24px; margin-bottom: 10px;">⏳</div>
+                    <div style="font-weight: 600; color: #495057;">Loading preview...</div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <style>
@@ -1229,6 +1252,62 @@ require_once(__DIR__ . '/includes/header.php');
         });
     }
 
+    // Convert old animation format to new Phase 2 format
+    function migrateAnimationFormat(shapeData) {
+        // Check if this shape has the old animation format
+        if (shapeData.animation && typeof shapeData.animation.enabled !== 'undefined' &&
+            !shapeData.animation.rotation && !shapeData.animation.position && !shapeData.animation.scale) {
+
+            // Old format detected - convert to new format
+            const oldAnim = shapeData.animation;
+            const property = oldAnim.property || 'rotation';
+            const duration = oldAnim.dur || 10000;
+
+            shapeData.animation = {
+                rotation: {
+                    enabled: oldAnim.enabled && property === 'rotation',
+                    degrees: 360,
+                    duration: duration
+                },
+                position: {
+                    enabled: oldAnim.enabled && property === 'position',
+                    axis: 'y',
+                    distance: 2,
+                    duration: duration
+                },
+                scale: {
+                    enabled: oldAnim.enabled && property === 'scale',
+                    min: 0.5,
+                    max: 2.0,
+                    duration: duration
+                }
+            };
+
+            console.log('Migrated old animation format for shape', shapeData.id);
+        }
+
+        // Ensure opacity field exists (default to 1.0)
+        if (typeof shapeData.opacity === 'undefined') {
+            shapeData.opacity = 1.0;
+        }
+
+        // Ensure all animation sub-structures exist
+        if (!shapeData.animation) {
+            shapeData.animation = {};
+        }
+        if (!shapeData.animation.rotation) {
+            shapeData.animation.rotation = { enabled: false, degrees: 360, duration: 10000 };
+        }
+        if (!shapeData.animation.position) {
+            shapeData.animation.position = { enabled: false, axis: 'y', distance: 0, duration: 10000 };
+        }
+        if (!shapeData.animation.scale) {
+            shapeData.animation.scale = { enabled: false, min: 1.0, max: 1.0, duration: 10000 };
+        }
+
+        return shapeData;
+    }
+
     // Load existing configuration when editing
     <?php if ($editPiece && !empty($editPiece['configuration'])): ?>
     document.addEventListener('DOMContentLoaded', function() {
@@ -1236,18 +1315,97 @@ require_once(__DIR__ . '/includes/header.php');
             const config = <?php echo $editPiece['configuration']; ?>;
             if (config && config.shapes) {
                 config.shapes.forEach(shapeData => {
-                    shapes.push(shapeData);
+                    // Migrate old animation format to new Phase 2 format
+                    const migratedShape = migrateAnimationFormat(shapeData);
+
+                    shapes.push(migratedShape);
                     shapeCount++;
-                    renderShape(shapeData);
+                    renderShape(migratedShape);
                 });
                 updateAddButtonState();
                 updateConfiguration();
             }
         } catch (e) {
             console.error('Error loading shape configuration:', e);
+            console.error('Stack trace:', e.stack);
         }
     });
     <?php endif; ?>
+
+    // ============================================
+    // PREVIEW FUNCTIONS
+    // ============================================
+
+    function showPreview() {
+        const previewSection = document.getElementById('preview-section');
+        const previewIframe = document.getElementById('preview-iframe');
+        const previewLoading = document.getElementById('preview-loading');
+
+        // Ensure configuration is up to date
+        updateConfiguration();
+
+        // Get current form data
+        const formData = new FormData(document.getElementById('art-form'));
+
+        // Show preview section and loading indicator
+        previewSection.style.display = 'block';
+        previewLoading.style.display = 'block';
+
+        // Scroll to preview
+        previewSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+        // Send data to preview endpoint via POST
+        fetch('<?php echo url('admin/includes/preview.php'); ?>', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams(formData)
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Preview failed: ' + response.statusText);
+            }
+            return response.text();
+        })
+        .then(html => {
+            // Create a blob URL for the preview content
+            const blob = new Blob([html], { type: 'text/html' });
+            const blobUrl = URL.createObjectURL(blob);
+
+            // Load preview in iframe
+            previewIframe.src = blobUrl;
+
+            // Hide loading indicator after iframe loads
+            previewIframe.onload = function() {
+                previewLoading.style.display = 'none';
+            };
+        })
+        .catch(error => {
+            console.error('Preview error:', error);
+            previewLoading.innerHTML = `
+                <div style="color: #dc3545; font-weight: 600;">
+                    ❌ Preview failed
+                </div>
+                <div style="font-size: 14px; color: #6c757d; margin-top: 10px;">
+                    ${error.message}
+                </div>
+            `;
+
+            setTimeout(() => {
+                previewLoading.style.display = 'none';
+            }, 3000);
+        });
+    }
+
+    function hidePreview() {
+        const previewSection = document.getElementById('preview-section');
+        const previewIframe = document.getElementById('preview-iframe');
+
+        previewSection.style.display = 'none';
+        previewIframe.src = '';  // Clear iframe to stop any running animations
+    }
+
     </script>
 
 <?php endif; ?>

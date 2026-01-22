@@ -2,7 +2,7 @@
 
 ## Project Status: ✅ PRODUCTION READY
 
-**Last Updated:** 2026-01-21 (v1.0.8)
+**Last Updated:** 2026-01-21 (v1.0.9)
 **Agent:** Claude (Sonnet 4.5)
 **Environment:** Replit Development / Hostinger Production
 
@@ -1297,6 +1297,54 @@ mysqldump -u username -p codedart_db > backup_$(date +%Y%m%d).sql
 ---
 
 ## Version History
+
+**v1.0.9** - 2026-01-21 (Critical Bug Fixes + Live Preview Feature)
+- 🐛 **CRITICAL FIX:** Resolved shapes not loading in edit mode
+  - Root cause: Configuration field was NULL in database
+  - Added automatic migration from old animation format to Phase 2 format
+  - Created `migrateAnimationFormat()` JavaScript function for backward compatibility
+  - Ensures opacity and animation structures always have proper defaults
+- ✨ **NEW FEATURE:** Live Preview System
+  - Session-based preview (secure, no database modifications)
+  - Iframe embedded in admin edit page shows current unsaved changes
+  - "Show Preview" button with smooth scroll to preview section
+  - 600px iframe with "PREVIEW MODE" warning badge
+  - Close button to hide preview and stop animations
+  - Reuses existing A-Frame view rendering logic (systems thinking)
+- 🔧 **Backward Compatibility:**
+  - Automatic conversion from old animation format (enabled, property, dur)
+  - New animation format (rotation, position, scale sub-structures)
+  - Preserves user data while upgrading structure
+  - Works with pieces created before Phase 2
+- 📊 **Diagnostic Tools:**
+  - `config/debug_piece1_shapes.php` - Database state checker
+  - `config/test_shape_save.php` - Save logic validator
+  - `config/IMPLEMENTATION_NOTES_v1.0.9.md` - Detailed implementation documentation
+- 🎯 **Systems Thinking:**
+  - Code reuse: Preview uses existing view.php rendering logic
+  - Shared CORS proxy functionality
+  - Same material/animation rendering code
+  - Extensible to C2, P5, Three.js (future)
+- 👤 **User Experience:**
+  - Never lose work: Form preservation maintained
+  - Clear feedback: Loading indicators and status messages
+  - Opt-in preview: Non-intrusive, collapsible interface
+  - Progressive enhancement: Advanced features hidden by default
+- 🔒 **Security:**
+  - Preview data stored in PHP session (server-side only)
+  - No database writes from preview endpoint
+  - Blob URL sandboxing for iframe content
+  - CSRF protection via existing session mechanisms
+- 📚 **Files Modified:**
+  - `admin/aframe.php` - Migration function, preview UI, preview JavaScript
+  - `admin/includes/preview.php` - NEW: Preview handler and renderer
+  - `CLAUDE.md` - Version update and documentation
+- 📖 **Lessons Learned:**
+  - Always implement migration layers for data structure changes
+  - Session-based patterns for preview features
+  - Diagnostic-first debugging approach
+  - Progressive enhancement for complex UI
+  - Code reuse across preview and live rendering
 
 **v1.0.8** - 2026-01-21 (Phase 2 COMPLETE: Per-Shape Opacity & Granular Animation System)
 - ✅ **Phase 2 COMPLETE:** Full implementation of per-shape opacity and granular animation controls
