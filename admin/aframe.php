@@ -237,7 +237,30 @@ require_once(__DIR__ . '/includes/header.php');
             <h2><?php echo $action === 'create' ? 'Add New' : 'Edit'; ?> A-Frame Piece</h2>
         </div>
 
-        <form method="POST" action="" data-validate>
+        <!-- LIVE PREVIEW SECTION (at top, shown by default) -->
+        <div id="live-preview-section" style="margin: 20px; padding: 20px; background: #f0f8ff; border: 3px solid #17a2b8; border-radius: 8px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 style="margin: 0; color: #17a2b8; font-size: 18px;">
+                    🎬 LIVE PREVIEW
+                    <small style="font-size: 13px; color: #6c757d; font-weight: normal; margin-left: 10px;">
+                        (Updates automatically as you make changes below)
+                    </small>
+                </h3>
+                <button type="button" class="btn btn-sm btn-secondary" onclick="toggleLivePreview()" id="toggle-preview-btn">
+                    Hide Preview
+                </button>
+            </div>
+            <div id="live-preview-container" style="background: #fff; border: 2px solid #dee2e6; border-radius: 4px; overflow: hidden; position: relative;">
+                <iframe id="live-preview-iframe" src="" style="width: 100%; height: 600px; border: none;"></iframe>
+                <div id="live-preview-loading" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; background: rgba(255,255,255,0.95); padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                    <div style="font-size: 24px; margin-bottom: 10px;">⏳</div>
+                    <div style="font-weight: 600; color: #495057;">Loading preview...</div>
+                    <div style="font-size: 12px; color: #6c757d; margin-top: 5px;">Initializing A-Frame scene...</div>
+                </div>
+            </div>
+        </div>
+
+        <form method="POST" action="" data-validate id="art-form">
             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
 
             <div class="form-group">
@@ -520,31 +543,11 @@ require_once(__DIR__ . '/includes/header.php');
                 <a href="<?php echo url('admin/aframe.php'); ?>" class="btn btn-secondary btn-lg">
                     Cancel
                 </a>
-                <button type="button" id="preview-btn" class="btn btn-info btn-lg" style="margin-left: 10px;" onclick="showPreview()">
-                    🔍 Show Preview
+                <button type="button" id="preview-btn" class="btn btn-info btn-lg" style="margin-left: 10px;" onclick="scrollToLivePreview()">
+                    ⬆️ Scroll to Preview
                 </button>
             </div>
         </form>
-
-        <!-- Preview Section -->
-        <div id="preview-section" style="display: none; margin-top: 30px; border: 3px solid #17a2b8; border-radius: 8px; padding: 20px; background: #f8f9fa;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <h3 style="margin: 0; color: #17a2b8;">
-                    🔍 Live Preview
-                    <small style="font-size: 14px; color: #6c757d; font-weight: normal; margin-left: 10px;">
-                        (Changes not saved until you click "Update Piece")
-                    </small>
-                </h3>
-                <button type="button" class="btn btn-sm btn-secondary" onclick="hidePreview()">Close Preview</button>
-            </div>
-            <div style="background: #fff; border: 2px solid #dee2e6; border-radius: 4px; overflow: hidden; position: relative;">
-                <iframe id="preview-iframe" src="" style="width: 100%; height: 600px; border: none;"></iframe>
-                <div id="preview-loading" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; text-align: center; background: rgba(255,255,255,0.95); padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-                    <div style="font-size: 24px; margin-bottom: 10px;">⏳</div>
-                    <div style="font-weight: 600; color: #495057;">Loading preview...</div>
-                </div>
-            </div>
-        </div>
     </div>
 
     <style>
@@ -646,6 +649,66 @@ require_once(__DIR__ . '/includes/header.php');
         border: 2px dashed #dee2e6;
         border-radius: 8px;
         margin-bottom: 15px;
+    }
+
+    /* Dual-thumb range slider styling */
+    input[type="range"][id^="scale-min-"],
+    input[type="range"][id^="scale-max-"] {
+        -webkit-appearance: none;
+        appearance: none;
+        background: transparent;
+        cursor: pointer;
+    }
+
+    /* Webkit browsers (Chrome, Safari, Edge) */
+    input[type="range"][id^="scale-min-"]::-webkit-slider-track,
+    input[type="range"][id^="scale-max-"]::-webkit-slider-track {
+        background: transparent;
+        height: 6px;
+    }
+
+    input[type="range"][id^="scale-min-"]::-webkit-slider-thumb,
+    input[type="range"][id^="scale-max-"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: #667eea;
+        border: 2px solid white;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        cursor: grab;
+        margin-top: -6px;
+    }
+
+    input[type="range"][id^="scale-min-"]::-webkit-slider-thumb:active,
+    input[type="range"][id^="scale-max-"]::-webkit-slider-thumb:active {
+        cursor: grabbing;
+        background: #4a5dc6;
+    }
+
+    /* Firefox */
+    input[type="range"][id^="scale-min-"]::-moz-range-track,
+    input[type="range"][id^="scale-max-"]::-moz-range-track {
+        background: transparent;
+        height: 6px;
+    }
+
+    input[type="range"][id^="scale-min-"]::-moz-range-thumb,
+    input[type="range"][id^="scale-max-"]::-moz-range-thumb {
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: #667eea;
+        border: 2px solid white;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        cursor: grab;
+    }
+
+    input[type="range"][id^="scale-min-"]::-moz-range-thumb:active,
+    input[type="range"][id^="scale-max-"]::-moz-range-thumb:active {
+        cursor: grabbing;
+        background: #4a5dc6;
     }
     </style>
 
@@ -797,18 +860,29 @@ require_once(__DIR__ . '/includes/header.php');
             depth: 1,
             radius: 1,
             animation: {
-                rotation: {  // CHANGED: Granular animation control
+                rotation: {  // Granular animation control
                     enabled: false,
                     counterclockwise: false,  // false = clockwise (default), true = counterclockwise
                     duration: 10000
                 },
-                position: {  // NEW: Position animation
-                    enabled: false,
-                    axis: 'y',
-                    distance: 0,
-                    duration: 10000
+                position: {  // Position animation - independent X/Y/Z controls
+                    x: {
+                        enabled: false,
+                        range: 0,  // Movement range ±X from current position
+                        duration: 10000
+                    },
+                    y: {
+                        enabled: false,
+                        range: 0,  // Movement range ±Y from current position
+                        duration: 10000
+                    },
+                    z: {
+                        enabled: false,
+                        range: 0,  // Movement range ±Z from current position
+                        duration: 10000
+                    }
                 },
-                scale: {  // NEW: Scale animation
+                scale: {  // Scale animation
                     enabled: false,
                     min: 1.0,
                     max: 1.0,
@@ -1000,41 +1074,105 @@ require_once(__DIR__ . '/includes/header.php');
                         📍 Position Animation
                     </summary>
                     <div style="padding: 15px; background: white;">
-                        <div class="shape-field-group" style="margin-bottom: 15px;">
-                            <label class="shape-field-label">
-                                <input type="checkbox" ${shapeData.animation.position.enabled ? 'checked' : ''}
-                                       onchange="updatePositionAnimation(${shapeData.id}, 'enabled', this.checked)">
-                                Enable Position
-                            </label>
-                        </div>
-                        <div class="shape-field-group" style="margin-bottom: 15px;">
-                            <label class="shape-field-label">Axis</label>
-                            <select class="shape-field-input" onchange="updatePositionAnimation(${shapeData.id}, 'axis', this.value)">
-                                <option value="x" ${shapeData.animation.position.axis === 'x' ? 'selected' : ''}>X (Left/Right)</option>
-                                <option value="y" ${shapeData.animation.position.axis === 'y' ? 'selected' : ''}>Y (Up/Down)</option>
-                                <option value="z" ${shapeData.animation.position.axis === 'z' ? 'selected' : ''}>Z (Forward/Back)</option>
-                            </select>
-                        </div>
-                        <div class="shape-field-group" style="margin-bottom: 15px;">
-                            <label class="shape-field-label">Distance (±5 units)</label>
-                            <div style="display: flex; gap: 10px; align-items: center;">
-                                <input type="range" class="shape-field-input"
-                                       min="-5" max="5" step="0.1"
-                                       value="${shapeData.animation.position.distance}"
-                                       oninput="this.nextElementSibling.textContent = this.value; updatePositionAnimation(${shapeData.id}, 'distance', parseFloat(this.value))"
-                                       style="flex: 1;">
-                                <span style="min-width: 50px; font-weight: 600; color: #495057;">${shapeData.animation.position.distance}</span>
+                        <!-- X Axis Movement -->
+                        <div style="margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #e9ecef;">
+                            <div class="shape-field-group" style="margin-bottom: 10px;">
+                                <label class="shape-field-label">
+                                    <input type="checkbox" ${shapeData.animation.position.x.enabled ? 'checked' : ''}
+                                           onchange="updatePositionAnimation(${shapeData.id}, 'x', 'enabled', this.checked)">
+                                    Enable X (Left/Right) Movement
+                                </label>
+                            </div>
+                            <div class="shape-field-group" style="margin-bottom: 10px;">
+                                <label class="shape-field-label">Movement Range (0-10 units)</label>
+                                <div style="display: flex; gap: 10px; align-items: center;">
+                                    <input type="range" class="shape-field-input"
+                                           min="0" max="10" step="0.5"
+                                           value="${shapeData.animation.position.x.range}"
+                                           oninput="this.nextElementSibling.textContent = '±' + this.value; updatePositionAnimation(${shapeData.id}, 'x', 'range', parseFloat(this.value))"
+                                           style="flex: 1;">
+                                    <span style="min-width: 50px; font-weight: 600; color: #495057;">±${shapeData.animation.position.x.range}</span>
+                                </div>
+                                <small style="display: block; margin-top: 5px; color: #6c757d; font-size: 0.875em;">Animates from current X - range to current X + range</small>
+                            </div>
+                            <div class="shape-field-group">
+                                <label class="shape-field-label">Duration (100-10000ms)</label>
+                                <div style="display: flex; gap: 10px; align-items: center;">
+                                    <input type="range" class="shape-field-input"
+                                           min="100" max="10000" step="100"
+                                           value="${shapeData.animation.position.x.duration}"
+                                           oninput="this.nextElementSibling.textContent = this.value + 'ms'; updatePositionAnimation(${shapeData.id}, 'x', 'duration', parseInt(this.value))"
+                                           style="flex: 1;">
+                                    <span style="min-width: 65px; font-weight: 600; color: #495057;">${shapeData.animation.position.x.duration}ms</span>
+                                </div>
                             </div>
                         </div>
-                        <div class="shape-field-group">
-                            <label class="shape-field-label">Duration (100-10000ms)</label>
-                            <div style="display: flex; gap: 10px; align-items: center;">
-                                <input type="range" class="shape-field-input"
-                                       min="100" max="10000" step="100"
-                                       value="${shapeData.animation.position.duration}"
-                                       oninput="this.nextElementSibling.textContent = this.value + 'ms'; updatePositionAnimation(${shapeData.id}, 'duration', parseInt(this.value))"
-                                       style="flex: 1;">
-                                <span style="min-width: 65px; font-weight: 600; color: #495057;">${shapeData.animation.position.duration}ms</span>
+
+                        <!-- Y Axis Movement -->
+                        <div style="margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #e9ecef;">
+                            <div class="shape-field-group" style="margin-bottom: 10px;">
+                                <label class="shape-field-label">
+                                    <input type="checkbox" ${shapeData.animation.position.y.enabled ? 'checked' : ''}
+                                           onchange="updatePositionAnimation(${shapeData.id}, 'y', 'enabled', this.checked)">
+                                    Enable Y (Up/Down) Movement
+                                </label>
+                            </div>
+                            <div class="shape-field-group" style="margin-bottom: 10px;">
+                                <label class="shape-field-label">Movement Range (0-10 units)</label>
+                                <div style="display: flex; gap: 10px; align-items: center;">
+                                    <input type="range" class="shape-field-input"
+                                           min="0" max="10" step="0.5"
+                                           value="${shapeData.animation.position.y.range}"
+                                           oninput="this.nextElementSibling.textContent = '±' + this.value; updatePositionAnimation(${shapeData.id}, 'y', 'range', parseFloat(this.value))"
+                                           style="flex: 1;">
+                                    <span style="min-width: 50px; font-weight: 600; color: #495057;">±${shapeData.animation.position.y.range}</span>
+                                </div>
+                                <small style="display: block; margin-top: 5px; color: #6c757d; font-size: 0.875em;">Animates from current Y - range to current Y + range</small>
+                            </div>
+                            <div class="shape-field-group">
+                                <label class="shape-field-label">Duration (100-10000ms)</label>
+                                <div style="display: flex; gap: 10px; align-items: center;">
+                                    <input type="range" class="shape-field-input"
+                                           min="100" max="10000" step="100"
+                                           value="${shapeData.animation.position.y.duration}"
+                                           oninput="this.nextElementSibling.textContent = this.value + 'ms'; updatePositionAnimation(${shapeData.id}, 'y', 'duration', parseInt(this.value))"
+                                           style="flex: 1;">
+                                    <span style="min-width: 65px; font-weight: 600; color: #495057;">${shapeData.animation.position.y.duration}ms</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Z Axis Movement -->
+                        <div>
+                            <div class="shape-field-group" style="margin-bottom: 10px;">
+                                <label class="shape-field-label">
+                                    <input type="checkbox" ${shapeData.animation.position.z.enabled ? 'checked' : ''}
+                                           onchange="updatePositionAnimation(${shapeData.id}, 'z', 'enabled', this.checked)">
+                                    Enable Z (Forward/Back) Movement
+                                </label>
+                            </div>
+                            <div class="shape-field-group" style="margin-bottom: 10px;">
+                                <label class="shape-field-label">Movement Range (0-10 units)</label>
+                                <div style="display: flex; gap: 10px; align-items: center;">
+                                    <input type="range" class="shape-field-input"
+                                           min="0" max="10" step="0.5"
+                                           value="${shapeData.animation.position.z.range}"
+                                           oninput="this.nextElementSibling.textContent = '±' + this.value; updatePositionAnimation(${shapeData.id}, 'z', 'range', parseFloat(this.value))"
+                                           style="flex: 1;">
+                                    <span style="min-width: 50px; font-weight: 600; color: #495057;">±${shapeData.animation.position.z.range}</span>
+                                </div>
+                                <small style="display: block; margin-top: 5px; color: #6c757d; font-size: 0.875em;">Animates from current Z - range to current Z + range</small>
+                            </div>
+                            <div class="shape-field-group">
+                                <label class="shape-field-label">Duration (100-10000ms)</label>
+                                <div style="display: flex; gap: 10px; align-items: center;">
+                                    <input type="range" class="shape-field-input"
+                                           min="100" max="10000" step="100"
+                                           value="${shapeData.animation.position.z.duration}"
+                                           oninput="this.nextElementSibling.textContent = this.value + 'ms'; updatePositionAnimation(${shapeData.id}, 'z', 'duration', parseInt(this.value))"
+                                           style="flex: 1;">
+                                    <span style="min-width: 65px; font-weight: 600; color: #495057;">${shapeData.animation.position.z.duration}ms</span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1053,31 +1191,40 @@ require_once(__DIR__ . '/includes/header.php');
                                 Enable Scale
                             </label>
                         </div>
-                        <div class="shape-field-group" style="margin-bottom: 15px;">
-                            <label class="shape-field-label">Minimum Scale (0.1-10x)</label>
-                            <div style="display: flex; gap: 10px; align-items: center;">
-                                <input type="range" class="shape-field-input"
-                                       min="0.1" max="10" step="0.1"
-                                       value="${shapeData.animation.scale.min}"
-                                       oninput="this.nextElementSibling.textContent = this.value + 'x'; updateScaleAnimation(${shapeData.id}, 'min', parseFloat(this.value))"
-                                       style="flex: 1;">
-                                <span style="min-width: 50px; font-weight: 600; color: #495057;">${shapeData.animation.scale.min}x</span>
+                        <div class="shape-field-group" style="margin-bottom: 20px;">
+                            <label class="shape-field-label">Scale Range (0.1-10x)</label>
+                            <div style="margin-top: 10px;">
+                                <!-- Dual-thumb slider container -->
+                                <div id="scale-slider-${shapeData.id}" style="position: relative; height: 50px;">
+                                    <!-- Track background -->
+                                    <div style="position: absolute; top: 20px; left: 0; right: 0; height: 6px; background: #e9ecef; border-radius: 3px;"></div>
+                                    <!-- Range highlight (between min and max) -->
+                                    <div id="scale-range-highlight-${shapeData.id}" style="position: absolute; top: 20px; height: 6px; background: #28a745; border-radius: 3px; pointer-events: none;"></div>
+                                    <!-- Minimum slider -->
+                                    <input type="range" id="scale-min-${shapeData.id}"
+                                           min="0.1" max="10" step="0.1"
+                                           value="${shapeData.animation.scale.min}"
+                                           oninput="updateDualThumbScale(${shapeData.id}, 'min', parseFloat(this.value))"
+                                           style="position: absolute; width: 100%; top: 12px; pointer-events: all; background: transparent; -webkit-appearance: none; appearance: none;">
+                                    <!-- Maximum slider -->
+                                    <input type="range" id="scale-max-${shapeData.id}"
+                                           min="0.1" max="10" step="0.1"
+                                           value="${shapeData.animation.scale.max}"
+                                           oninput="updateDualThumbScale(${shapeData.id}, 'max', parseFloat(this.value))"
+                                           style="position: absolute; width: 100%; top: 12px; pointer-events: all; background: transparent; -webkit-appearance: none; appearance: none;">
+                                </div>
+                                <!-- Value labels -->
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 5px;">
+                                    <span style="font-size: 13px; color: #6c757d;">
+                                        Min: <strong id="scale-min-label-${shapeData.id}" style="color: #495057;">${shapeData.animation.scale.min}x</strong>
+                                    </span>
+                                    <span style="font-size: 13px; color: #6c757d;">
+                                        Max: <strong id="scale-max-label-${shapeData.id}" style="color: #495057;">${shapeData.animation.scale.max}x</strong>
+                                    </span>
+                                </div>
+                                <small style="display: block; margin-top: 5px; color: #6c757d; font-size: 0.875em;">Drag left thumb for minimum, right thumb for maximum. 0.1 = 10% size, 1.0 = 100% size, 10 = 1000% size</small>
                             </div>
-                            <small style="display: block; margin-top: 5px; color: #6c757d; font-size: 0.875em;">0.1 = 10% size, 1.0 = 100% size, 10 = 1000% size</small>
                         </div>
-                        <div class="shape-field-group" style="margin-bottom: 15px;">
-                            <label class="shape-field-label">Maximum Scale (0.1-10x)</label>
-                            <div style="display: flex; gap: 10px; align-items: center;">
-                                <input type="range" class="shape-field-input"
-                                       min="0.1" max="10" step="0.1"
-                                       value="${shapeData.animation.scale.max}"
-                                       oninput="this.nextElementSibling.textContent = this.value + 'x'; updateScaleAnimation(${shapeData.id}, 'max', parseFloat(this.value))"
-                                       style="flex: 1;">
-                                <span style="min-width: 50px; font-weight: 600; color: #495057;">${shapeData.animation.scale.max}x</span>
-                            </div>
-                            <small style="display: block; margin-top: 5px; color: #6c757d; font-size: 0.875em;">0.1 = 10% size, 1.0 = 100% size, 10 = 1000% size</small>
-                        </div>
-                        <div class="shape-field-group" style="margin-bottom: 15px;" id="scale-validation-${shapeData.id}"></div>
                         <div class="shape-field-group">
                             <label class="shape-field-label">Duration (100-10000ms)</label>
                             <div style="display: flex; gap: 10px; align-items: center;">
@@ -1095,6 +1242,9 @@ require_once(__DIR__ . '/includes/header.php');
         `;
 
         container.appendChild(panel);
+
+        // Initialize dual-thumb scale slider UI
+        updateDualThumbScaleUI(shapeData.id);
     }
 
     function renderDimensions(shapeData) {
@@ -1193,10 +1343,10 @@ require_once(__DIR__ . '/includes/header.php');
     }
 
     // Position Animation Functions
-    function updatePositionAnimation(id, field, value) {
+    function updatePositionAnimation(id, axis, field, value) {
         const shape = shapes.find(s => s.id === id);
         if (shape) {
-            shape.animation.position[field] = value;
+            shape.animation.position[axis][field] = value;
             updateConfiguration();
         }
     }
@@ -1206,32 +1356,64 @@ require_once(__DIR__ . '/includes/header.php');
         const shape = shapes.find(s => s.id === id);
         if (shape) {
             shape.animation.scale[field] = value;
-
-            // Validate min <= max
-            if (field === 'min' || field === 'max') {
-                validateScaleMinMax(id);
-            }
-
             updateConfiguration();
         }
     }
 
-    function validateScaleMinMax(id) {
+    function updateDualThumbScale(id, thumb, value) {
         const shape = shapes.find(s => s.id === id);
         if (!shape) return;
 
-        const validationDiv = document.getElementById(`scale-validation-${id}`);
-        if (!validationDiv) return;
+        // Update the value
+        if (thumb === 'min') {
+            // If min is dragged above max, swap them
+            if (value > shape.animation.scale.max) {
+                shape.animation.scale.min = shape.animation.scale.max;
+                shape.animation.scale.max = value;
+            } else {
+                shape.animation.scale.min = value;
+            }
+        } else { // max thumb
+            // If max is dragged below min, swap them
+            if (value < shape.animation.scale.min) {
+                shape.animation.scale.max = shape.animation.scale.min;
+                shape.animation.scale.min = value;
+            } else {
+                shape.animation.scale.max = value;
+            }
+        }
 
-        const min = parseFloat(shape.animation.scale.min);
-        const max = parseFloat(shape.animation.scale.max);
+        // Update the UI
+        updateDualThumbScaleUI(id);
+        updateConfiguration();
+    }
 
-        if (min > max) {
-            validationDiv.innerHTML = '<small style="color: #dc3545; font-weight: 600;">⚠️ Warning: Minimum scale cannot be greater than maximum scale</small>';
-            validationDiv.style.display = 'block';
-        } else {
-            validationDiv.innerHTML = '';
-            validationDiv.style.display = 'none';
+    function updateDualThumbScaleUI(id) {
+        const shape = shapes.find(s => s.id === id);
+        if (!shape) return;
+
+        const min = shape.animation.scale.min;
+        const max = shape.animation.scale.max;
+
+        // Update slider values
+        const minSlider = document.getElementById(`scale-min-${id}`);
+        const maxSlider = document.getElementById(`scale-max-${id}`);
+        if (minSlider) minSlider.value = min;
+        if (maxSlider) maxSlider.value = max;
+
+        // Update labels
+        const minLabel = document.getElementById(`scale-min-label-${id}`);
+        const maxLabel = document.getElementById(`scale-max-label-${id}`);
+        if (minLabel) minLabel.textContent = min.toFixed(1) + 'x';
+        if (maxLabel) maxLabel.textContent = max.toFixed(1) + 'x';
+
+        // Update range highlight visual
+        const rangeHighlight = document.getElementById(`scale-range-highlight-${id}`);
+        if (rangeHighlight) {
+            const minPercent = ((min - 0.1) / (10 - 0.1)) * 100;
+            const maxPercent = ((max - 0.1) / (10 - 0.1)) * 100;
+            rangeHighlight.style.left = minPercent + '%';
+            rangeHighlight.style.right = (100 - maxPercent) + '%';
         }
     }
 
@@ -1244,6 +1426,11 @@ require_once(__DIR__ . '/includes/header.php');
             }
         };
         document.getElementById('configuration_json').value = JSON.stringify(config, null, 2);
+
+        // Update live preview automatically (debounced)
+        if (typeof updateLivePreview === 'function') {
+            updateLivePreview();
+        }
     }
 
     function updateAddButtonState() {
@@ -1313,6 +1500,40 @@ require_once(__DIR__ . '/includes/header.php');
             console.log('Migrated degrees to counterclockwise for shape', shapeData.id);
         }
 
+        // Convert old position format (axis+distance) to new format (x/y/z independent)
+        if (shapeData.animation && shapeData.animation.position &&
+            typeof shapeData.animation.position.axis !== 'undefined' &&
+            typeof shapeData.animation.position.distance !== 'undefined') {
+
+            // Old format detected
+            const oldPosition = shapeData.animation.position;
+            const wasEnabled = oldPosition.enabled || false;
+            const oldAxis = oldPosition.axis || 'y';
+            const oldDistance = Math.abs(oldPosition.distance || 0);  // Convert to positive range
+            const oldDuration = oldPosition.duration || 10000;
+
+            // Create new format with x/y/z independent controls
+            shapeData.animation.position = {
+                x: {
+                    enabled: wasEnabled && oldAxis === 'x',
+                    range: wasEnabled && oldAxis === 'x' ? oldDistance : 0,
+                    duration: oldDuration
+                },
+                y: {
+                    enabled: wasEnabled && oldAxis === 'y',
+                    range: wasEnabled && oldAxis === 'y' ? oldDistance : 0,
+                    duration: oldDuration
+                },
+                z: {
+                    enabled: wasEnabled && oldAxis === 'z',
+                    range: wasEnabled && oldAxis === 'z' ? oldDistance : 0,
+                    duration: oldDuration
+                }
+            };
+
+            console.log('Migrated position from axis+distance to X/Y/Z independent for shape', shapeData.id);
+        }
+
         // Ensure opacity field exists (default to 1.0)
         if (typeof shapeData.opacity === 'undefined') {
             shapeData.opacity = 1.0;
@@ -1329,7 +1550,12 @@ require_once(__DIR__ . '/includes/header.php');
             shapeData.animation.rotation.counterclockwise = false;
         }
         if (!shapeData.animation.position) {
-            shapeData.animation.position = { enabled: false, axis: 'y', distance: 0, duration: 10000 };
+            // New format: X/Y/Z independent
+            shapeData.animation.position = {
+                x: { enabled: false, range: 0, duration: 10000 },
+                y: { enabled: false, range: 0, duration: 10000 },
+                z: { enabled: false, range: 0, duration: 10000 }
+            };
         }
         if (!shapeData.animation.scale) {
             shapeData.animation.scale = { enabled: false, min: 1.0, max: 1.0, duration: 10000 };
@@ -1374,78 +1600,111 @@ require_once(__DIR__ . '/includes/header.php');
     <?php endif; ?>
 
     // ============================================
-    // PREVIEW FUNCTIONS
+    // LIVE PREVIEW FUNCTIONS
     // ============================================
 
-    function showPreview() {
-        const previewSection = document.getElementById('preview-section');
-        const previewIframe = document.getElementById('preview-iframe');
-        const previewLoading = document.getElementById('preview-loading');
+    let livePreviewTimeout = null;
+    let livePreviewHidden = false;
 
-        // Ensure configuration is up to date
-        updateConfiguration();
+    function updateLivePreview() {
+        // Skip if preview is hidden
+        if (livePreviewHidden) return;
 
-        // Get current form data
-        const formData = new FormData(document.getElementById('art-form'));
+        // Debounce: Clear previous timeout
+        if (livePreviewTimeout) {
+            clearTimeout(livePreviewTimeout);
+        }
 
-        // Show preview section and loading indicator
-        previewSection.style.display = 'block';
-        previewLoading.style.display = 'block';
+        // Set new timeout (500ms debounce)
+        livePreviewTimeout = setTimeout(() => {
+            const previewIframe = document.getElementById('live-preview-iframe');
+            const previewLoading = document.getElementById('live-preview-loading');
 
-        // Scroll to preview
-        previewSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            if (!previewIframe || !previewLoading) return;
 
-        // Send data to preview endpoint via POST
-        fetch('<?php echo url('admin/includes/preview.php'); ?>', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: new URLSearchParams(formData)
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Preview failed: ' + response.statusText);
-            }
-            return response.text();
-        })
-        .then(html => {
-            // Create a blob URL for the preview content
-            const blob = new Blob([html], { type: 'text/html' });
-            const blobUrl = URL.createObjectURL(blob);
+            // Show loading indicator
+            previewLoading.style.display = 'block';
 
-            // Load preview in iframe
-            previewIframe.src = blobUrl;
+            // Get current form data
+            const formData = new FormData(document.getElementById('art-form'));
 
-            // Hide loading indicator after iframe loads
-            previewIframe.onload = function() {
-                previewLoading.style.display = 'none';
-            };
-        })
-        .catch(error => {
-            console.error('Preview error:', error);
-            previewLoading.innerHTML = `
-                <div style="color: #dc3545; font-weight: 600;">
-                    ❌ Preview failed
-                </div>
-                <div style="font-size: 14px; color: #6c757d; margin-top: 10px;">
-                    ${error.message}
-                </div>
-            `;
+            // Send data to preview endpoint via POST
+            fetch('<?php echo url('admin/includes/preview.php'); ?>', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams(formData)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Preview failed: ' + response.statusText);
+                }
+                return response.text();
+            })
+            .then(html => {
+                // Create a blob URL for the preview content
+                const blob = new Blob([html], { type: 'text/html' });
+                const blobUrl = URL.createObjectURL(blob);
 
-            setTimeout(() => {
-                previewLoading.style.display = 'none';
-            }, 3000);
-        });
+                // Load preview in iframe
+                previewIframe.src = blobUrl;
+
+                // Hide loading indicator after iframe loads
+                previewIframe.onload = function() {
+                    previewLoading.style.display = 'none';
+                };
+            })
+            .catch(error => {
+                console.error('Live preview error:', error);
+                previewLoading.innerHTML = `
+                    <div style="color: #dc3545; font-weight: 600;">
+                        ❌ Preview failed
+                    </div>
+                    <div style="font-size: 14px; color: #6c757d; margin-top: 10px;">
+                        ${error.message}
+                    </div>
+                `;
+
+                setTimeout(() => {
+                    previewLoading.style.display = 'none';
+                }, 3000);
+            });
+        }, 500);  // 500ms debounce
     }
 
-    function hidePreview() {
-        const previewSection = document.getElementById('preview-section');
-        const previewIframe = document.getElementById('preview-iframe');
+    function toggleLivePreview() {
+        const previewContainer = document.getElementById('live-preview-container');
+        const toggleBtn = document.getElementById('toggle-preview-btn');
 
-        previewSection.style.display = 'none';
-        previewIframe.src = '';  // Clear iframe to stop any running animations
+        livePreviewHidden = !livePreviewHidden;
+
+        if (livePreviewHidden) {
+            previewContainer.style.display = 'none';
+            toggleBtn.textContent = 'Show Preview';
+        } else {
+            previewContainer.style.display = 'block';
+            toggleBtn.textContent = 'Hide Preview';
+            // Update preview when showing
+            updateLivePreview();
+        }
     }
+
+    // Scroll to live preview (for the button at bottom)
+    function scrollToLivePreview() {
+        const previewSection = document.getElementById('live-preview-section');
+        if (previewSection) {
+            previewSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
+
+    // Initialize live preview on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initial preview update after a short delay (allow shapes to load first)
+        setTimeout(() => {
+            updateLivePreview();
+        }, 1000);
+    });
 
     </script>
 
