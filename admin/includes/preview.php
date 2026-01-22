@@ -254,28 +254,49 @@ function renderAFramePreview($piece, $shapes) {
                                    isset($shape['animation']['position']['z']);
 
                     if ($hasNewFormat) {
-                        // New format: Independent X/Y/Z controls
+                        // New format: Combine all enabled axes into a single unified position animation
                         $axes = ['x' => 0, 'y' => 1, 'z' => 2];
+                        $enabledAxes = [];
+                        $maxDuration = 0;
+
+                        // Collect all enabled axes and find max duration
                         foreach ($axes as $axis => $index) {
                             if (!empty($shape['animation']['position'][$axis]['enabled'])) {
                                 $range = $shape['animation']['position'][$axis]['range'] ?? 0;
                                 $duration = $shape['animation']['position'][$axis]['duration'] ?? 10000;
 
                                 if ($range > 0) {
-                                    // Calculate from and to positions for this axis
-                                    $fromPos = [$currentPos['x'], $currentPos['y'], $currentPos['z']];
-                                    $toPos = [$currentPos['x'], $currentPos['y'], $currentPos['z']];
-
-                                    // Apply range (±) to this axis only
-                                    $fromPos[$index] = $currentPos[$axis] - $range;
-                                    $toPos[$index] = $currentPos[$axis] + $range;
-
-                                    $fromPosStr = implode(' ', $fromPos);
-                                    $toPosStr = implode(' ', $toPos);
-
-                                    $attrs[] = 'animation__position' . strtoupper($axis) . '="property: position; from: ' . $fromPosStr . '; to: ' . $toPosStr . '; dur: ' . $duration . '; loop: true; dir: alternate; easing: easeInOutSine"';
+                                    $enabledAxes[$axis] = [
+                                        'index' => $index,
+                                        'range' => $range,
+                                        'duration' => $duration
+                                    ];
+                                    $maxDuration = max($maxDuration, $duration);
                                 }
                             }
+                        }
+
+                        // If any axes are enabled, create a combined position animation
+                        if (!empty($enabledAxes)) {
+                            // Build combined from/to positions
+                            $fromPos = [$currentPos['x'], $currentPos['y'], $currentPos['z']];
+                            $toPos = [$currentPos['x'], $currentPos['y'], $currentPos['z']];
+
+                            // Apply range for each enabled axis
+                            foreach ($enabledAxes as $axis => $config) {
+                                $index = $config['index'];
+                                $range = $config['range'];
+
+                                // From: current - range, To: current + range
+                                $fromPos[$index] = $currentPos[$axis] - $range;
+                                $toPos[$index] = $currentPos[$axis] + $range;
+                            }
+
+                            $fromPosStr = implode(' ', $fromPos);
+                            $toPosStr = implode(' ', $toPos);
+
+                            // Single unified position animation for all enabled axes
+                            $attrs[] = 'animation__position="property: position; from: ' . $fromPosStr . '; to: ' . $toPosStr . '; dur: ' . $maxDuration . '; loop: true; dir: alternate; easing: easeInOutSine"';
                         }
                     } elseif (!empty($shape['animation']['position']['enabled'])) {
                         // Old format: Backward compatibility
