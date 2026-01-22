@@ -526,6 +526,53 @@ require_once(__DIR__ . '/includes/header.php');
         border-radius: 8px;
         margin-bottom: 15px;
     }
+
+    /* Dual-thumb slider styling (matching A-Frame implementation) */
+    .dual-thumb-min,
+    .dual-thumb-max {
+        -webkit-appearance: none;
+        appearance: none;
+        height: 8px;
+        background: transparent;
+        outline: none;
+    }
+
+    .dual-thumb-min::-webkit-slider-thumb,
+    .dual-thumb-max::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: #764ba2;
+        cursor: pointer;
+        border: 2px solid white;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        pointer-events: auto;
+    }
+
+    .dual-thumb-min::-moz-range-thumb,
+    .dual-thumb-max::-moz-range-thumb {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: #764ba2;
+        cursor: pointer;
+        border: 2px solid white;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        pointer-events: auto;
+    }
+
+    .scale-range-highlight {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        height: 8px;
+        background: #28a745;
+        pointer-events: none;
+        border-radius: 4px;
+        z-index: 0;
+    }
     </style>
 
     <script>
@@ -567,6 +614,7 @@ require_once(__DIR__ . '/includes/header.php');
             scale: { x: 1, y: 1, z: 1 },
             color: '#764ba2',
             texture: '',
+            opacity: 1.0,  // NEW: Per-geometry opacity (0-1 range)
             width: 1,
             height: 1,
             depth: 1,
@@ -574,14 +622,32 @@ require_once(__DIR__ . '/includes/header.php');
             wireframe: false,
             material: 'MeshStandardMaterial',
             animation: {
-                enabled: false,
-                property: 'rotation.y',
-                speed: 0.01
+                // NEW: Granular animation controls (matching A-Frame pattern)
+                rotation: {
+                    enabled: false,
+                    counterclockwise: false,
+                    duration: 10000
+                },
+                position: {
+                    x: { enabled: false, range: 0, duration: 10000 },
+                    y: { enabled: false, range: 0, duration: 10000 },
+                    z: { enabled: false, range: 0, duration: 10000 }
+                },
+                scale: {
+                    enabled: false,
+                    min: 1.0,
+                    max: 1.0,
+                    duration: 10000
+                }
             }
         };
 
         geometries.push(geometryData);
         renderGeometry(geometryData);
+
+        // Initialize dual-thumb scale slider UI
+        setTimeout(() => updateDualThumbScaleUI(geometryData.id), 100);
+
         updateAddButtonState();
         updateConfiguration();
     }
@@ -647,6 +713,18 @@ require_once(__DIR__ . '/includes/header.php');
                 </div>
             </div>
 
+            <div class="geometry-row">
+                <div class="geometry-field-group">
+                    <label class="geometry-field-label">Opacity</label>
+                    <input type="range" min="0" max="1" step="0.01" class="geometry-field-input"
+                           value="${geometryData.opacity || 1.0}"
+                           oninput="updateOpacity(${geometryData.id}, this.value)">
+                    <span id="opacity-value-${geometryData.id}" style="margin-left: 10px; font-weight: 600; color: #764ba2;">
+                        ${(geometryData.opacity || 1.0).toFixed(2)}
+                    </span>
+                </div>
+            </div>
+
             <div id="dimensions-${geometryData.id}">
                 ${renderDimensions(geometryData)}
             </div>
@@ -693,32 +771,189 @@ require_once(__DIR__ . '/includes/header.php');
                 </div>
             </div>
 
+            <!-- GRANULAR ANIMATION CONTROLS (matching A-Frame pattern) -->
             <details style="margin-top: 15px;">
-                <summary style="cursor: pointer; font-weight: 600; color: #764ba2;">Animation Settings</summary>
+                <summary style="cursor: pointer; font-weight: 600; color: #764ba2;">📐 Rotation Animation</summary>
                 <div style="margin-top: 10px; padding: 15px; background: white; border-radius: 4px;">
                     <div class="geometry-row">
                         <div class="geometry-field-group">
                             <label class="geometry-field-label">
-                                <input type="checkbox" ${geometryData.animation.enabled ? 'checked' : ''}
-                                       onchange="updateAnimationEnabled(${geometryData.id}, this.checked)">
-                                Enable Animation
+                                <input type="checkbox" ${geometryData.animation.rotation?.enabled ? 'checked' : ''}
+                                       onchange="updateRotationAnimation(${geometryData.id}, 'enabled', this.checked)">
+                                Enable Rotation
+                            </label>
+                        </div>
+                        <div class="geometry-field-group">
+                            <label class="geometry-field-label">
+                                <input type="checkbox" ${geometryData.animation.rotation?.counterclockwise ? 'checked' : ''}
+                                       onchange="updateRotationAnimation(${geometryData.id}, 'counterclockwise', this.checked)">
+                                Enable Counterclockwise
                             </label>
                         </div>
                     </div>
                     <div class="geometry-row">
                         <div class="geometry-field-group">
-                            <label class="geometry-field-label">Animate Property</label>
-                            <select class="geometry-field-input" onchange="updateAnimationProperty(${geometryData.id}, 'property', this.value)">
-                                <option value="rotation.x" ${geometryData.animation.property === 'rotation.x' ? 'selected' : ''}>Rotation X</option>
-                                <option value="rotation.y" ${geometryData.animation.property === 'rotation.y' ? 'selected' : ''}>Rotation Y</option>
-                                <option value="rotation.z" ${geometryData.animation.property === 'rotation.z' ? 'selected' : ''}>Rotation Z</option>
-                                <option value="position.y" ${geometryData.animation.property === 'position.y' ? 'selected' : ''}>Position Y (bounce)</option>
-                            </select>
+                            <label class="geometry-field-label">Duration (milliseconds)</label>
+                            <input type="range" min="100" max="10000" step="100" class="geometry-field-input"
+                                   value="${geometryData.animation.rotation?.duration || 10000}"
+                                   oninput="updateRotationAnimation(${geometryData.id}, 'duration', this.value)">
+                            <span id="rotation-duration-${geometryData.id}" style="margin-left: 10px; font-weight: 600; color: #764ba2;">
+                                ${geometryData.animation.rotation?.duration || 10000}ms
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </details>
+
+            <details style="margin-top: 10px;">
+                <summary style="cursor: pointer; font-weight: 600; color: #764ba2;">📍 Position Animation</summary>
+                <div style="margin-top: 10px; padding: 15px; background: white; border-radius: 4px;">
+                    <!-- X-axis (Left/Right) -->
+                    <div style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 4px;">
+                        <div class="geometry-row">
+                            <div class="geometry-field-group">
+                                <label class="geometry-field-label">
+                                    <input type="checkbox" ${geometryData.animation.position?.x?.enabled ? 'checked' : ''}
+                                           onchange="updatePositionAnimation(${geometryData.id}, 'x', 'enabled', this.checked)">
+                                    Enable X (Left/Right) Movement
+                                </label>
+                            </div>
+                        </div>
+                        <div class="geometry-row">
+                            <div class="geometry-field-group">
+                                <label class="geometry-field-label">Range (±units)</label>
+                                <input type="range" min="0" max="10" step="0.1" class="geometry-field-input"
+                                       value="${geometryData.animation.position?.x?.range || 0}"
+                                       oninput="updatePositionAnimation(${geometryData.id}, 'x', 'range', this.value)">
+                                <span id="position-x-range-${geometryData.id}" style="margin-left: 10px; font-weight: 600; color: #764ba2;">
+                                    ±${geometryData.animation.position?.x?.range || 0} units
+                                </span>
+                            </div>
+                            <div class="geometry-field-group">
+                                <label class="geometry-field-label">Duration (milliseconds)</label>
+                                <input type="range" min="100" max="10000" step="100" class="geometry-field-input"
+                                       value="${geometryData.animation.position?.x?.duration || 10000}"
+                                       oninput="updatePositionAnimation(${geometryData.id}, 'x', 'duration', this.value)">
+                                <span id="position-x-duration-${geometryData.id}" style="margin-left: 10px; font-weight: 600; color: #764ba2;">
+                                    ${geometryData.animation.position?.x?.duration || 10000}ms
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Y-axis (Up/Down) -->
+                    <div style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 4px;">
+                        <div class="geometry-row">
+                            <div class="geometry-field-group">
+                                <label class="geometry-field-label">
+                                    <input type="checkbox" ${geometryData.animation.position?.y?.enabled ? 'checked' : ''}
+                                           onchange="updatePositionAnimation(${geometryData.id}, 'y', 'enabled', this.checked)">
+                                    Enable Y (Up/Down) Movement
+                                </label>
+                            </div>
+                        </div>
+                        <div class="geometry-row">
+                            <div class="geometry-field-group">
+                                <label class="geometry-field-label">Range (±units)</label>
+                                <input type="range" min="0" max="10" step="0.1" class="geometry-field-input"
+                                       value="${geometryData.animation.position?.y?.range || 0}"
+                                       oninput="updatePositionAnimation(${geometryData.id}, 'y', 'range', this.value)">
+                                <span id="position-y-range-${geometryData.id}" style="margin-left: 10px; font-weight: 600; color: #764ba2;">
+                                    ±${geometryData.animation.position?.y?.range || 0} units
+                                </span>
+                            </div>
+                            <div class="geometry-field-group">
+                                <label class="geometry-field-label">Duration (milliseconds)</label>
+                                <input type="range" min="100" max="10000" step="100" class="geometry-field-input"
+                                       value="${geometryData.animation.position?.y?.duration || 10000}"
+                                       oninput="updatePositionAnimation(${geometryData.id}, 'y', 'duration', this.value)">
+                                <span id="position-y-duration-${geometryData.id}" style="margin-left: 10px; font-weight: 600; color: #764ba2;">
+                                    ${geometryData.animation.position?.y?.duration || 10000}ms
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Z-axis (Forward/Back) -->
+                    <div style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 4px;">
+                        <div class="geometry-row">
+                            <div class="geometry-field-group">
+                                <label class="geometry-field-label">
+                                    <input type="checkbox" ${geometryData.animation.position?.z?.enabled ? 'checked' : ''}
+                                           onchange="updatePositionAnimation(${geometryData.id}, 'z', 'enabled', this.checked)">
+                                    Enable Z (Forward/Back) Movement
+                                </label>
+                            </div>
+                        </div>
+                        <div class="geometry-row">
+                            <div class="geometry-field-group">
+                                <label class="geometry-field-label">Range (±units)</label>
+                                <input type="range" min="0" max="10" step="0.1" class="geometry-field-input"
+                                       value="${geometryData.animation.position?.z?.range || 0}"
+                                       oninput="updatePositionAnimation(${geometryData.id}, 'z', 'range', this.value)">
+                                <span id="position-z-range-${geometryData.id}" style="margin-left: 10px; font-weight: 600; color: #764ba2;">
+                                    ±${geometryData.animation.position?.z?.range || 0} units
+                                </span>
+                            </div>
+                            <div class="geometry-field-group">
+                                <label class="geometry-field-label">Duration (milliseconds)</label>
+                                <input type="range" min="100" max="10000" step="100" class="geometry-field-input"
+                                       value="${geometryData.animation.position?.z?.duration || 10000}"
+                                       oninput="updatePositionAnimation(${geometryData.id}, 'z', 'duration', this.value)">
+                                <span id="position-z-duration-${geometryData.id}" style="margin-left: 10px; font-weight: 600; color: #764ba2;">
+                                    ${geometryData.animation.position?.z?.duration || 10000}ms
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </details>
+
+            <details style="margin-top: 10px;">
+                <summary style="cursor: pointer; font-weight: 600; color: #764ba2;">📏 Scale Animation</summary>
+                <div style="margin-top: 10px; padding: 15px; background: white; border-radius: 4px;">
+                    <div class="geometry-row">
+                        <div class="geometry-field-group">
+                            <label class="geometry-field-label">
+                                <input type="checkbox" ${geometryData.animation.scale?.enabled ? 'checked' : ''}
+                                       onchange="updateScaleAnimation(${geometryData.id}, 'enabled', this.checked)">
+                                Enable Scale Animation
+                            </label>
+                        </div>
+                    </div>
+                    <div class="geometry-row">
+                        <div class="geometry-field-group" style="position: relative;">
+                            <label class="geometry-field-label">Scale Range (Min/Max)</label>
+                            <div style="position: relative; height: 40px; margin-bottom: 10px;">
+                                <!-- Dual-thumb slider implementation -->
+                                <input type="range" min="0.1" max="10" step="0.1" class="geometry-field-input dual-thumb-min"
+                                       id="scale-min-${geometryData.id}"
+                                       value="${geometryData.animation.scale?.min || 1.0}"
+                                       oninput="updateDualThumbScale(${geometryData.id}, 'min', this.value)"
+                                       style="position: absolute; pointer-events: none; width: 100%;">
+                                <input type="range" min="0.1" max="10" step="0.1" class="geometry-field-input dual-thumb-max"
+                                       id="scale-max-${geometryData.id}"
+                                       value="${geometryData.animation.scale?.max || 1.0}"
+                                       oninput="updateDualThumbScale(${geometryData.id}, 'max', this.value)"
+                                       style="position: absolute; pointer-events: auto; width: 100%;">
+                                <div id="scale-range-highlight-${geometryData.id}" class="scale-range-highlight"></div>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; font-size: 14px; font-weight: 600; color: #764ba2;">
+                                <span>Min: <span id="scale-min-value-${geometryData.id}">${(geometryData.animation.scale?.min || 1.0).toFixed(1)}</span>x</span>
+                                <span>Max: <span id="scale-max-value-${geometryData.id}">${(geometryData.animation.scale?.max || 1.0).toFixed(1)}</span>x</span>
+                            </div>
+                            <div id="scale-validation-${geometryData.id}" style="color: #dc3545; font-size: 12px; margin-top: 5px; display: none;">
+                                ⚠️ Warning: Min should be less than Max
+                            </div>
                         </div>
                         <div class="geometry-field-group">
-                            <label class="geometry-field-label">Speed</label>
-                            <input type="number" step="0.001" class="geometry-field-input" value="${geometryData.animation.speed}"
-                                   onchange="updateAnimationProperty(${geometryData.id}, 'speed', this.value)">
+                            <label class="geometry-field-label">Duration (milliseconds)</label>
+                            <input type="range" min="100" max="10000" step="100" class="geometry-field-input"
+                                   value="${geometryData.animation.scale?.duration || 10000}"
+                                   oninput="updateScaleAnimation(${geometryData.id}, 'duration', this.value)">
+                            <span id="scale-duration-${geometryData.id}" style="margin-left: 10px; font-weight: 600; color: #764ba2;">
+                                ${geometryData.animation.scale?.duration || 10000}ms
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -887,25 +1122,138 @@ require_once(__DIR__ . '/includes/header.php');
         }
     }
 
-    // Update animation enabled status
-    function updateAnimationEnabled(id, enabled) {
+    // Update opacity
+    function updateOpacity(id, value) {
         const geometry = geometries.find(g => g.id === id);
         if (geometry) {
-            geometry.animation.enabled = enabled;
+            geometry.opacity = parseFloat(value);
+            const valueSpan = document.getElementById(`opacity-value-${id}`);
+            if (valueSpan) {
+                valueSpan.textContent = parseFloat(value).toFixed(2);
+            }
             updateConfiguration();
         }
     }
 
-    // Update animation property
-    function updateAnimationProperty(id, property, value) {
+    // Update rotation animation
+    function updateRotationAnimation(id, field, value) {
         const geometry = geometries.find(g => g.id === id);
         if (geometry) {
-            if (property === 'speed') {
-                geometry.animation[property] = parseFloat(value);
-            } else {
-                geometry.animation[property] = value;
+            if (field === 'enabled' || field === 'counterclockwise') {
+                geometry.animation.rotation[field] = Boolean(value);
+            } else if (field === 'duration') {
+                geometry.animation.rotation[field] = parseInt(value);
+                const durationSpan = document.getElementById(`rotation-duration-${id}`);
+                if (durationSpan) {
+                    durationSpan.textContent = value + 'ms';
+                }
             }
             updateConfiguration();
+        }
+    }
+
+    // Update position animation
+    function updatePositionAnimation(id, axis, field, value) {
+        const geometry = geometries.find(g => g.id === id);
+        if (geometry) {
+            if (field === 'enabled') {
+                geometry.animation.position[axis][field] = Boolean(value);
+            } else if (field === 'range') {
+                geometry.animation.position[axis][field] = parseFloat(value);
+                const rangeSpan = document.getElementById(`position-${axis}-range-${id}`);
+                if (rangeSpan) {
+                    rangeSpan.textContent = `±${value} units`;
+                }
+            } else if (field === 'duration') {
+                geometry.animation.position[axis][field] = parseInt(value);
+                const durationSpan = document.getElementById(`position-${axis}-duration-${id}`);
+                if (durationSpan) {
+                    durationSpan.textContent = value + 'ms';
+                }
+            }
+            updateConfiguration();
+        }
+    }
+
+    // Update scale animation
+    function updateScaleAnimation(id, field, value) {
+        const geometry = geometries.find(g => g.id === id);
+        if (geometry) {
+            if (field === 'enabled') {
+                geometry.animation.scale[field] = Boolean(value);
+            } else if (field === 'duration') {
+                geometry.animation.scale[field] = parseInt(value);
+                const durationSpan = document.getElementById(`scale-duration-${id}`);
+                if (durationSpan) {
+                    durationSpan.textContent = value + 'ms';
+                }
+            }
+            updateConfiguration();
+        }
+    }
+
+    // Dual-thumb scale slider (matching A-Frame implementation)
+    function updateDualThumbScale(id, thumb, value) {
+        const geometry = geometries.find(g => g.id === id);
+        if (geometry) {
+            value = parseFloat(value);
+
+            // Auto-swap if min > max
+            if (thumb === 'min' && value > geometry.animation.scale.max) {
+                geometry.animation.scale.max = value;
+                document.getElementById(`scale-max-${id}`).value = value;
+                document.getElementById(`scale-max-value-${id}`).textContent = value.toFixed(1);
+            } else if (thumb === 'max' && value < geometry.animation.scale.min) {
+                geometry.animation.scale.min = value;
+                document.getElementById(`scale-min-${id}`).value = value;
+                document.getElementById(`scale-min-value-${id}`).textContent = value.toFixed(1);
+            }
+
+            geometry.animation.scale[thumb] = value;
+
+            // Update display
+            document.getElementById(`scale-${thumb}-value-${id}`).textContent = value.toFixed(1);
+
+            // Update visual range highlight
+            updateDualThumbScaleUI(id);
+
+            // Validate min < max
+            validateScaleMinMax(id);
+
+            updateConfiguration();
+        }
+    }
+
+    // Update dual-thumb scale slider visual highlight
+    function updateDualThumbScaleUI(id) {
+        const geometry = geometries.find(g => g.id === id);
+        if (geometry) {
+            const min = geometry.animation.scale.min;
+            const max = geometry.animation.scale.max;
+            const highlight = document.getElementById(`scale-range-highlight-${id}`);
+
+            if (highlight) {
+                const minPercent = ((min - 0.1) / (10 - 0.1)) * 100;
+                const maxPercent = ((max - 0.1) / (10 - 0.1)) * 100;
+
+                highlight.style.left = minPercent + '%';
+                highlight.style.width = (maxPercent - minPercent) + '%';
+            }
+        }
+    }
+
+    // Validate scale min/max
+    function validateScaleMinMax(id) {
+        const geometry = geometries.find(g => g.id === id);
+        if (geometry) {
+            const validationDiv = document.getElementById(`scale-validation-${id}`);
+            if (validationDiv) {
+                if (geometry.animation.scale.min > geometry.animation.scale.max) {
+                    validationDiv.style.display = 'block';
+                } else {
+                    validationDiv.style.display = 'none';
+                }
+            }
         }
     }
 
@@ -958,6 +1306,73 @@ require_once(__DIR__ . '/includes/header.php');
         }
     }
 
+    // Migrate old animation format to new granular format (backward compatibility)
+    function migrateAnimationFormat(geometry) {
+        if (!geometry.animation) return;
+
+        // Check if using old format (has 'enabled' and 'property' fields directly)
+        if (geometry.animation.hasOwnProperty('enabled') && geometry.animation.hasOwnProperty('property')) {
+            console.log(`Migrating animation from old format to granular format for geometry ${geometry.id}`);
+
+            const oldEnabled = geometry.animation.enabled;
+            const oldProperty = geometry.animation.property || 'rotation.y';
+            const oldSpeed = geometry.animation.speed || 0.01;
+
+            // Convert speed to duration (approximate)
+            const estimatedDuration = Math.max(100, Math.min(10000, Math.round(100 / oldSpeed)));
+
+            // Create new animation structure
+            geometry.animation = {
+                rotation: {
+                    enabled: false,
+                    counterclockwise: false,
+                    duration: estimatedDuration
+                },
+                position: {
+                    x: { enabled: false, range: 0, duration: estimatedDuration },
+                    y: { enabled: false, range: 0, duration: estimatedDuration },
+                    z: { enabled: false, range: 0, duration: estimatedDuration }
+                },
+                scale: {
+                    enabled: false,
+                    min: 1.0,
+                    max: 1.0,
+                    duration: estimatedDuration
+                }
+            };
+
+            // Map old property to new structure
+            if (oldEnabled) {
+                if (oldProperty.includes('rotation')) {
+                    geometry.animation.rotation.enabled = true;
+                } else if (oldProperty === 'position.y') {
+                    geometry.animation.position.y.enabled = true;
+                    geometry.animation.position.y.range = 2; // Default bounce range
+                }
+            }
+        }
+
+        // Ensure all required fields exist (progressive enhancement)
+        if (!geometry.animation.rotation) {
+            geometry.animation.rotation = { enabled: false, counterclockwise: false, duration: 10000 };
+        }
+        if (!geometry.animation.position) {
+            geometry.animation.position = {
+                x: { enabled: false, range: 0, duration: 10000 },
+                y: { enabled: false, range: 0, duration: 10000 },
+                z: { enabled: false, range: 0, duration: 10000 }
+            };
+        }
+        if (!geometry.animation.scale) {
+            geometry.animation.scale = { enabled: false, min: 1.0, max: 1.0, duration: 10000 };
+        }
+
+        // Ensure opacity exists
+        if (geometry.opacity === undefined) {
+            geometry.opacity = 1.0;
+        }
+    }
+
     // Update the hidden configuration field
     function updateConfiguration() {
         const config = {
@@ -980,9 +1395,17 @@ require_once(__DIR__ . '/includes/header.php');
             const config = <?php echo $editPiece['configuration']; ?>;
             if (config && config.geometries) {
                 config.geometries.forEach(geometryData => {
+                    // Migrate old animation format to new granular format
+                    migrateAnimationFormat(geometryData);
+
                     geometries.push(geometryData);
                     geometryCount++;
                     renderGeometry(geometryData);
+
+                    // Initialize dual-thumb scale slider UI
+                    if (geometryData.animation.scale) {
+                        setTimeout(() => updateDualThumbScaleUI(geometryData.id), 100);
+                    }
                 });
                 updateAddButtonState();
                 updateConfiguration();

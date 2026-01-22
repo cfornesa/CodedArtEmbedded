@@ -234,7 +234,10 @@ if (config.geometries) {
         const materialType = geomConfig.material || 'MeshStandardMaterial';
         const materialOptions = {
             color: geomConfig.color || '#764ba2',
-            wireframe: geomConfig.wireframe || false
+            wireframe: geomConfig.wireframe || false,
+            // NEW: Per-geometry opacity support
+            opacity: geomConfig.opacity !== undefined ? geomConfig.opacity : 1.0,
+            transparent: (geomConfig.opacity !== undefined && geomConfig.opacity < 1.0) || false
         };
 
         // Add texture if provided
@@ -296,7 +299,7 @@ if (config.geometries) {
     });
 }
 
-// Animation loop
+// Animation loop with granular animation support (matching A-Frame pattern)
 function animate() {
     requestAnimationFrame(animate);
 
@@ -304,27 +307,89 @@ function animate() {
     meshes.forEach((mesh) => {
         const anim = mesh.userData.animation;
 
-        if (anim && anim.enabled) {
-            const speed = anim.speed || 0.01;
-            const property = anim.property || 'rotation.y';
+        if (anim) {
+            const time = Date.now();
 
-            // Parse property path (e.g., "rotation.y")
-            const parts = property.split('.');
-            if (parts.length === 2) {
-                const obj = parts[0]; // rotation, position, scale
-                const axis = parts[1]; // x, y, z
+            // Backward compatibility: Check for old animation format
+            if (anim.hasOwnProperty('enabled') && anim.hasOwnProperty('property')) {
+                // OLD FORMAT: Use legacy animation logic
+                if (anim.enabled) {
+                    const speed = anim.speed || 0.01;
+                    const property = anim.property || 'rotation.y';
 
-                if (mesh[obj]) {
-                    if (obj === 'rotation') {
-                        mesh[obj][axis] += speed;
-                    } else if (obj === 'position') {
-                        // Oscillate position
-                        mesh[obj][axis] = Math.sin(Date.now() * speed * 0.001) * 2;
-                    } else if (obj === 'scale') {
-                        // Pulse scale
-                        const pulse = 1 + Math.sin(Date.now() * speed * 0.001) * 0.3;
-                        mesh[obj][axis] = pulse;
+                    const parts = property.split('.');
+                    if (parts.length === 2) {
+                        const obj = parts[0]; // rotation, position, scale
+                        const axis = parts[1]; // x, y, z
+
+                        if (mesh[obj]) {
+                            if (obj === 'rotation') {
+                                mesh[obj][axis] += speed;
+                            } else if (obj === 'position') {
+                                mesh[obj][axis] = Math.sin(time * speed * 0.001) * 2;
+                            } else if (obj === 'scale') {
+                                const pulse = 1 + Math.sin(time * speed * 0.001) * 0.3;
+                                mesh[obj][axis] = pulse;
+                            }
+                        }
                     }
+                }
+            } else {
+                // NEW FORMAT: Granular animation controls
+
+                // 1. ROTATION ANIMATION
+                if (anim.rotation && anim.rotation.enabled) {
+                    const duration = anim.rotation.duration || 10000;
+                    const speed = (Math.PI * 2) / duration; // Full rotation per duration
+                    const direction = anim.rotation.counterclockwise ? -1 : 1;
+                    mesh.rotation.y += speed * direction * 16.67; // ~60fps frame time
+                }
+
+                // 2. POSITION ANIMATION (X/Y/Z independent)
+                if (anim.position) {
+                    // Store initial position if not set
+                    if (!mesh.userData.initialPosition) {
+                        mesh.userData.initialPosition = {
+                            x: mesh.position.x,
+                            y: mesh.position.y,
+                            z: mesh.position.z
+                        };
+                    }
+
+                    // X-axis animation
+                    if (anim.position.x && anim.position.x.enabled && anim.position.x.range > 0) {
+                        const duration = anim.position.x.duration || 10000;
+                        const range = anim.position.x.range;
+                        const offset = Math.sin(time / duration * Math.PI * 2) * range;
+                        mesh.position.x = mesh.userData.initialPosition.x + offset;
+                    }
+
+                    // Y-axis animation
+                    if (anim.position.y && anim.position.y.enabled && anim.position.y.range > 0) {
+                        const duration = anim.position.y.duration || 10000;
+                        const range = anim.position.y.range;
+                        const offset = Math.sin(time / duration * Math.PI * 2) * range;
+                        mesh.position.y = mesh.userData.initialPosition.y + offset;
+                    }
+
+                    // Z-axis animation
+                    if (anim.position.z && anim.position.z.enabled && anim.position.z.range > 0) {
+                        const duration = anim.position.z.duration || 10000;
+                        const range = anim.position.z.range;
+                        const offset = Math.sin(time / duration * Math.PI * 2) * range;
+                        mesh.position.z = mesh.userData.initialPosition.z + offset;
+                    }
+                }
+
+                // 3. SCALE ANIMATION
+                if (anim.scale && anim.scale.enabled && anim.scale.min !== anim.scale.max) {
+                    const duration = anim.scale.duration || 10000;
+                    const min = anim.scale.min || 1.0;
+                    const max = anim.scale.max || 1.0;
+                    const range = (max - min) / 2;
+                    const mid = (min + max) / 2;
+                    const scaleValue = mid + Math.sin(time / duration * Math.PI * 2) * range;
+                    mesh.scale.set(scaleValue, scaleValue, scaleValue);
                 }
             }
         }
