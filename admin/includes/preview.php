@@ -801,9 +801,22 @@ function renderP5Preview($piece) {
     // Extract configuration sections
     $canvasConfig = $config['canvas'] ?? [];
     $drawingConfig = $config['drawing'] ?? [];
-    $colorsConfig = $config['colors'] ?? [];
+    $shapesConfig = $config['shapes'] ?? [];
+    $colorsConfig = $config['colors'] ?? [];  // For backward compatibility
     $animationConfig = $config['animation'] ?? [];
     $advancedConfig = $config['advanced'] ?? [];
+
+    // Support both new shapes format and old colors format (backward compatibility)
+    if (!empty($shapesConfig)) {
+        $shapes = $shapesConfig;
+    } elseif (!empty($colorsConfig)) {
+        // Migrate old colors to shapes with default ellipse
+        $shapes = array_map(function($color) {
+            return ['shape' => 'ellipse', 'color' => $color];
+        }, $colorsConfig);
+    } else {
+        $shapes = [['shape' => 'ellipse', 'color' => '#ED225D']];
+    }
 
     // Canvas settings
     $canvasWidth = $canvasConfig['width'] ?? 800;
@@ -909,9 +922,9 @@ const clearBg = <?php echo $clearBackground ? 'true' : 'false'; ?>;
 const randomSeedValue = <?php echo $randomSeed; ?>;
 <?php endif; ?>
 
-// Color palette
-const usePalette = <?php echo $usePalette ? 'true' : 'false'; ?>;
-const palette = <?php echo json_encode($palette); ?>;
+// Shapes palette (backward compatible with old colors)
+const shapes = <?php echo json_encode($shapes); ?>;
+const usePalette = config.usePalette || false;
 
 // Animation variables
 let animationFrame = 0;
@@ -945,55 +958,11 @@ function draw() {
         background(bgColor);
     }
 
-    // Set stroke and fill
-    if (noStrokeEnabled) {
-        noStroke();
+    // Use shapes from palette (with use-palette enabled) or draw in fixed pattern
+    if (usePalette && shapes.length > 0) {
+        drawWithShapesPalette();
     } else {
-        stroke(strokeColor);
-        strokeWeight(strokeWeight);
-    }
-
-    if (noFillEnabled) {
-        noFill();
-    } else {
-        // Use palette or single color
-        if (usePalette && palette.length > 0) {
-            const colorIndex = floor(animationFrame / 10) % palette.length;
-            const c = color(palette[colorIndex]);
-            c.setAlpha(fillOpacity);
-            fill(c);
-        } else {
-            const c = color(fillColor);
-            c.setAlpha(fillOpacity);
-            fill(c);
-        }
-    }
-
-    // Drawing mode
-    switch (drawingMode) {
-        case 'ellipse':
-            drawEllipses();
-            break;
-        case 'rect':
-            drawRectangles();
-            break;
-        case 'triangle':
-            drawTriangles();
-            break;
-        case 'line':
-            drawLines();
-            break;
-        case 'points':
-            drawPoints();
-            break;
-        case 'spiral':
-            drawSpiral();
-            break;
-        case 'grid':
-            drawGrid();
-            break;
-        default:
-            drawEllipses();
+        drawWithConfiguredStyle();
     }
 
     // Update animation
@@ -1003,86 +972,96 @@ function draw() {
     }
 }
 
-function drawEllipses() {
+// Helper function to draw a specific P5.js shape
+function drawP5Shape(shapeType, x, y, size) {
+    switch (shapeType) {
+        case 'ellipse':
+            ellipse(x, y, size, size);
+            break;
+        case 'rect':
+            rect(x - size/2, y - size/2, size, size);
+            break;
+        case 'triangle':
+            triangle(x - size/2, y + size/2, x, y - size/2, x + size/2, y + size/2);
+            break;
+        case 'polygon':
+            // Draw hexagon
+            beginShape();
+            for (let i = 0; i < 6; i++) {
+                const angle = TWO_PI / 6 * i;
+                const sx = x + cos(angle) * size/2;
+                const sy = y + sin(angle) * size/2;
+                vertex(sx, sy);
+            }
+            endShape(CLOSE);
+            break;
+        case 'line':
+            line(x - size/2, y, x + size/2, y);
+            break;
+        default:
+            ellipse(x, y, size, size);
+    }
+}
+
+// Draw using shapes palette
+function drawWithShapesPalette() {
     const size = animated ? 50 + sin(offset * 0.05) * 30 : 50;
+
     for (let i = 0; i < 5; i++) {
         const x = (i + 1) * (width / 6);
         const y = height / 2 + (animated ? sin(offset * 0.1 + i) * 50 : 0);
-        ellipse(x, y, size, size);
+
+        // Select shape from palette (cycle through)
+        const shapeItem = shapes[i % shapes.length];
+
+        // Set stroke
+        if (noStrokeEnabled) {
+            noStroke();
+        } else {
+            stroke(strokeColor);
+            strokeWeight(strokeWeight);
+        }
+
+        // Set fill with shape's color
+        if (noFillEnabled) {
+            noFill();
+        } else {
+            const c = color(shapeItem.color);
+            c.setAlpha(fillOpacity);
+            fill(c);
+        }
+
+        // Draw the shape
+        drawP5Shape(shapeItem.shape, x, y, size);
     }
 }
 
-function drawRectangles() {
+// Draw with configured style (single shape type, single color)
+function drawWithConfiguredStyle() {
     const size = animated ? 50 + sin(offset * 0.05) * 30 : 50;
-    for (let i = 0; i < 5; i++) {
-        const x = (i + 1) * (width / 6) - size / 2;
-        const y = height / 2 - size / 2 + (animated ? sin(offset * 0.1 + i) * 50 : 0);
-        rect(x, y, size, size);
-    }
-}
 
-function drawTriangles() {
-    const size = animated ? 50 + sin(offset * 0.05) * 30 : 50;
+    // Set stroke
+    if (noStrokeEnabled) {
+        noStroke();
+    } else {
+        stroke(strokeColor);
+        strokeWeight(strokeWeight);
+    }
+
+    // Set fill
+    if (noFillEnabled) {
+        noFill();
+    } else {
+        const c = color(fillColor);
+        c.setAlpha(fillOpacity);
+        fill(c);
+    }
+
+    // Draw shapes based on configured drawing mode
     for (let i = 0; i < 5; i++) {
         const x = (i + 1) * (width / 6);
         const y = height / 2 + (animated ? sin(offset * 0.1 + i) * 50 : 0);
-        triangle(x, y - size / 2, x - size / 2, y + size / 2, x + size / 2, y + size / 2);
-    }
-}
-
-function drawLines() {
-    for (let i = 0; i < 10; i++) {
-        const x1 = i * (width / 10);
-        const y1 = animated ? height / 2 + sin(offset * 0.1 + i * 0.5) * height / 4 : height / 4;
-        const x2 = x1;
-        const y2 = animated ? height / 2 + sin(offset * 0.1 + i * 0.5 + PI) * height / 4 : height * 3 / 4;
-        line(x1, y1, x2, y2);
-    }
-}
-
-function drawPoints() {
-    strokeWeight(8);
-    for (let i = 0; i < width; i += 20) {
-        for (let j = 0; j < height; j += 20) {
-            const x = i + (animated ? sin(offset * 0.05 + i * 0.1) * 10 : 0);
-            const y = j + (animated ? cos(offset * 0.05 + j * 0.1) * 10 : 0);
-            point(x, y);
-        }
-    }
-}
-
-function drawSpiral() {
-    const centerX = width / 2;
-    const centerY = height / 2;
-    const maxRadius = min(width, height) / 2 - 20;
-    const turns = 5;
-    const segments = 200;
-
-    beginShape();
-    for (let i = 0; i <= segments; i++) {
-        const angle = (i / segments) * turns * TWO_PI + (animated ? offset * 0.02 : 0);
-        const radius = (i / segments) * maxRadius;
-        const x = centerX + cos(angle) * radius;
-        const y = centerY + sin(angle) * radius;
-        vertex(x, y);
-    }
-    endShape();
-}
-
-function drawGrid() {
-    const cols = 8;
-    const rows = 6;
-    const cellWidth = width / cols;
-    const cellHeight = height / rows;
-    const size = min(cellWidth, cellHeight) * 0.6;
-
-    for (let i = 0; i < cols; i++) {
-        for (let j = 0; j < rows; j++) {
-            const x = i * cellWidth + cellWidth / 2;
-            const y = j * cellHeight + cellHeight / 2;
-            const s = size + (animated ? sin(offset * 0.1 + i + j) * size * 0.3 : 0);
-            ellipse(x, y, s, s);
-        }
+        drawP5Shape(drawingMode, x, y, size);
     }
 }
 
