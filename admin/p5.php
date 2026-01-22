@@ -750,6 +750,9 @@ require_once(__DIR__ . '/includes/header.php');
                 <a href="<?php echo url('admin/p5.php'); ?>" class="btn btn-secondary btn-lg">
                     Cancel
                 </a>
+                <button type="button" id="preview-btn" class="btn btn-info btn-lg" style="margin-left: 10px;" onclick="scrollToLivePreview()">
+                    ⬆️ Scroll to Preview
+                </button>
             </div>
         </form>
     </div>
@@ -1227,7 +1230,7 @@ require_once(__DIR__ . '/includes/header.php');
     let livePreviewHidden = false;
     const previewIframe = document.getElementById('live-preview-iframe');
     const previewSection = document.getElementById('live-preview-section');
-    const loadingIndicator = document.getElementById('preview-loading');
+    const loadingIndicator = document.getElementById('live-preview-loading');
 
     /**
      * Update live preview with current form data

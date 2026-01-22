@@ -680,6 +680,9 @@ require_once(__DIR__ . '/includes/header.php');
                 <a href="<?php echo url('admin/c2.php'); ?>" class="btn btn-secondary btn-lg">
                     Cancel
                 </a>
+                <button type="button" id="preview-btn" class="btn btn-info btn-lg" style="margin-left: 10px;" onclick="scrollToLivePreview()">
+                    ⬆️ Scroll to Preview
+                </button>
             </div>
         </form>
     </div>
