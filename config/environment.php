@@ -213,15 +213,18 @@ function configureEnvironment() {
         ini_set('log_errors', '1');
     }
 
-    // Session configuration
-    ini_set('session.cookie_httponly', '1'); // Prevent JavaScript access
-    ini_set('session.use_only_cookies', '1'); // Only use cookies for sessions
+    // Session configuration (only if session not already started)
+    // These settings must be configured BEFORE session_start() is called
+    if (session_status() === PHP_SESSION_NONE) {
+        ini_set('session.cookie_httponly', '1'); // Prevent JavaScript access
+        ini_set('session.use_only_cookies', '1'); // Only use cookies for sessions
 
-    if ($env === 'production') {
-        ini_set('session.cookie_secure', '1'); // HTTPS only in production
+        if ($env === 'production') {
+            ini_set('session.cookie_secure', '1'); // HTTPS only in production
+        }
+
+        ini_set('session.cookie_samesite', 'Strict'); // CSRF protection
     }
-
-    ini_set('session.cookie_samesite', 'Strict'); // CSRF protection
 
     // Set timezone if defined
     if (defined('TIMEZONE')) {

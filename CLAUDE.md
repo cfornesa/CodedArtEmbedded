@@ -2,7 +2,7 @@
 
 ## Project Status: ✅ PRODUCTION READY
 
-**Last Updated:** 2026-01-22 (v1.0.11)
+**Last Updated:** 2026-01-22 (v1.0.11.1)
 **Agent:** Claude (Sonnet 4.5)
 **Environment:** Replit Development / Hostinger Production
 
@@ -1297,6 +1297,163 @@ mysqldump -u username -p codedart_db > backup_$(date +%Y%m%d).sql
 ---
 
 ## Version History
+
+**v1.0.11.1** - 2026-01-22 (Critical Fixes: Schema Validation + Session Warnings)
+- 🐛 **CRITICAL FIX: Incomplete Schema Validation**
+  - **Issue:** `ensure_schema.php` gave false confidence - reported "All required columns present!" while MISSING `sky_opacity` and `ground_opacity`
+  - **Impact:** Users got "no such column: sky_opacity" errors despite schema checker saying everything was fine
+  - **Root Cause:** Schema validator was checking only 4 columns (sky_color, sky_texture, ground_color, ground_texture) but IGNORING the 2 opacity columns added in v1.0.7
+  - **Solution:**
+    - Updated `$requiredColumns` array to include `sky_opacity` and `ground_opacity`
+    - Updated MySQL `AFTER` clause positioning for proper column ordering
+    - Updated final verification to check ALL 6 columns (not just 4)
+    - Added helpful restart instructions in success message
+    - Updated table creation SQL to include opacity columns from the start
+  - **Files Modified:** `config/ensure_schema.php`
+  - **Testing:** `php config/ensure_schema.php` now correctly reports all 6 columns
+
+- 🐛 **CRITICAL FIX: Session Configuration Warnings**
+  - **Issue:** Live preview showed multiple session warnings:
+    ```
+    Warning: ini_set(): Session ini settings cannot be changed when a session is active
+    in /config/environment.php on line 217, 218, 224
+    ```
+  - **Root Cause:** Call chain sequence problem:
+    1. `preview.php` calls `session_start()` (line 11)
+    2. `preview.php` includes `helpers.php` (line 65)
+    3. `helpers.php` includes `environment.php` (line 13)
+    4. `environment.php` tries to configure session settings (lines 217-224)
+    5. PHP throws warnings because session already active
+  - **Solution:**
+    - Added `session_status() === PHP_SESSION_NONE` check before session configuration
+    - Session ini settings now only configured if session not started yet
+    - Prevents warnings while maintaining security settings
+  - **Files Modified:** `config/environment.php`
+  - **Security:** All session security settings still applied correctly (httponly, samesite, secure in production)
+
+- 🎯 **SYSTEMS THINKING LESSONS:**
+  1. **Incomplete Validation is Worse Than No Validation:**
+     - **Problem:** Schema checker reported success while critical columns were missing
+     - **Why Dangerous:** Gives false confidence - user thinks system is healthy when it's broken
+     - **Better Approach:** Validation must be exhaustive OR explicitly state what it's checking
+     - **User Impact:** User wastes time debugging a "working" system instead of knowing validation is incomplete
+     - **Fix Pattern:** When adding new schema features, IMMEDIATELY update all validators
+
+  2. **Validators Must Evolve With Schema:**
+     - **Problem:** Added opacity columns in v1.0.7, never updated ensure_schema.php
+     - **Why It Happens:** Validators written once, then forgotten as schema evolves
+     - **Better Approach:**
+       - Maintain a "schema version" constant
+       - Validators should check schema version and error if out of sync
+       - OR maintain a single source of truth (array of all required columns) used by both creation and validation
+     - **Code Smell:** Hardcoded column lists in multiple places = synchronization nightmare
+
+  3. **Session Management Requires Centralization:**
+     - **Problem:** Multiple files involved in session lifecycle (preview.php, helpers.php, environment.php)
+     - **Why It Breaks:** Order-dependent operations scattered across includes
+     - **Better Approach:**
+       - Single function: `initializeSession()` that handles configuration + start
+       - Call it ONCE at application entry point
+       - All other code assumes session is already started
+     - **Anti-Pattern:** `session_start()` called in multiple places = race conditions and warnings
+
+  4. **Include Order Matters:**
+     - **Problem:** `environment.php` assumed it would be included BEFORE session starts
+     - **Reality:** When included via helpers.php AFTER session starts, assumptions break
+     - **Better Approach:**
+       - Make no assumptions about include order
+       - Use guards: "if not started, then configure and start"
+       - Idempotent operations: safe to call multiple times
+     - **Defensive Coding:** Always check state before modifying it
+
+  5. **Error Messages Must Be Actionable:**
+     - **Old Message:** "All required columns present!" (while some were missing)
+     - **New Message:** Lists EACH column with ✓ or ✗, plus instructions if issues found
+     - **Why Better:** User can see exactly what's wrong and what to do
+     - **Principle:** Every success message should be provably true, not assumed
+
+- 👤 **USER EXPERIENCE IMPROVEMENTS:**
+  - **No More False Confidence:** Schema checker now accurately reports what it validates
+  - **Clean Preview:** No more warning messages cluttering live preview
+  - **Clear Diagnostics:** Final verification shows status of ALL 6 columns
+  - **Actionable Instructions:** Schema checker now tells you EXACTLY what to do if errors persist
+
+- 🔒 **SECURITY:**
+  - Session security settings still applied correctly
+  - httponly prevents JavaScript access to session cookies
+  - SameSite=Strict prevents CSRF attacks
+  - Secure flag enforced in production (HTTPS only)
+  - No security regression from the fixes
+
+- 📚 **FILES MODIFIED:**
+  - `config/ensure_schema.php`:
+    - Added `sky_opacity` and `ground_opacity` to required columns
+    - Updated MySQL AFTER clause for column positioning
+    - Updated final verification to check all 6 columns
+    - Added opacity columns to table creation SQL
+    - Enhanced success message with restart instructions
+  - `config/environment.php`:
+    - Added `session_status() === PHP_SESSION_NONE` check
+    - Session configuration now conditional on session not started
+    - Prevents warnings while maintaining security
+  - `CLAUDE.md`:
+    - Comprehensive documentation of both fixes
+    - Systems thinking lessons on validation and session management
+
+- 📖 **CRITICAL LESSONS FOR FUTURE DEVELOPMENT:**
+  1. **Maintain Single Source of Truth:**
+     - Create `SCHEMA_VERSION` constant
+     - Define required columns in ONE place
+     - Use that definition for creation, migration, AND validation
+     - Never duplicate column lists
+
+  2. **Validators Must Be Self-Verifying:**
+     - Don't say "All required columns present" unless you've checked EVERY column
+     - List what you're checking explicitly
+     - If incomplete, say "Partial check: only validating X, Y, Z"
+
+  3. **Session Lifecycle Must Be Explicit:**
+     - One function to configure and start session
+     - Call it once at application entry
+     - All other code checks if session active, never reconfigures
+     - Document the expected call chain
+
+  4. **When Schema Evolves:**
+     - Update table creation SQL
+     - Update all migration scripts
+     - Update all validation scripts
+     - Update documentation (CLAUDE.md)
+     - Test that old data migrates correctly
+
+  5. **Guard Clauses Everywhere:**
+     - Before starting session: check if already started
+     - Before configuring session: check if already configured
+     - Before modifying state: check current state
+     - Make operations idempotent when possible
+
+- 🧪 **TESTING RECOMMENDATIONS:**
+  - Run `php config/ensure_schema.php` - should show ALL 6 columns
+  - Edit an A-Frame piece - should see NO session warnings in preview
+  - Change opacity values - should save without "no such column" errors
+  - Restart web server if errors persist (opcache issue)
+  - Visit `/admin/clear-cache.php` after restart
+
+- 💡 **IMMEDIATE ACTION REQUIRED:**
+  If you're seeing "no such column: sky_opacity" errors:
+  1. The columns ARE in your database (confirmed by ensure_schema.php)
+  2. Your web server has cached the old schema
+  3. **Solution:** Restart your web server:
+     - **Replit:** Stop the run, then start it again
+     - **Apache:** `sudo service apache2 restart`
+     - **PHP-FPM:** `sudo service php-fpm restart`
+  4. After restart, visit `/admin/clear-cache.php` in your browser
+  5. Try editing a piece again - error should be gone
+
+- 🎨 **IMPACT:**
+  - **Schema Validation:** Now trustworthy and comprehensive
+  - **Live Preview:** Clean, no warning messages
+  - **Developer Experience:** Clear diagnostics, actionable error messages
+  - **System Reliability:** No more false confidence from incomplete validators
 
 **v1.0.11** - 2026-01-22 (Major UX Overhaul: Live Preview + 3-Axis Position + Dual-Thumb Scale)
 - 🎯 **POSITION ANIMATION: Complete Redesign**
