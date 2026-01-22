@@ -2,7 +2,7 @@
 
 ## Project Status: ✅ PRODUCTION READY
 
-**Last Updated:** 2026-01-21 (v1.0.10)
+**Last Updated:** 2026-01-22 (v1.0.11)
 **Agent:** Claude (Sonnet 4.5)
 **Environment:** Replit Development / Hostinger Production
 
@@ -1297,6 +1297,216 @@ mysqldump -u username -p codedart_db > backup_$(date +%Y%m%d).sql
 ---
 
 ## Version History
+
+**v1.0.11** - 2026-01-22 (Major UX Overhaul: Live Preview + 3-Axis Position + Dual-Thumb Scale)
+- 🎯 **POSITION ANIMATION: Complete Redesign**
+  - **User Feedback:** "There is no such thing as a negative distance" - distance concept was illogical
+  - **Old Format:** Single axis dropdown + distance slider (±values confusing)
+  - **New Format:** Three independent axis controls with clear labels
+    - "Enable X (Left/Right) Movement" checkbox + range slider (0-10 units)
+    - "Enable Y (Up/Down) Movement" checkbox + range slider (0-10 units)
+    - "Enable Z (Forward/Back) Movement" checkbox + range slider (0-10 units)
+  - **Range Concept:** Displays as "±value" to clarify bidirectional movement from current position
+  - **Independent Animations:** Each axis can animate independently with its own duration
+  - **Data Structure Change:**
+    ```javascript
+    // OLD (v1.0.10 and earlier)
+    position: { enabled: false, axis: 'y', distance: 0, duration: 10000 }
+
+    // NEW (v1.0.11+)
+    position: {
+        x: { enabled: false, range: 0, duration: 10000 },
+        y: { enabled: false, range: 0, duration: 10000 },
+        z: { enabled: false, range: 0, duration: 10000 }
+    }
+    ```
+  - **Rendering:** A-Frame `animation__positionX`, `animation__positionY`, `animation__positionZ` for simultaneous animations
+  - **Migration Layer:** Automatic conversion from old format (axis+distance) to new format (x/y/z independent)
+  - **Backward Compatibility:** View.php and preview.php check for old format and render correctly
+
+- 🎬 **LIVE PREVIEW SYSTEM: Complete Redesign**
+  - **User Feedback:** "Preview should be at TOP, shown by default, with LIVE real-time updates"
+  - **Old System:** Button-triggered preview at bottom, manual updates only
+  - **New System:** Live preview at top of page, updates automatically on every change
+  - **Key Features:**
+    - Preview section shown by default when creating/editing pieces
+    - Updates automatically with 500ms debounce (prevents excessive requests)
+    - Positioned at top of admin form (before controls)
+    - 600px iframe with "LIVE PREVIEW" header
+    - Toggle button to hide/show preview (stops animations when hidden)
+    - "Scroll to Preview" button at bottom for quick navigation
+    - Session-based data (no database modifications during preview)
+  - **Technical Implementation:**
+    - `updateLivePreview()` function with debouncing
+    - Called automatically from `updateConfiguration()`
+    - POST data to `/admin/includes/preview.php` via fetch API
+    - Blob URL creation for iframe content (sandboxed)
+    - Initialize preview 1 second after page load (allows shapes to load first)
+  - **Performance:** Debounced updates prevent server overload, cached preview endpoint
+
+- 📏 **SCALE ANIMATION: Dual-Thumb Slider**
+  - **User Feedback:** "Two separate sliders should be consolidated into single slider with left=min, right=max"
+  - **Problem:** Two separate sliders could conflict (user sets min > max)
+  - **Solution:** Single dual-thumb range slider with visual range highlight
+  - **Key Features:**
+    - Two overlaid range inputs on single visual track
+    - Green highlight bar shows selected range between min and max thumbs
+    - Auto-swap: If min thumb dragged above max, values automatically swap
+    - Prevents min > max conflicts entirely (impossible with this design)
+    - Live labels show current min and max values
+    - Visual feedback with styled thumbs (purple circles with white borders)
+  - **Technical Implementation:**
+    - CSS-based dual-thumb slider (no external libraries)
+    - Transparent range tracks with absolute positioning
+    - `updateDualThumbScale()` function handles value updates and swapping
+    - `updateDualThumbScaleUI()` function updates visual range highlight
+    - Called on shape render to initialize slider state
+  - **Cross-Browser Support:** WebKit and Firefox styling with vendor prefixes
+
+- 🐛 **DATABASE SCHEMA DIAGNOSTIC TOOLS**
+  - **Issue:** sky_opacity and ground_opacity errors persist due to PHP opcache
+  - **Root Cause:** Web server PHP process caches old schema, CLI sees new columns
+  - **Created Tools:**
+    - `/admin/test-update.php` - Web-accessible test to verify columns visible to PHP-FPM
+    - `/config/force_add_opacity.php` - Force add opacity columns if missing
+  - **User Instructions:** Must restart web server (Apache/PHP-FPM) to clear connection cache
+  - **Documentation:** Comprehensive troubleshooting added to CLAUDE.md
+
+- 🔄 **MIGRATION LAYERS**
+  - **Position Animation Migration:**
+    - Detects old format (has `axis` and `distance` fields)
+    - Converts to new format (x/y/z objects with `range` field)
+    - Preserves enabled state and duration
+    - Uses absolute value for range (converts negative distance to positive)
+    - Console logging: "Migrated position from axis+distance to X/Y/Z independent"
+  - **All Migrations Non-Destructive:**
+    - Old format still supported in view.php and preview.php
+    - Automatic conversion happens transparently
+    - No data loss, no manual intervention required
+
+- 🎯 **SYSTEMS THINKING LESSONS:**
+  1. **"Negative Distance" is Illogical:**
+     - Users think in terms of movement range, not signed distance
+     - Display as "±value" clarifies bidirectional nature
+     - Positive-only slider (0-10) with ± display is clearer than -5 to +5 slider
+
+  2. **Live Preview > Manual Preview:**
+     - Users want immediate feedback, not button-triggered updates
+     - Debouncing (500ms) balances responsiveness with server load
+     - Position at top (not bottom) keeps preview visible while editing
+
+  3. **Dual-Thumb Sliders Prevent Conflicts:**
+     - Two separate sliders = user can set min > max (validation required)
+     - Single dual-thumb slider = min > max is impossible (auto-swap)
+     - Visual range highlight shows selected range immediately
+
+  4. **Independent Axis Controls > Dropdown:**
+     - Old: Dropdown to select axis + single distance slider
+     - New: Three checkboxes + three sliders (one per axis)
+     - **Why Better:** Can animate on multiple axes simultaneously (X+Y, Y+Z, etc.)
+     - **Clarity:** "Enable Y (Up/Down) Movement" vs "Position: Axis Y, Distance 2"
+
+  5. **PHP Opcache != CLI PHP:**
+     - Web server caches database schema and connections
+     - Always provide web-accessible diagnostic tools (not just CLI)
+     - Restart web server after schema changes (service php-fpm restart)
+
+- 👤 **USER EXPERIENCE IMPROVEMENTS:**
+  - **Clearer Labeling:** "Left/Right", "Up/Down", "Forward/Back" instead of "X/Y/Z axis"
+  - **Immediate Feedback:** Live preview updates as you type/drag sliders
+  - **Conflict Prevention:** Dual-thumb slider makes min>max impossible
+  - **Visual Range Indicators:** Green bar shows scale range, ± shows movement range
+  - **Progressive Disclosure:** Preview can be hidden if not needed
+  - **Intuitive Controls:** Drag left thumb for min, right thumb for max
+
+- 📚 **FILES MODIFIED:**
+  - `admin/aframe.php`:
+    - Updated shape data structure: position animation now has x/y/z sub-objects
+    - Updated position animation UI: Three independent axis sections
+    - Added dual-thumb scale slider HTML and CSS
+    - Updated `updatePositionAnimation()` function signature: `(id, axis, field, value)`
+    - Added `updateDualThumbScale()` and `updateDualThumbScaleUI()` functions
+    - Enhanced `migrateAnimationFormat()` with position migration logic
+    - Moved preview section to top of form
+    - Added live preview functions: `updateLivePreview()`, `toggleLivePreview()`, `scrollToLivePreview()`
+    - Modified `updateConfiguration()` to call `updateLivePreview()` automatically
+    - Added CSS for dual-thumb range sliders (WebKit and Firefox)
+  - `a-frame/view.php`:
+    - Updated position animation rendering for new X/Y/Z structure
+    - Added `animation__positionX`, `animation__positionY`, `animation__positionZ` support
+    - Backward compatibility check for old position format
+  - `admin/includes/preview.php`:
+    - Updated position animation rendering (same logic as view.php)
+    - Supports both new and old position formats
+  - `/admin/test-update.php` (NEW):
+    - Web-accessible diagnostic for opacity column verification
+    - Shows columns visible to PHP-FPM process
+    - Tests database update with sky_opacity and ground_opacity
+  - `/config/force_add_opacity.php` (NEW):
+    - Force adds opacity columns if missing
+    - Verifies schema changes
+    - Provides restart instructions
+  - `CLAUDE.md`:
+    - Updated to v1.0.11
+    - Documented all position animation changes
+    - Documented live preview system
+    - Documented dual-thumb scale slider
+    - Comprehensive systems thinking lessons
+
+- 📖 **CRITICAL LESSONS FOR FUTURE DEVELOPMENT:**
+  1. **Listen to User Language:**
+     - User said "negative distance makes no sense" → They were absolutely correct
+     - User language often reveals flawed abstractions in your UI
+     - "Range of movement" is clearer than "distance with sign"
+
+  2. **Live Feedback > Manual Actions:**
+     - Every manual action (like clicking "Show Preview") is friction
+     - Automatic updates with debouncing provide better UX
+     - Users prefer "it just works" over "click to update"
+
+  3. **Prevent Impossible States at UI Level:**
+     - Old: Two sliders + validation warning when min > max
+     - New: Dual-thumb slider where min > max is impossible
+     - **Better:** Make invalid states impossible vs. warn about them
+
+  4. **Migration Layers Must Handle All Edge Cases:**
+     - Check for old format before assuming new format exists
+     - Use absolute values when converting signed to unsigned
+     - Log migrations for debugging
+     - Test with pieces created in multiple previous versions
+
+  5. **Independent Controls Enable New Possibilities:**
+     - Old single-axis position animation couldn't animate on multiple axes
+     - New independent controls allow X+Y, Y+Z, or X+Y+Z simultaneous animations
+     - **Design Principle:** Independent controls scale better than exclusive choices
+
+- 🧪 **TESTING RECOMMENDATIONS:**
+  - Test position animation with all three axes enabled simultaneously
+  - Test live preview updates when dragging sliders
+  - Test dual-thumb scale slider: drag min above max, verify auto-swap
+  - Test migration from old position format (axis+distance) to new (x/y/z)
+  - Test preview toggle (hide/show) and verify animations stop when hidden
+  - Test with pieces created in v1.0.10 (old position format)
+  - Test database schema via `/admin/test-update.php` in browser
+  - Verify range highlight updates correctly when dragging scale thumbs
+
+- 🔒 **SECURITY:**
+  - Live preview uses session-based data (no database writes)
+  - Blob URLs sandbox preview content
+  - All diagnostic tools require authentication
+  - No eval() or code execution in preview system
+
+- 🎨 **UI/UX IMPACT:**
+  - Position animation: ✨ **Dramatically improved** - clear labels, independent axes, intuitive ranges
+  - Live preview: ✨ **Game changer** - immediate feedback, no manual updates needed
+  - Scale animation: ✨ **Conflict-free** - dual-thumb slider prevents all min>max issues
+  - **User Satisfaction:** Addressed ALL user-reported UX issues from v1.0.10
+
+- 📊 **DATA STRUCTURE CHANGES:**
+  - **Position Animation:** Breaking change with migration layer (old format still works)
+  - **Migration Path:** All old pieces automatically upgrade when loaded in admin
+  - **No Manual Intervention:** Users don't need to re-save existing pieces
+  - **Backward Compatibility:** View pages render both old and new formats correctly
 
 **v1.0.10** - 2026-01-21 (Critical UX/UI Improvements + Form Preservation Fix)
 - 🐛 **CRITICAL FIX:** Form data preservation on database errors

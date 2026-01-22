@@ -174,17 +174,45 @@ require_once(__DIR__ . '/../resources/templates/head.php');
                     }
                 }
 
-                // Position Animation
-                if (!empty($shape['animation']['position']['enabled'])) {
+                // Position Animation - Independent X/Y/Z axis controls
+                $currentPos = $shape['position'] ?? ['x' => 0, 'y' => 0, 'z' => 0];
+
+                // Check for new format (X/Y/Z independent) vs old format (single enabled)
+                $hasNewFormat = isset($shape['animation']['position']['x']) ||
+                               isset($shape['animation']['position']['y']) ||
+                               isset($shape['animation']['position']['z']);
+
+                if ($hasNewFormat) {
+                    // New format: Independent X/Y/Z controls
+                    $axes = ['x' => 0, 'y' => 1, 'z' => 2];
+                    foreach ($axes as $axis => $index) {
+                        if (!empty($shape['animation']['position'][$axis]['enabled'])) {
+                            $range = $shape['animation']['position'][$axis]['range'] ?? 0;
+                            $duration = $shape['animation']['position'][$axis]['duration'] ?? 10000;
+
+                            if ($range > 0) {
+                                // Calculate from and to positions for this axis
+                                $fromPos = [$currentPos['x'], $currentPos['y'], $currentPos['z']];
+                                $toPos = [$currentPos['x'], $currentPos['y'], $currentPos['z']];
+
+                                // Apply range (±) to this axis only
+                                $fromPos[$index] = $currentPos[$axis] - $range;
+                                $toPos[$index] = $currentPos[$axis] + $range;
+
+                                $fromPosStr = implode(' ', $fromPos);
+                                $toPosStr = implode(' ', $toPos);
+
+                                $attrs[] = 'animation__position' . strtoupper($axis) . '="property: position; from: ' . $fromPosStr . '; to: ' . $toPosStr . '; dur: ' . $duration . '; loop: true; dir: alternate; easing: easeInOutSine"';
+                            }
+                        }
+                    }
+                } elseif (!empty($shape['animation']['position']['enabled'])) {
+                    // Old format: Backward compatibility
                     $axis = $shape['animation']['position']['axis'] ?? 'y';
                     $distance = $shape['animation']['position']['distance'] ?? 0;
                     $duration = $shape['animation']['position']['duration'] ?? 10000;
 
-                    // Calculate from and to positions based on current position
-                    $currentPos = $shape['position'] ?? ['x' => 0, 'y' => 0, 'z' => 0];
                     $fromPos = sprintf('%s %s %s', $currentPos['x'], $currentPos['y'], $currentPos['z']);
-
-                    // Apply distance to the selected axis
                     $toPos = $currentPos;
                     $toPos[$axis] = $currentPos[$axis] + $distance;
                     $toPosStr = sprintf('%s %s %s', $toPos['x'], $toPos['y'], $toPos['z']);
