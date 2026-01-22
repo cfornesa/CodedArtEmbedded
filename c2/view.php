@@ -365,19 +365,53 @@ function drawFlowPattern(count, size, shapes, variation) {
 // Initial draw
 drawPattern();
 
-// Animation if enabled
-if (config.animation && config.animation.enabled) {
+// Animation if enabled - Backward compatibility for both old and new formats
+// Old format: config.animation.enabled (single toggle)
+// New format: config.animation.rotation.enabled, pulse.enabled, move.enabled, color.enabled (granular)
+const isAnimationEnabled = config.animation && (
+    config.animation.enabled || // Old format
+    (config.animation.rotation && config.animation.rotation.enabled) || // New format: rotation
+    (config.animation.pulse && config.animation.pulse.enabled) || // New format: pulse
+    (config.animation.move && config.animation.move.enabled) || // New format: move
+    (config.animation.color && config.animation.color.enabled) // New format: color
+);
+
+if (isAnimationEnabled) {
     let frame = 0;
-    const speed = config.animation.speed || 1;
+
+    // Determine speed and loop from either old or new format
+    let speed = 1;
+    let loop = true;
+
+    if (config.animation.enabled) {
+        // Old format
+        speed = config.animation.speed || 1;
+        loop = config.animation.loop !== false;
+    } else {
+        // New format - use speed from first enabled animation type
+        if (config.animation.rotation?.enabled) {
+            speed = config.animation.rotation.speed || 1;
+            loop = config.animation.rotation.loop !== false;
+        } else if (config.animation.pulse?.enabled) {
+            speed = config.animation.pulse.speed || 1;
+            loop = config.animation.pulse.loop !== false;
+        } else if (config.animation.move?.enabled) {
+            speed = config.animation.move.speed || 1;
+            loop = config.animation.move.loop !== false;
+        } else if (config.animation.color?.enabled) {
+            speed = config.animation.color.speed || 1;
+            loop = config.animation.color.loop !== false;
+        }
+    }
 
     function animate() {
-        if (!config.animation.loop && frame > 60 * 10) return; // Stop after 10 seconds if not looping
+        if (!loop && frame > 60 * 10) return; // Stop after 10 seconds if not looping
 
         // Clear with trails effect if enabled
         if (config.advanced?.enableTrails) {
             ctx.fillStyle = config.canvas.background + '20'; // Semi-transparent
             ctx.fillRect(0, 0, width, height);
-        } else if (config.animation.clearBackground !== false) {
+        } else {
             ctx.fillStyle = config.canvas.background || '#FFFFFF';
             ctx.fillRect(0, 0, width, height);
         }
