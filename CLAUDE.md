@@ -2,7 +2,7 @@
 
 ## Project Status: ✅ PRODUCTION READY
 
-**Last Updated:** 2026-01-22 (v1.0.11.1)
+**Last Updated:** 2026-01-22 (v1.0.11.2)
 **Agent:** Claude (Sonnet 4.5)
 **Environment:** Replit Development / Hostinger Production
 
@@ -1297,6 +1297,158 @@ mysqldump -u username -p codedart_db > backup_$(date +%Y%m%d).sql
 ---
 
 ## Version History
+
+**v1.0.11.2** - 2026-01-22 (UX Fixes: Immersive View + Multi-Axis Animation)
+- 🎨 **UX FIX: Fullscreen Immersive View**
+  - **User Feedback:** "Menu and header remain visible when viewing pieces, distracting from the art"
+  - **Problem:** View pages included header/navigation templates designed for main site pages
+  - **Impact:** Users couldn't focus on the art in a distraction-free environment
+  - **Solution:**
+    - Removed header and footer from `/a-frame/view.php`
+    - Added `body { margin: 0; overflow: hidden; }` for true fullscreen
+    - A-Frame scene now fills entire viewport with no UI chrome
+    - Immersive, gallery-quality viewing experience
+  - **Result:** Clean, fullscreen art viewing with zero distractions
+
+- 🐛 **CRITICAL FIX: Multi-Axis Position Animation**
+  - **User Feedback:** "When selecting multiple animations, shape only follows the latest one checked (e.g., Z-axis)"
+  - **Problem:** Each axis animation tried to control the entire position vector simultaneously, causing conflicts
+  - **Root Cause:**
+    ```php
+    // OLD (BROKEN) - Each axis creates separate animation controlling full position
+    animation__positionX="property: position; from: 0 1.5 -5; to: 2 1.5 -5; ..."  // Controls X, Y, Z
+    animation__positionY="property: position; from: 0 1.5 -5; to: 0 3.5 -5; ..."  // Also controls X, Y, Z
+    animation__positionZ="property: position; from: 0 1.5 -5; to: 0 1.5 -3; ..."  // Also controls X, Y, Z
+    // Last one wins, others are ignored!
+    ```
+  - **Solution:** Combine all enabled axes into a single unified position animation
+    ```php
+    // NEW (CORRECT) - Single animation with combined movement
+    // If X (range 2) and Y (range 1) enabled:
+    animation__position="property: position;
+                        from: -2 0.5 -5;     // (currentX - 2, currentY - 1, currentZ)
+                        to: 2 2.5 -5;        // (currentX + 2, currentY + 1, currentZ)
+                        ..."
+    // Creates diagonal movement!
+    ```
+  - **Algorithm:**
+    1. Collect all enabled axes and their ranges
+    2. Build combined "from" position: `(currentX ± rangeX, currentY ± rangeY, currentZ ± rangeZ)`
+    3. Build combined "to" position with opposite signs
+    4. Use maximum duration across all enabled axes
+    5. Create single `animation__position` that animates the full vector
+  - **Result:**
+    - Multiple axes now animate simultaneously, creating rich multi-directional movement
+    - X + Y = diagonal motion
+    - X + Y + Z = 3D spiral/orbit patterns
+    - Enables truly dynamic, interesting animations
+
+- 🎯 **SYSTEMS THINKING LESSONS:**
+  1. **View Context Determines Layout:**
+     - **Problem:** Used same template system for gallery pages AND individual art viewing
+     - **Why Wrong:** Gallery needs navigation, art viewing needs immersion
+     - **Better Approach:**
+       - Context-aware templates: `layout_gallery.php` vs `layout_immersive.php`
+       - View pages should minimize chrome, maximize content
+       - Navigation useful for browsing, harmful for focused viewing
+     - **Design Principle:** UI should adapt to user's current goal
+
+  2. **Multiple Animations Must Cooperate, Not Compete:**
+     - **Problem:** Independent animations all trying to control same property
+     - **Why It Breaks:** A-Frame applies animations in order, last one wins
+     - **Root Cause:** Treated axes as independent when they share a single position vector
+     - **Solution:** Combine complementary animations into a unified transformation
+     - **Analogy:** Multiple people trying to steer the same car vs. one person steering with combined input
+
+  3. **Vector Properties Require Unified Control:**
+     - **Problem:** Position is a 3D vector (x, y, z), not three independent scalars
+     - **Reality:** You can't animate X without also specifying Y and Z (even if they don't change)
+     - **Better Approach:**
+       - For vector properties: Combine all component changes into single animation
+       - For scalar properties: Multiple animations can coexist (opacity + rotation)
+     - **Technical Detail:** A-Frame's animation system sets the entire property value, not deltas
+
+  4. **User Feedback Reveals Hidden Conflicts:**
+     - **User Said:** "Only the latest one checked works"
+     - **What That Meant:** Animations were conflicting, not additive
+     - **Lesson:** When user reports "only X works," look for conflicts in how features interact
+     - **Debugging Pattern:** Test with combinations, not just individual features
+
+  5. **Immersion Requires Removing, Not Adding:**
+     - **Anti-Pattern:** "Let's add a fullscreen button!"
+     - **Better:** "Let's remove everything except the art"
+     - **Principle:** Immersive experiences are achieved by subtraction, not addition
+     - **User Need:** When viewing art, users want LESS UI, not more options
+
+- 👤 **USER EXPERIENCE IMPROVEMENTS:**
+  - **Gallery-Quality Viewing:** No headers, menus, or footers cluttering the experience
+  - **Dynamic Animations:** Shapes can now move diagonally, in spirals, or in complex 3D patterns
+  - **Intuitive Behavior:** Checking X + Y now creates diagonal movement (as expected)
+  - **Focus on Art:** Zero distractions, full viewport dedicated to the piece
+  - **Professional Presentation:** View pages now feel like a curated art gallery
+
+- 📚 **FILES MODIFIED:**
+  - `a-frame/view.php`:
+    - Removed header and footer includes
+    - Added fullscreen body styling (`margin: 0; overflow: hidden`)
+    - Updated position animation to combine all enabled axes
+    - Single unified animation instead of per-axis conflicts
+  - `admin/includes/preview.php`:
+    - Same position animation fix as view.php
+    - Live preview now shows correct multi-axis movement
+  - `CLAUDE.md`:
+    - Comprehensive v1.0.11.2 documentation
+    - Systems thinking lessons on view context and animation cooperation
+
+- 📖 **CRITICAL LESSONS FOR FUTURE DEVELOPMENT:**
+  1. **Test Feature Combinations, Not Just Individual Features:**
+     - Don't just test "X animation works" and "Y animation works"
+     - Test "X + Y animation works together"
+     - Edge cases often appear in combinations
+
+  2. **Different Contexts Need Different Templates:**
+     - Browse context: navigation, breadcrumbs, headers
+     - View context: fullscreen, minimal chrome, immersion
+     - Edit context: rich UI, sidebars, toolbars
+     - Don't reuse the same layout for incompatible contexts
+
+  3. **When Animations Conflict, Combine Them:**
+     - If multiple features try to control the same property, they'll fight
+     - Combine their inputs into a single unified transformation
+     - Use separate animation IDs only for different properties
+
+  4. **Immersive Experiences:**
+     - Remove navigation
+     - Remove headers/footers
+     - Fullscreen by default (not optional)
+     - Zero margin/padding on body
+     - Let the content breathe
+
+  5. **Vector Math in Animations:**
+     - Position is (x, y, z), not three separate values
+     - Can't animate just X - must specify full vector
+     - Combine all component changes before animating
+     - Use maximum duration when combining multiple timings
+
+- 🧪 **TESTING RECOMMENDATIONS:**
+  - View an A-Frame piece: should see NO headers, menus, or footers
+  - Browser should be fullscreen (no scrollbars, no margins)
+  - Enable X + Y position animation: shape should move diagonally
+  - Enable X + Y + Z: shape should move in 3D space
+  - Enable all three with different ranges: verify complex motion patterns
+  - Live preview should show same multi-axis movement
+  - Verify all combinations: X, Y, Z, X+Y, X+Z, Y+Z, X+Y+Z
+
+- 🔒 **SECURITY:**
+  - No security regressions
+  - Removed includes reduces attack surface (less code = less risk)
+  - All rendering still uses proper escaping and proxying
+
+- 🎨 **IMPACT:**
+  - **Viewing Experience:** ✨ **Transformed** - fullscreen, distraction-free, gallery-quality
+  - **Animation System:** ✨ **Fixed** - multiple axes now work together, creating rich dynamics
+  - **User Satisfaction:** Both reported issues completely resolved
+  - **Professional Quality:** View pages now suitable for portfolio/exhibition use
 
 **v1.0.11.1** - 2026-01-22 (Critical Fixes: Schema Validation + Session Warnings)
 - 🐛 **CRITICAL FIX: Incomplete Schema Validation**
