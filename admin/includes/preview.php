@@ -1086,8 +1086,8 @@ function setup() {
 }
 
 function draw() {
-    // Clear background if enabled
-    if (clearBg || animated) {
+    // Clear background if not animating or if clearBackground enabled
+    if (!animated || clearBg) {
         if (backgroundImage) {
             // Draw background image scaled to canvas
             image(backgroundImage, 0, 0, canvasWidth, canvasHeight);
@@ -1255,8 +1255,8 @@ function renderThreeJSPreview($piece) {
     $geometries = $config['geometries'] ?? [];
     $sceneSettings = $config['sceneSettings'] ?? [];
 
-    // Scene background color
-    $sceneBackground = $sceneSettings['background'] ?? '#000000';
+    // Scene background color (check database field first, then config, then default)
+    $sceneBackground = $piece['background_color'] ?? ($sceneSettings['background'] ?? '#000000');
 
     ?>
 <!DOCTYPE html>

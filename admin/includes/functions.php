@@ -442,6 +442,7 @@ function prepareArtPieceData($type, $data, $userId, $isUpdate = false) {
             break;
 
         case 'threejs':
+            $prepared['background_color'] = !empty($data['background_color']) ? sanitize($data['background_color']) : '#000000';
             $prepared['background_image_url'] = !empty($data['background_image_url']) ? sanitize($data['background_image_url']) : null;
             $prepared['configuration'] = !empty($data['configuration'])
                 ? jsonEncode($data['configuration'])
