@@ -1086,8 +1086,8 @@ function setup() {
 }
 
 function draw() {
-    // Clear background if enabled
-    if (clearBg || animated) {
+    // Clear background if not animating or if clearBackground enabled
+    if (!animated || clearBg) {
         if (backgroundImage) {
             // Draw background image scaled to canvas
             image(backgroundImage, 0, 0, canvasWidth, canvasHeight);

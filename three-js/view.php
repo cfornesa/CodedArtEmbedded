@@ -86,7 +86,7 @@ try {
 <body>
 <div id="threejs-container"></div>
 
-<script src="<?php echo url('js/three.min.js'); ?>"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 // Three.js Scene Configuration
 const config = <?php echo json_encode($config); ?>;
