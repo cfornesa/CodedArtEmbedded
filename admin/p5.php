@@ -772,7 +772,13 @@ require_once(__DIR__ . '/includes/header.php');
             </div>
 
             <!-- Hidden field to store P5.js configuration as JSON -->
-            <input type="hidden" name="configuration_json" id="configuration_json">
+            <input type="hidden" name="configuration_json" id="configuration_json" value="<?php
+                if ($formData && isset($formData['configuration_json_raw'])) {
+                    echo htmlspecialchars($formData['configuration_json_raw']);
+                } elseif ($editPiece && !empty($editPiece['configuration'])) {
+                    echo htmlspecialchars($editPiece['configuration']);
+                }
+            ?>">
 
             <div class="form-group" style="margin-top: 30px;">
                 <button type="submit" class="btn btn-primary btn-lg">
@@ -1149,10 +1155,20 @@ require_once(__DIR__ . '/includes/header.php');
         // Initialize shape palette
         initializeP5ShapePalette();
 
-        // Load existing configuration if editing
-        <?php if ($editPiece && !empty($editPiece['configuration'])): ?>
+        // Load existing configuration if editing or on form errors
+        <?php
+        $configToLoad = null;
+        if ($formData && isset($formData['configuration_json_raw'])) {
+            // Form error - reload from preserved data
+            $configToLoad = $formData['configuration_json_raw'];
+        } elseif ($editPiece && !empty($editPiece['configuration'])) {
+            // Normal edit mode
+            $configToLoad = $editPiece['configuration'];
+        }
+        ?>
+        <?php if ($configToLoad): ?>
         try {
-            const savedConfig = <?php echo $editPiece['configuration']; ?>;
+            const savedConfig = <?php echo $configToLoad; ?>;
             if (savedConfig) {
                 // Load canvas settings
                 if (savedConfig.canvas) {

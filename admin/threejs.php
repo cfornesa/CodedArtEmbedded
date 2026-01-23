@@ -407,7 +407,13 @@ require_once(__DIR__ . '/includes/header.php');
             </div>
 
             <!-- Hidden field to store geometry configuration as JSON -->
-            <input type="hidden" name="configuration_json" id="configuration_json">
+            <input type="hidden" name="configuration_json" id="configuration_json" value="<?php
+                if ($formData && isset($formData['configuration_json_raw'])) {
+                    echo htmlspecialchars($formData['configuration_json_raw']);
+                } elseif ($editPiece && !empty($editPiece['configuration'])) {
+                    echo htmlspecialchars($editPiece['configuration']);
+                }
+            ?>">
 
             <div class="form-group" style="margin-top: 30px;">
                 <button type="submit" class="btn btn-primary btn-lg">
@@ -1369,11 +1375,21 @@ require_once(__DIR__ . '/includes/header.php');
         }
     }
 
-    // Load existing geometry configuration when editing
-    <?php if ($editPiece && !empty($editPiece['configuration'])): ?>
+    // Load existing geometry configuration when editing or on form errors
+    <?php
+    $configToLoad = null;
+    if ($formData && isset($formData['configuration_json_raw'])) {
+        // Form error - reload from preserved data
+        $configToLoad = $formData['configuration_json_raw'];
+    } elseif ($editPiece && !empty($editPiece['configuration'])) {
+        // Normal edit mode
+        $configToLoad = $editPiece['configuration'];
+    }
+    ?>
+    <?php if ($configToLoad): ?>
     document.addEventListener('DOMContentLoaded', function() {
         try {
-            const config = <?php echo $editPiece['configuration']; ?>;
+            const config = <?php echo $configToLoad; ?>;
             if (config && config.geometries) {
                 config.geometries.forEach(geometryData => {
                     // Migrate old animation format to new granular format
