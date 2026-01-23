@@ -233,8 +233,35 @@ require_once(__DIR__ . '/includes/header.php');
             <h2><?php echo $action === 'create' ? 'Add New' : 'Edit'; ?> Three.js Piece</h2>
         </div>
 
-        <form method="POST" action="" data-validate>
+        <form method="POST" action="" data-validate id="art-form">
             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
+
+            <!-- LIVE PREVIEW SECTION (matching A-Frame/P5.js pattern) -->
+            <div id="live-preview-section" style="margin: 20px; padding: 20px; background: #f5f3ff; border: 3px solid #764ba2; border-radius: 8px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h3 style="margin: 0; color: #764ba2; font-size: 20px;">
+                        🎨 LIVE PREVIEW
+                    </h3>
+                    <div>
+                        <button type="button" class="btn btn-sm btn-secondary" id="toggle-preview-btn" onclick="toggleLivePreview()">
+                            Hide Preview
+                        </button>
+                    </div>
+                </div>
+
+                <p style="margin: 0 0 15px 0; color: #6c757d; font-size: 14px;">
+                    See your Three.js WebGL scene in real-time as you configure it. Preview updates automatically with 500ms debounce.
+                </p>
+
+                <div id="live-preview-container" style="background: #fff; border: 2px solid #dee2e6; border-radius: 4px; overflow: hidden; position: relative;">
+                    <iframe id="live-preview-iframe" src="" style="width: 100%; height: 600px; border: none;"></iframe>
+                    <div id="live-preview-loading" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; background: rgba(255,255,255,0.95); padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                        <div style="font-size: 18px; font-weight: 600; color: #764ba2;">
+                            🔄 Loading Preview...
+                        </div>
+                    </div>
+                </div>
+            </div>
 
             <div class="form-group">
                 <label for="title" class="form-label required">Title</label>
@@ -1335,6 +1362,11 @@ require_once(__DIR__ . '/includes/header.php');
             }
         };
         document.getElementById('configuration_json').value = JSON.stringify(config, null, 2);
+
+        // Trigger live preview update
+        if (typeof updateLivePreview === 'function') {
+            updateLivePreview();
+        }
     }
 
     // Load existing geometry configuration when editing
@@ -1465,6 +1497,86 @@ require_once(__DIR__ . '/includes/header.php');
         updateSlugPreview();
     });
     <?php endif; ?>
+
+    // ============================================
+    // LIVE PREVIEW SYSTEM
+    // ============================================
+
+    const previewIframe = document.getElementById('live-preview-iframe');
+    const previewSection = document.getElementById('live-preview-section');
+    const loadingIndicator = document.getElementById('live-preview-loading');
+    let livePreviewTimeout = null;
+    let livePreviewHidden = false;
+
+    /**
+     * Update live preview with current form data
+     * Debounced to 500ms to prevent excessive requests
+     */
+    function updateLivePreview() {
+        if (livePreviewHidden) return;
+
+        if (livePreviewTimeout) {
+            clearTimeout(livePreviewTimeout);
+        }
+
+        livePreviewTimeout = setTimeout(() => {
+            if (loadingIndicator) loadingIndicator.style.display = 'block';
+
+            const formData = new FormData(document.getElementById('art-form'));
+
+            fetch('<?php echo url('admin/includes/preview.php'); ?>', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: new URLSearchParams(formData)
+            })
+            .then(response => response.text())
+            .then(html => {
+                if (loadingIndicator) loadingIndicator.style.display = 'none';
+
+                // Create Blob URL for iframe content
+                const blob = new Blob([html], { type: 'text/html' });
+                const blobUrl = URL.createObjectURL(blob);
+                previewIframe.src = blobUrl;
+            })
+            .catch(error => {
+                console.error('Live preview error:', error);
+                if (loadingIndicator) loadingIndicator.style.display = 'none';
+            });
+        }, 500); // 500ms debounce
+    }
+
+    /**
+     * Toggle live preview visibility
+     * Stops animations when hidden
+     */
+    function toggleLivePreview() {
+        livePreviewHidden = !livePreviewHidden;
+
+        if (livePreviewHidden) {
+            previewSection.style.display = 'none';
+            previewIframe.src = ''; // Stop animations
+        } else {
+            previewSection.style.display = 'block';
+            updateLivePreview(); // Refresh preview
+        }
+    }
+
+    /**
+     * Scroll to live preview section
+     */
+    function scrollToLivePreview() {
+        previewSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // Initialize live preview on page load (after geometry configuration loads)
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(() => {
+            updateLivePreview();
+        }, 1000); // Wait 1 second for configuration to initialize
+    });
+
     </script>
 
 <?php endif; ?>
