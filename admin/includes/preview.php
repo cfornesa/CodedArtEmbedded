@@ -1004,249 +1004,255 @@ if (config.animation) {
     }
 }
 
-// Canvas settings
-const canvasWidth = <?php echo $canvasWidth; ?>;
-const canvasHeight = <?php echo $canvasHeight; ?>;
-const renderer = '<?php echo $renderer; ?>';
-const bgColor = '<?php echo $background; ?>';
-<?php if (!empty($backgroundImageUrl)): ?>
-const backgroundImageUrl = '<?php echo htmlspecialchars($backgroundImageUrl, ENT_QUOTES); ?>';
-let backgroundImage = null; // Will be loaded in preload()
-<?php else: ?>
-const backgroundImageUrl = null;
-<?php endif; ?>
-
-// Drawing settings
-const drawingMode = '<?php echo $drawingMode; ?>';
-const fillColor = '<?php echo $fillColor; ?>';
-const fillOpacity = <?php echo $fillOpacity; ?>;
-const strokeColor = '<?php echo $strokeColor; ?>';
-const strokeWeight = <?php echo $strokeWeight; ?>;
-const noStrokeEnabled = <?php echo $noStroke ? 'true' : 'false'; ?>;
-const noFillEnabled = <?php echo $noFill ? 'true' : 'false'; ?>;
-
-// Animation settings
-const animated = <?php echo $animated ? 'true' : 'false'; ?>;
-const loopEnabled = <?php echo $loop ? 'true' : 'false'; ?>;
-const animSpeed = <?php echo $speed; ?>;
-
-// Advanced settings
-const mouseEnabled = <?php echo $mouseInteraction ? 'true' : 'false'; ?>;
-const keyboardEnabled = <?php echo $keyboardInteraction ? 'true' : 'false'; ?>;
-const clearBg = <?php echo $clearBackground ? 'true' : 'false'; ?>;
-<?php if ($randomSeed !== null): ?>
-const randomSeedValue = <?php echo $randomSeed; ?>;
-<?php endif; ?>
-
-// Shapes palette (backward compatible with old colors)
-const shapes = <?php echo json_encode($shapes); ?>;
-const usePalette = config.usePalette || false;
-
-// Animation variables
-let animationFrame = 0;
-let offset = 0;
-
-// Helper function to calculate current scale factor for scale/pulse animation
-function getCurrentScaleFactor() {
-    if (config.animation && config.animation.scale && config.animation.scale.enabled) {
-        const min = config.animation.scale.min || 0.5;
-        const max = config.animation.scale.max || 2.0;
-
-        if (min !== max) {
-            const duration = config.animation.scale.speed ? (1000 / config.animation.scale.speed) : 10000;
-            const range = (max - min) / 2;
-            const mid = (max + min) / 2;
-            return mid + Math.sin(frameCount / duration * Math.PI * 2) * range;
-        }
-    }
-    return 1.0; // Default: no scaling
-}
-
-// Preload background image if specified
-function preload() {
-    if (backgroundImageUrl) {
-        try {
-            backgroundImage = loadImage(backgroundImageUrl);
-        } catch (e) {
-            console.error('Error loading background image:', e);
-            backgroundImage = null;
-        }
-    }
-}
-
-function setup() {
-    // Create canvas
-    if (renderer === 'WEBGL') {
-        createCanvas(canvasWidth, canvasHeight, WEBGL);
-    } else {
-        createCanvas(canvasWidth, canvasHeight);
-    }
-
-    // Set background
-    if (backgroundImage) {
-        // Draw background image scaled to canvas
-        image(backgroundImage, 0, 0, canvasWidth, canvasHeight);
-    } else {
-        background(bgColor);
-    }
-
-    // Set random seed if specified
-    <?php if ($randomSeed !== null): ?>
-    randomSeed(randomSeedValue);
+// P5.js sketch in INSTANCE MODE (matches view.php exactly)
+const sketch = (p) => {
+    // Canvas settings
+    const canvasWidth = <?php echo $canvasWidth; ?>;
+    const canvasHeight = <?php echo $canvasHeight; ?>;
+    const renderer = '<?php echo $renderer; ?>';
+    const bgColor = '<?php echo $background; ?>';
+    <?php if (!empty($backgroundImageUrl)): ?>
+    const backgroundImageUrl = '<?php echo htmlspecialchars($backgroundImageUrl, ENT_QUOTES); ?>';
+    <?php else: ?>
+    const backgroundImageUrl = null;
     <?php endif; ?>
 
-    // Set loop behavior
-    if (!loopEnabled && !animated) {
-        noLoop();
-    }
-}
+    // Drawing settings
+    const drawingMode = '<?php echo $drawingMode; ?>';
+    const fillColor = '<?php echo $fillColor; ?>';
+    const fillOpacity = <?php echo $fillOpacity; ?>;
+    const strokeColor = '<?php echo $strokeColor; ?>';
+    const strokeWeight = <?php echo $strokeWeight; ?>;
+    const noStrokeEnabled = <?php echo $noStroke ? 'true' : 'false'; ?>;
+    const noFillEnabled = <?php echo $noFill ? 'true' : 'false'; ?>;
 
-function draw() {
-    // Clear background if not animating or if clearBackground enabled
-    if (!animated || clearBg) {
+    // Animation settings
+    const animated = <?php echo $animated ? 'true' : 'false'; ?>;
+    const loopEnabled = <?php echo $loop ? 'true' : 'false'; ?>;
+    const animSpeed = <?php echo $speed; ?>;
+
+    // Advanced settings
+    const mouseEnabled = <?php echo $mouseInteraction ? 'true' : 'false'; ?>;
+    const keyboardEnabled = <?php echo $keyboardInteraction ? 'true' : 'false'; ?>;
+    const clearBg = <?php echo $clearBackground ? 'true' : 'false'; ?>;
+    <?php if ($randomSeed !== null): ?>
+    const randomSeedValue = <?php echo $randomSeed; ?>;
+    <?php endif; ?>
+
+    // Shapes palette (backward compatible with old colors)
+    const shapes = <?php echo json_encode($shapes); ?>;
+    const usePalette = config.usePalette || false;
+
+    // Animation variables
+    let animationFrame = 0;
+    let offset = 0;
+    let backgroundImage = null; // Will be loaded in preload()
+
+    // Helper function to calculate current scale factor for scale/pulse animation
+    function getCurrentScaleFactor() {
+        if (config.animation && config.animation.scale && config.animation.scale.enabled) {
+            const min = config.animation.scale.min || 0.5;
+            const max = config.animation.scale.max || 2.0;
+
+            if (min !== max) {
+                const duration = config.animation.scale.speed ? (1000 / config.animation.scale.speed) : 10000;
+                const range = (max - min) / 2;
+                const mid = (max + min) / 2;
+                return mid + p.sin(p.frameCount / duration * p.PI * 2) * range;
+            }
+        }
+        return 1.0; // Default: no scaling
+    }
+
+    // Preload background image if specified
+    p.preload = function() {
+        if (backgroundImageUrl) {
+            try {
+                backgroundImage = p.loadImage(backgroundImageUrl);
+            } catch (e) {
+                console.error('Error loading background image:', e);
+                backgroundImage = null;
+            }
+        }
+    };
+
+    p.setup = function() {
+        // Create canvas
+        if (renderer === 'WEBGL') {
+            p.createCanvas(canvasWidth, canvasHeight, p.WEBGL);
+        } else {
+            p.createCanvas(canvasWidth, canvasHeight);
+        }
+
+        // Set background
         if (backgroundImage) {
             // Draw background image scaled to canvas
-            image(backgroundImage, 0, 0, canvasWidth, canvasHeight);
+            p.image(backgroundImage, 0, 0, canvasWidth, canvasHeight);
         } else {
-            background(bgColor);
+            p.background(bgColor);
+        }
+
+        // Set random seed if specified
+        <?php if ($randomSeed !== null): ?>
+        p.randomSeed(randomSeedValue);
+        <?php endif; ?>
+
+        // Set loop behavior
+        if (!loopEnabled && !animated) {
+            p.noLoop();
+        }
+    };
+
+    p.draw = function() {
+        // Clear background if not animating or if clearBackground enabled
+        if (!animated || clearBg) {
+            if (backgroundImage) {
+                // Draw background image scaled to canvas
+                p.image(backgroundImage, 0, 0, canvasWidth, canvasHeight);
+            } else {
+                p.background(bgColor);
+            }
+        }
+
+        // Use shapes from palette (with use-palette enabled) or draw in fixed pattern
+        if (usePalette && shapes.length > 0) {
+            drawWithShapesPalette();
+        } else {
+            drawWithConfiguredStyle();
+        }
+
+        // Update animation
+        if (animated) {
+            animationFrame++;
+            offset += animSpeed;
+        }
+    };
+
+    // Helper function to draw a specific P5.js shape
+    function drawP5Shape(shapeType, x, y, size) {
+        switch (shapeType) {
+            case 'ellipse':
+                p.ellipse(x, y, size, size);
+                break;
+            case 'rect':
+                p.rect(x - size/2, y - size/2, size, size);
+                break;
+            case 'triangle':
+                p.triangle(x - size/2, y + size/2, x, y - size/2, x + size/2, y + size/2);
+                break;
+            case 'polygon':
+                // Draw hexagon
+                p.beginShape();
+                for (let i = 0; i < 6; i++) {
+                    const angle = p.TWO_PI / 6 * i;
+                    const sx = x + p.cos(angle) * size/2;
+                    const sy = y + p.sin(angle) * size/2;
+                    p.vertex(sx, sy);
+                }
+                p.endShape(p.CLOSE);
+                break;
+            case 'line':
+                p.line(x - size/2, y, x + size/2, y);
+                break;
+            default:
+                p.ellipse(x, y, size, size);
         }
     }
 
-    // Use shapes from palette (with use-palette enabled) or draw in fixed pattern
-    if (usePalette && shapes.length > 0) {
-        drawWithShapesPalette();
-    } else {
-        drawWithConfiguredStyle();
-    }
+    // Draw using shapes palette
+    function drawWithShapesPalette() {
+        const baseSize = animated ? 50 + p.sin(offset * 0.05) * 30 : 50;
+        const scaleFactor = getCurrentScaleFactor();
+        const size = baseSize * scaleFactor;
 
-    // Update animation
-    if (animated) {
-        animationFrame++;
-        offset += animSpeed;
-    }
-}
+        for (let i = 0; i < 5; i++) {
+            const x = (i + 1) * (p.width / 6);
+            const y = p.height / 2 + (animated ? p.sin(offset * 0.1 + i) * 50 : 0);
 
-// Helper function to draw a specific P5.js shape
-function drawP5Shape(shapeType, x, y, size) {
-    switch (shapeType) {
-        case 'ellipse':
-            ellipse(x, y, size, size);
-            break;
-        case 'rect':
-            rect(x - size/2, y - size/2, size, size);
-            break;
-        case 'triangle':
-            triangle(x - size/2, y + size/2, x, y - size/2, x + size/2, y + size/2);
-            break;
-        case 'polygon':
-            // Draw hexagon
-            beginShape();
-            for (let i = 0; i < 6; i++) {
-                const angle = TWO_PI / 6 * i;
-                const sx = x + cos(angle) * size/2;
-                const sy = y + sin(angle) * size/2;
-                vertex(sx, sy);
+            // Select shape from palette (cycle through)
+            const shapeItem = shapes[i % shapes.length];
+
+            // Set stroke
+            if (noStrokeEnabled) {
+                p.noStroke();
+            } else {
+                p.stroke(strokeColor);
+                p.strokeWeight(strokeWeight);
             }
-            endShape(CLOSE);
-            break;
-        case 'line':
-            line(x - size/2, y, x + size/2, y);
-            break;
-        default:
-            ellipse(x, y, size, size);
+
+            // Set fill with shape's color
+            if (noFillEnabled) {
+                p.noFill();
+            } else {
+                const c = p.color(shapeItem.color);
+                c.setAlpha(fillOpacity);
+                p.fill(c);
+            }
+
+            // Draw the shape
+            drawP5Shape(shapeItem.shape, x, y, size);
+        }
     }
-}
 
-// Draw using shapes palette
-function drawWithShapesPalette() {
-    const baseSize = animated ? 50 + sin(offset * 0.05) * 30 : 50;
-    const scaleFactor = getCurrentScaleFactor();
-    const size = baseSize * scaleFactor;
-
-    for (let i = 0; i < 5; i++) {
-        const x = (i + 1) * (width / 6);
-        const y = height / 2 + (animated ? sin(offset * 0.1 + i) * 50 : 0);
-
-        // Select shape from palette (cycle through)
-        const shapeItem = shapes[i % shapes.length];
+    // Draw with configured style (single shape type, single color)
+    function drawWithConfiguredStyle() {
+        const baseSize = animated ? 50 + p.sin(offset * 0.05) * 30 : 50;
+        const scaleFactor = getCurrentScaleFactor();
+        const size = baseSize * scaleFactor;
 
         // Set stroke
         if (noStrokeEnabled) {
-            noStroke();
+            p.noStroke();
         } else {
-            stroke(strokeColor);
-            strokeWeight(strokeWeight);
+            p.stroke(strokeColor);
+            p.strokeWeight(strokeWeight);
         }
 
-        // Set fill with shape's color
+        // Set fill
         if (noFillEnabled) {
-            noFill();
+            p.noFill();
         } else {
-            const c = color(shapeItem.color);
+            const c = p.color(fillColor);
             c.setAlpha(fillOpacity);
-            fill(c);
+            p.fill(c);
         }
 
-        // Draw the shape
-        drawP5Shape(shapeItem.shape, x, y, size);
-    }
-}
-
-// Draw with configured style (single shape type, single color)
-function drawWithConfiguredStyle() {
-    const baseSize = animated ? 50 + sin(offset * 0.05) * 30 : 50;
-    const scaleFactor = getCurrentScaleFactor();
-    const size = baseSize * scaleFactor;
-
-    // Set stroke
-    if (noStrokeEnabled) {
-        noStroke();
-    } else {
-        stroke(strokeColor);
-        strokeWeight(strokeWeight);
+        // Draw shapes based on configured drawing mode
+        for (let i = 0; i < 5; i++) {
+            const x = (i + 1) * (p.width / 6);
+            const y = p.height / 2 + (animated ? p.sin(offset * 0.1 + i) * 50 : 0);
+            drawP5Shape(drawingMode, x, y, size);
+        }
     }
 
-    // Set fill
-    if (noFillEnabled) {
-        noFill();
-    } else {
-        const c = color(fillColor);
-        c.setAlpha(fillOpacity);
-        fill(c);
+    // Mouse interaction
+    if (mouseEnabled) {
+        p.mouseMoved = function() {
+            p.redraw();
+        };
+
+        p.mousePressed = function() {
+            p.redraw();
+        };
     }
 
-    // Draw shapes based on configured drawing mode
-    for (let i = 0; i < 5; i++) {
-        const x = (i + 1) * (width / 6);
-        const y = height / 2 + (animated ? sin(offset * 0.1 + i) * 50 : 0);
-        drawP5Shape(drawingMode, x, y, size);
-    }
-}
-
-// Mouse interaction
-if (mouseEnabled) {
-    function mouseMoved() {
-        redraw();
-    }
-
-    function mousePressed() {
-        redraw();
-    }
-}
-
-// Keyboard interaction
-if (keyboardEnabled) {
-    function keyPressed() {
-        if (key === ' ') {
-            if (loopEnabled) {
-                noLoop();
-            } else {
-                loop();
+    // Keyboard interaction
+    if (keyboardEnabled) {
+        p.keyPressed = function() {
+            if (p.key === ' ') {
+                if (loopEnabled) {
+                    p.noLoop();
+                } else {
+                    p.loop();
+                }
             }
-        }
-        redraw();
+            p.redraw();
+        };
     }
-}
+};
+
+// Create P5 instance
+new p5(sketch);
     </script>
 </body>
 </html>
