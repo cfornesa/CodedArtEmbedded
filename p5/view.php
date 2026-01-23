@@ -156,6 +156,22 @@ const sketch = (p) => {
     let time = 0;
     let elements = [];
 
+    // Helper function to calculate current scale factor for scale/pulse animation
+    function getCurrentScaleFactor() {
+        if (animationConfig.scale && animationConfig.scale.enabled) {
+            const min = animationConfig.scale.min || 0.5;
+            const max = animationConfig.scale.max || 2.0;
+
+            if (min !== max) {
+                const duration = animationConfig.scale.speed ? (1000 / animationConfig.scale.speed) : 10000;
+                const range = (max - min) / 2;
+                const mid = (max + min) / 2;
+                return mid + Math.sin(p.frameCount / duration * Math.PI * 2) * range;
+            }
+        }
+        return 1.0; // Default: no scaling
+    }
+
     // Setup function
     p.setup = function() {
         // Create canvas
@@ -346,12 +362,14 @@ const sketch = (p) => {
     function drawGridPattern(shapeType, spacing) {
         const cols = Math.floor(p.width / spacing);
         const rows = Math.floor(p.height / spacing);
+        const scaleFactor = getCurrentScaleFactor();
 
         for (let i = 0; i < rows; i++) {
             for (let j = 0; j < cols; j++) {
                 const x = j * spacing + spacing / 2;
                 const y = i * spacing + spacing / 2;
-                const size = drawingConfig.shapeSize || 20;
+                const baseSize = drawingConfig.shapeSize || 20;
+                const size = baseSize * scaleFactor;
 
                 if (usePalette) {
                     const shapeData = shapes[(i * cols + j) % shapes.length];
@@ -365,6 +383,8 @@ const sketch = (p) => {
     }
 
     function drawRandomPattern(shapeType) {
+        const scaleFactor = getCurrentScaleFactor();
+
         elements.forEach((el, i) => {
             if (usePalette) {
                 p.fill(el.color);
@@ -388,16 +408,18 @@ const sketch = (p) => {
             }
 
             const elShape = usePalette ? el.shapeType : shapeType;
-            drawP5Shape(elShape, x, y, el.size);
+            const size = el.size * scaleFactor;
+            drawP5Shape(elShape, x, y, size);
         });
     }
 
     function drawNoisePattern(shapeType) {
         const scale = patternConfig.noiseScale || 0.01;
+        const scaleFactor = getCurrentScaleFactor();
 
         elements.forEach((el, i) => {
             const noiseVal = p.noise(el.x * scale, el.y * scale, time * 0.01);
-            const size = el.size * (0.5 + noiseVal);
+            const size = el.size * (0.5 + noiseVal) * scaleFactor;
 
             if (usePalette) {
                 const colorIndex = Math.floor(noiseVal * shapes.length);
@@ -415,6 +437,7 @@ const sketch = (p) => {
         const centerY = p.height / 2;
         const count = drawingConfig.shapeCount || 100;
         const maxRadius = Math.min(p.width, p.height) / 2;
+        const scaleFactor = getCurrentScaleFactor();
 
         for (let i = 0; i < count; i++) {
             const t = i / count;
@@ -422,7 +445,8 @@ const sketch = (p) => {
             const radius = t * maxRadius;
             const x = centerX + p.cos(angle) * radius;
             const y = centerY + p.sin(angle) * radius;
-            const size = drawingConfig.shapeSize || 10;
+            const baseSize = drawingConfig.shapeSize || 10;
+            const size = baseSize * scaleFactor;
 
             if (usePalette) {
                 const shapeData = shapes[i % shapes.length];
@@ -439,13 +463,15 @@ const sketch = (p) => {
         const centerY = p.height / 2;
         const count = drawingConfig.shapeCount || 100;
         const maxRadius = Math.min(p.width, p.height) / 2;
+        const scaleFactor = getCurrentScaleFactor();
 
         for (let i = 0; i < count; i++) {
             const angle = (i / count) * p.TWO_PI + time * 0.01;
             const radius = maxRadius * 0.8;
             const x = centerX + p.cos(angle) * radius;
             const y = centerY + p.sin(angle) * radius;
-            const size = drawingConfig.shapeSize || 10;
+            const baseSize = drawingConfig.shapeSize || 10;
+            const size = baseSize * scaleFactor;
 
             if (usePalette) {
                 const shapeData = shapes[i % shapes.length];
@@ -459,6 +485,7 @@ const sketch = (p) => {
 
     function drawFlowPattern(shapeType) {
         const scale = patternConfig.noiseScale || 0.01;
+        const scaleFactor = getCurrentScaleFactor();
 
         elements.forEach((el) => {
             const angle = p.noise(el.x * scale, el.y * scale, time * 0.01) * p.TWO_PI * 2;
@@ -479,7 +506,8 @@ const sketch = (p) => {
             }
 
             const elShape = usePalette ? el.shapeType : shapeType;
-            drawP5Shape(elShape, el.x, el.y, el.size);
+            const size = el.size * scaleFactor;
+            drawP5Shape(elShape, el.x, el.y, size);
         });
     }
 

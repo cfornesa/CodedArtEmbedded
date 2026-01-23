@@ -1046,6 +1046,22 @@ const usePalette = config.usePalette || false;
 let animationFrame = 0;
 let offset = 0;
 
+// Helper function to calculate current scale factor for scale/pulse animation
+function getCurrentScaleFactor() {
+    if (config.animation && config.animation.scale && config.animation.scale.enabled) {
+        const min = config.animation.scale.min || 0.5;
+        const max = config.animation.scale.max || 2.0;
+
+        if (min !== max) {
+            const duration = config.animation.scale.speed ? (1000 / config.animation.scale.speed) : 10000;
+            const range = (max - min) / 2;
+            const mid = (max + min) / 2;
+            return mid + Math.sin(frameCount / duration * Math.PI * 2) * range;
+        }
+    }
+    return 1.0; // Default: no scaling
+}
+
 // Preload background image if specified
 function preload() {
     if (backgroundImageUrl) {
@@ -1143,7 +1159,9 @@ function drawP5Shape(shapeType, x, y, size) {
 
 // Draw using shapes palette
 function drawWithShapesPalette() {
-    const size = animated ? 50 + sin(offset * 0.05) * 30 : 50;
+    const baseSize = animated ? 50 + sin(offset * 0.05) * 30 : 50;
+    const scaleFactor = getCurrentScaleFactor();
+    const size = baseSize * scaleFactor;
 
     for (let i = 0; i < 5; i++) {
         const x = (i + 1) * (width / 6);
@@ -1176,7 +1194,9 @@ function drawWithShapesPalette() {
 
 // Draw with configured style (single shape type, single color)
 function drawWithConfiguredStyle() {
-    const size = animated ? 50 + sin(offset * 0.05) * 30 : 50;
+    const baseSize = animated ? 50 + sin(offset * 0.05) * 30 : 50;
+    const scaleFactor = getCurrentScaleFactor();
+    const size = baseSize * scaleFactor;
 
     // Set stroke
     if (noStrokeEnabled) {
