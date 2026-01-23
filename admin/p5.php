@@ -51,18 +51,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array($action, ['create', 'edit'
             'title' => $_POST['title'] ?? '',
             'slug' => $_POST['slug'] ?? '',  // Optional: auto-generated if empty
             'description' => $_POST['description'] ?? '',
-            'piece_path' => $_POST['piece_path'] ?? '',
             'thumbnail_url' => $_POST['thumbnail_url'] ?? '',
-            'screenshot_url' => $_POST['screenshot_url'] ?? '',
+            'background_image_url' => $_POST['background_image_url'] ?? '',
             'tags' => $_POST['tags'] ?? '',
             'status' => $_POST['status'] ?? 'active',
             'sort_order' => $_POST['sort_order'] ?? 0
         ];
-
-        // Handle image URLs (array input)
-        if (isset($_POST['image_urls']) && is_array($_POST['image_urls'])) {
-            $data['image_urls'] = array_filter($_POST['image_urls']);
-        }
 
         // Handle configuration JSON if provided
         if (!empty($_POST['configuration_json'])) {
@@ -86,9 +80,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array($action, ['create', 'edit'
             // Preserve form data so user doesn't lose their work
             $formData = $data;
             // Also preserve array inputs in original format
-            if (isset($_POST['image_urls'])) {
-                $formData['image_urls_raw'] = $_POST['image_urls'];
-            }
             // Preserve configuration JSON
             if (isset($_POST['configuration_json'])) {
                 $formData['configuration_json_raw'] = $_POST['configuration_json'];
@@ -159,7 +150,6 @@ require_once(__DIR__ . '/includes/header.php');
                         <th>Thumbnail</th>
                         <th>Title</th>
                         <th>Slug</th>
-                        <th>Piece Path</th>
                         <th>Status</th>
                         <th>Sort Order</th>
                         <th>Actions</th>
@@ -188,9 +178,6 @@ require_once(__DIR__ . '/includes/header.php');
                         </td>
                         <td>
                             <code style="font-size: 0.85em;"><?php echo htmlspecialchars($piece['slug'] ?? 'N/A'); ?></code>
-                        </td>
-                        <td>
-                            <small><?php echo htmlspecialchars($piece['piece_path'] ?: 'N/A'); ?></small>
                         </td>
                         <td>
                             <span class="badge badge-<?php
@@ -322,19 +309,6 @@ require_once(__DIR__ . '/includes/header.php');
             <!-- File path is auto-generated from slug: /p5/view.php?slug=your-slug -->
 
             <div class="form-group">
-                <label for="piece_path" class="form-label">Piece Path</label>
-                <input
-                    type="text"
-                    id="piece_path"
-                    name="piece_path"
-                    class="form-control"
-                    placeholder="piece/1.php"
-                    value="<?php echo $formData ? htmlspecialchars($formData['piece_path']) : ($editPiece ? htmlspecialchars($editPiece['piece_path']) : ''); ?>"
-                >
-                <small class="form-help">Path to the piece PHP file (e.g., piece/1.php)</small>
-            </div>
-
-            <div class="form-group">
                 <label for="thumbnail_url" class="form-label">Thumbnail URL</label>
                 <input
                     type="url"
@@ -351,48 +325,16 @@ require_once(__DIR__ . '/includes/header.php');
             </div>
 
             <div class="form-group">
-                <label for="screenshot_url" class="form-label">Screenshot URL</label>
+                <label class="form-label">Background Image URL (optional)</label>
                 <input
                     type="url"
-                    id="screenshot_url"
-                    name="screenshot_url"
+                    id="background_image_url"
+                    name="background_image_url"
                     class="form-control"
-                    data-type="url"
-                    placeholder="https://example.com/screenshot.png"
-                    value="<?php echo $formData ? htmlspecialchars($formData['screenshot_url']) : ($editPiece ? htmlspecialchars($editPiece['screenshot_url']) : ''); ?>"
+                    placeholder="https://example.com/background.png"
+                    value="<?php echo $formData ? htmlspecialchars($formData['background_image_url'] ?? '') : ($editPiece ? htmlspecialchars($editPiece['background_image_url'] ?? '') : ''); ?>"
                 >
-                <small class="form-help">URL to PNG screenshot (optional)</small>
-            </div>
-
-            <div class="form-group">
-                <label class="form-label">Image URLs (optional)</label>
-                <div id="image-urls-container">
-                    <?php
-                    $imageUrls = [];
-                    if ($formData && !empty($formData['image_urls_raw'])) {
-                        $imageUrls = $formData['image_urls_raw'];
-                    } elseif ($editPiece && !empty($editPiece['image_urls'])) {
-                        $imageUrls = json_decode($editPiece['image_urls'], true) ?: [];
-                    }
-
-                    if (empty($imageUrls)) {
-                        $imageUrls = [''];
-                    }
-
-                    foreach ($imageUrls as $index => $url):
-                    ?>
-                    <input
-                        type="url"
-                        name="image_urls[]"
-                        class="form-control mb-1"
-                        placeholder="https://example.com/image.png"
-                        value="<?php echo htmlspecialchars($url); ?>"
-                    >
-                    <?php endforeach; ?>
-                </div>
-                <button type="button" class="btn btn-sm btn-secondary mt-1" onclick="addImageUrl()">
-                    + Add Another Image URL
-                </button>
+                <small class="form-help">Optional background image for the sketch</small>
             </div>
 
             <div class="form-group">
@@ -1378,16 +1320,6 @@ require_once(__DIR__ . '/includes/header.php');
         }
         <?php endif; ?>
     });
-
-    function addImageUrl() {
-        const container = document.getElementById('image-urls-container');
-        const input = document.createElement('input');
-        input.type = 'url';
-        input.name = 'image_urls[]';
-        input.className = 'form-control mb-1';
-        input.placeholder = 'https://example.com/image.png';
-        container.appendChild(input);
-    }
 
     function updateSlugPreview() {
         const titleInput = document.getElementById('title');
