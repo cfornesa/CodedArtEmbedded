@@ -95,8 +95,7 @@ switch ($artType) {
         renderP5Preview($piece);
         break;
     case 'threejs':
-        // TODO: Implement Three.js preview
-        echo "<h1>Three.js Preview</h1><p>Coming soon...</p>";
+        renderThreeJSPreview($piece);
         break;
     default:
         http_response_code(400);
@@ -835,6 +834,17 @@ function drawPatternWithInteraction(mouseX, mouseY, radius, type) {
 function renderP5Preview($piece) {
     $config = is_array($piece['configuration']) ? $piece['configuration'] : [];
 
+    // Extract background image URL (new standardized field)
+    $backgroundImageUrl = $piece['background_image_url'] ?? null;
+
+    // Backward compatibility: fallback to first image in old image_urls array
+    if (empty($backgroundImageUrl) && !empty($piece['image_urls'])) {
+        $imageUrls = is_array($piece['image_urls']) ? $piece['image_urls'] : json_decode($piece['image_urls'], true);
+        if (is_array($imageUrls) && !empty($imageUrls)) {
+            $backgroundImageUrl = $imageUrls[0];
+        }
+    }
+
     // Extract configuration sections
     $canvasConfig = $config['canvas'] ?? [];
     $drawingConfig = $config['drawing'] ?? [];
@@ -999,6 +1009,12 @@ const canvasWidth = <?php echo $canvasWidth; ?>;
 const canvasHeight = <?php echo $canvasHeight; ?>;
 const renderer = '<?php echo $renderer; ?>';
 const bgColor = '<?php echo $background; ?>';
+<?php if (!empty($backgroundImageUrl)): ?>
+const backgroundImageUrl = '<?php echo htmlspecialchars($backgroundImageUrl, ENT_QUOTES); ?>';
+let backgroundImage = null; // Will be loaded in preload()
+<?php else: ?>
+const backgroundImageUrl = null;
+<?php endif; ?>
 
 // Drawing settings
 const drawingMode = '<?php echo $drawingMode; ?>';
@@ -1030,6 +1046,18 @@ const usePalette = config.usePalette || false;
 let animationFrame = 0;
 let offset = 0;
 
+// Preload background image if specified
+function preload() {
+    if (backgroundImageUrl) {
+        try {
+            backgroundImage = loadImage(backgroundImageUrl);
+        } catch (e) {
+            console.error('Error loading background image:', e);
+            backgroundImage = null;
+        }
+    }
+}
+
 function setup() {
     // Create canvas
     if (renderer === 'WEBGL') {
@@ -1039,7 +1067,12 @@ function setup() {
     }
 
     // Set background
-    background(bgColor);
+    if (backgroundImage) {
+        // Draw background image scaled to canvas
+        image(backgroundImage, 0, 0, canvasWidth, canvasHeight);
+    } else {
+        background(bgColor);
+    }
 
     // Set random seed if specified
     <?php if ($randomSeed !== null): ?>
@@ -1055,7 +1088,12 @@ function setup() {
 function draw() {
     // Clear background if enabled
     if (clearBg || animated) {
-        background(bgColor);
+        if (backgroundImage) {
+            // Draw background image scaled to canvas
+            image(backgroundImage, 0, 0, canvasWidth, canvasHeight);
+        } else {
+            background(bgColor);
+        }
     }
 
     // Use shapes from palette (with use-palette enabled) or draw in fixed pattern
@@ -1189,6 +1227,389 @@ if (keyboardEnabled) {
         redraw();
     }
 }
+    </script>
+</body>
+</html>
+    <?php
+}
+
+/**
+ * Render Three.js preview
+ * @param array $piece Piece data with configuration
+ */
+function renderThreeJSPreview($piece) {
+    $config = is_array($piece['configuration']) ? $piece['configuration'] : [];
+
+    // Extract background image URL (new standardized field)
+    $backgroundImageUrl = $piece['background_image_url'] ?? null;
+
+    // Backward compatibility: fallback to first image in old texture_urls array
+    if (empty($backgroundImageUrl) && !empty($piece['texture_urls'])) {
+        $textureUrls = is_array($piece['texture_urls']) ? $piece['texture_urls'] : json_decode($piece['texture_urls'], true);
+        if (is_array($textureUrls) && !empty($textureUrls)) {
+            $backgroundImageUrl = $textureUrls[0];
+        }
+    }
+
+    // Extract configuration sections
+    $geometries = $config['geometries'] ?? [];
+    $sceneSettings = $config['sceneSettings'] ?? [];
+
+    // Scene background color
+    $sceneBackground = $sceneSettings['background'] ?? '#000000';
+
+    ?>
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Preview: <?php echo htmlspecialchars($piece['title'] ?? 'Untitled'); ?></title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        #threejs-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: <?php echo htmlspecialchars($sceneBackground); ?>;
+        }
+        .preview-badge {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: #764ba2;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            font-weight: bold;
+            z-index: 1000;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="preview-badge">⚠️ PREVIEW MODE - Changes not saved</div>
+    <div id="threejs-container"></div>
+
+    <script>
+// Three.js Scene Configuration
+const config = <?php echo json_encode($config); ?>;
+
+// Scene setup
+const container = document.getElementById('threejs-container');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color('<?php echo $sceneBackground; ?>');
+
+// Camera
+const camera = new THREE.PerspectiveCamera(
+    75,
+    container.clientWidth / container.clientHeight,
+    0.1,
+    1000
+);
+camera.position.z = 5;
+
+// Renderer
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(container.clientWidth, container.clientHeight);
+container.appendChild(renderer.domElement);
+
+// Add background image if specified
+<?php if (!empty($backgroundImageUrl)): ?>
+const backgroundTextureLoader = new THREE.TextureLoader();
+backgroundTextureLoader.load('<?php echo htmlspecialchars($backgroundImageUrl, ENT_QUOTES); ?>', function(texture) {
+    scene.background = texture;
+});
+<?php endif; ?>
+
+// Lights from configuration or defaults
+if (config.sceneSettings && config.sceneSettings.lights) {
+    config.sceneSettings.lights.forEach(lightConfig => {
+        let light;
+
+        switch (lightConfig.type) {
+            case 'AmbientLight':
+                light = new THREE.AmbientLight(
+                    lightConfig.color || '#ffffff',
+                    lightConfig.intensity || 0.5
+                );
+                break;
+            case 'DirectionalLight':
+                light = new THREE.DirectionalLight(
+                    lightConfig.color || '#ffffff',
+                    lightConfig.intensity || 0.8
+                );
+                if (lightConfig.position) {
+                    light.position.set(
+                        lightConfig.position.x || 5,
+                        lightConfig.position.y || 10,
+                        lightConfig.position.z || 7.5
+                    );
+                }
+                break;
+            case 'PointLight':
+                light = new THREE.PointLight(
+                    lightConfig.color || '#ffffff',
+                    lightConfig.intensity || 1,
+                    lightConfig.distance || 100
+                );
+                if (lightConfig.position) {
+                    light.position.set(
+                        lightConfig.position.x || 0,
+                        lightConfig.position.y || 0,
+                        lightConfig.position.z || 10
+                    );
+                }
+                break;
+        }
+
+        if (light) {
+            scene.add(light);
+        }
+    });
+} else {
+    // Default lights
+    const ambientLight = new THREE.AmbientLight('#ffffff', 0.5);
+    scene.add(ambientLight);
+
+    const directionalLight = new THREE.DirectionalLight('#ffffff', 0.8);
+    directionalLight.position.set(5, 10, 7.5);
+    scene.add(directionalLight);
+}
+
+// Create geometries from configuration
+const meshes = [];
+
+if (config.geometries) {
+    config.geometries.forEach((geomConfig, index) => {
+        // Create geometry
+        let geometry;
+        const type = geomConfig.type || 'BoxGeometry';
+
+        switch (type) {
+            case 'BoxGeometry':
+                geometry = new THREE.BoxGeometry(
+                    geomConfig.width || 1,
+                    geomConfig.height || 1,
+                    geomConfig.depth || 1
+                );
+                break;
+            case 'SphereGeometry':
+                geometry = new THREE.SphereGeometry(
+                    geomConfig.radius || 1,
+                    geomConfig.widthSegments || 32,
+                    geomConfig.heightSegments || 32
+                );
+                break;
+            case 'CylinderGeometry':
+                geometry = new THREE.CylinderGeometry(
+                    geomConfig.radiusTop || 1,
+                    geomConfig.radiusBottom || 1,
+                    geomConfig.height || 1
+                );
+                break;
+            case 'ConeGeometry':
+                geometry = new THREE.ConeGeometry(
+                    geomConfig.radius || 1,
+                    geomConfig.height || 1
+                );
+                break;
+            case 'PlaneGeometry':
+                geometry = new THREE.PlaneGeometry(
+                    geomConfig.width || 1,
+                    geomConfig.height || 1
+                );
+                break;
+            case 'TorusGeometry':
+                geometry = new THREE.TorusGeometry(
+                    geomConfig.radius || 1,
+                    geomConfig.tube || 0.4
+                );
+                break;
+            case 'TorusKnotGeometry':
+                geometry = new THREE.TorusKnotGeometry(
+                    geomConfig.radius || 1,
+                    geomConfig.tube || 0.4
+                );
+                break;
+            case 'DodecahedronGeometry':
+                geometry = new THREE.DodecahedronGeometry(geomConfig.radius || 1);
+                break;
+            case 'IcosahedronGeometry':
+                geometry = new THREE.IcosahedronGeometry(geomConfig.radius || 1);
+                break;
+            case 'OctahedronGeometry':
+                geometry = new THREE.OctahedronGeometry(geomConfig.radius || 1);
+                break;
+            case 'TetrahedronGeometry':
+                geometry = new THREE.TetrahedronGeometry(geomConfig.radius || 1);
+                break;
+            case 'RingGeometry':
+                geometry = new THREE.RingGeometry(
+                    geomConfig.innerRadius || 0.5,
+                    geomConfig.outerRadius || 1
+                );
+                break;
+            default:
+                geometry = new THREE.BoxGeometry(1, 1, 1);
+        }
+
+        // Create material
+        const materialOptions = {
+            color: geomConfig.color || '#764ba2',
+            opacity: geomConfig.opacity !== undefined ? geomConfig.opacity : 1.0,
+            transparent: (geomConfig.opacity !== undefined && geomConfig.opacity < 1.0) || false
+        };
+
+        // Add texture if specified
+        if (geomConfig.texture) {
+            const textureLoader = new THREE.TextureLoader();
+            textureLoader.load(geomConfig.texture, function(texture) {
+                mesh.material.map = texture;
+                mesh.material.needsUpdate = true;
+            });
+        }
+
+        // Wireframe setting
+        if (geomConfig.wireframe) {
+            materialOptions.wireframe = true;
+        }
+
+        // Material properties for MeshStandardMaterial
+        if (geomConfig.metalness !== undefined) {
+            materialOptions.metalness = geomConfig.metalness;
+        }
+        if (geomConfig.roughness !== undefined) {
+            materialOptions.roughness = geomConfig.roughness;
+        }
+
+        // Create material
+        const material = new THREE.MeshStandardMaterial(materialOptions);
+
+        // Create mesh
+        const mesh = new THREE.Mesh(geometry, material);
+
+        // Set position
+        if (geomConfig.position) {
+            mesh.position.set(
+                geomConfig.position.x || 0,
+                geomConfig.position.y || 0,
+                geomConfig.position.z || 0
+            );
+        }
+
+        // Set rotation
+        if (geomConfig.rotation) {
+            mesh.rotation.set(
+                geomConfig.rotation.x || 0,
+                geomConfig.rotation.y || 0,
+                geomConfig.rotation.z || 0
+            );
+        }
+
+        // Set scale
+        if (geomConfig.scale) {
+            mesh.scale.set(
+                geomConfig.scale.x || 1,
+                geomConfig.scale.y || 1,
+                geomConfig.scale.z || 1
+            );
+        }
+
+        scene.add(mesh);
+        meshes.push({ mesh, config: geomConfig });
+    });
+}
+
+// Animation loop
+function animate() {
+    requestAnimationFrame(animate);
+
+    // Animate each mesh based on its configuration
+    meshes.forEach(({ mesh, config }) => {
+        const anim = config.animation || {};
+
+        // Rotation animation (granular format)
+        if (anim.rotation && anim.rotation.enabled) {
+            const duration = anim.rotation.duration || 10000;
+            const speed = (Math.PI * 2) / (duration / 16.67); // ~60fps
+            const direction = anim.rotation.counterclockwise ? -1 : 1;
+            mesh.rotation.y += speed * direction;
+        }
+
+        // Position animation (X/Y/Z independent)
+        if (anim.position) {
+            const time = Date.now() * 0.001;
+
+            if (anim.position.x && anim.position.x.enabled && anim.position.x.range > 0) {
+                if (!mesh.userData.initialPosition) {
+                    mesh.userData.initialPosition = { x: mesh.position.x, y: mesh.position.y, z: mesh.position.z };
+                }
+                const duration = anim.position.x.duration || 10000;
+                const range = anim.position.x.range || 0;
+                mesh.position.x = mesh.userData.initialPosition.x + Math.sin(time * 1000 / duration) * range;
+            }
+
+            if (anim.position.y && anim.position.y.enabled && anim.position.y.range > 0) {
+                if (!mesh.userData.initialPosition) {
+                    mesh.userData.initialPosition = { x: mesh.position.x, y: mesh.position.y, z: mesh.position.z };
+                }
+                const duration = anim.position.y.duration || 10000;
+                const range = anim.position.y.range || 0;
+                mesh.position.y = mesh.userData.initialPosition.y + Math.sin(time * 1000 / duration) * range;
+            }
+
+            if (anim.position.z && anim.position.z.enabled && anim.position.z.range > 0) {
+                if (!mesh.userData.initialPosition) {
+                    mesh.userData.initialPosition = { x: mesh.position.x, y: mesh.position.y, z: mesh.position.z };
+                }
+                const duration = anim.position.z.duration || 10000;
+                const range = anim.position.z.range || 0;
+                mesh.position.z = mesh.userData.initialPosition.z + Math.sin(time * 1000 / duration) * range;
+            }
+        }
+
+        // Scale animation
+        if (anim.scale && anim.scale.enabled) {
+            const min = anim.scale.min || 1.0;
+            const max = anim.scale.max || 1.0;
+
+            if (min !== max) {
+                const duration = anim.scale.duration || 10000;
+                const time = Date.now() * 0.001;
+                const range = (max - min) / 2;
+                const mid = (max + min) / 2;
+                const scaleValue = mid + Math.sin(time * 1000 / duration) * range;
+                mesh.scale.set(scaleValue, scaleValue, scaleValue);
+            }
+        }
+    });
+
+    renderer.render(scene, camera);
+}
+
+// Handle window resize
+window.addEventListener('resize', () => {
+    camera.aspect = container.clientWidth / container.clientHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(container.clientWidth, container.clientHeight);
+});
+
+// Start animation
+animate();
     </script>
 </body>
 </html>

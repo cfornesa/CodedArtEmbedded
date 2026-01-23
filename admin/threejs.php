@@ -305,35 +305,16 @@ require_once(__DIR__ . '/includes/header.php');
             </div>
 
             <div class="form-group">
-                <label class="form-label">Background Image URLs (optional)</label>
-                <div id="texture-urls-container">
-                    <?php
-                    $textureUrls = [];
-                    if ($formData && !empty($formData['texture_urls_raw'])) {
-                        $textureUrls = $formData['texture_urls_raw'];
-                    } elseif ($editPiece && !empty($editPiece['texture_urls'])) {
-                        $textureUrls = json_decode($editPiece['texture_urls'], true) ?: [];
-                    }
-
-                    if (empty($textureUrls)) {
-                        $textureUrls = [''];
-                    }
-
-                    foreach ($textureUrls as $index => $url):
-                    ?>
-                    <input
-                        type="url"
-                        name="texture_urls[]"
-                        class="form-control mb-1"
-                        placeholder="https://example.com/background.png"
-                        value="<?php echo htmlspecialchars($url); ?>"
-                    >
-                    <?php endforeach; ?>
-                </div>
-                <button type="button" class="btn btn-sm btn-secondary mt-1" onclick="addTextureUrl()">
-                    + Add Another Background Image URL
-                </button>
-                <small class="form-help">Background image URLs for the scene. If multiple URLs are provided, one will be randomly selected each time the piece loads. Individual geometry textures are configured in the Geometry Builder below.</small>
+                <label class="form-label">Background Image URL (optional)</label>
+                <input
+                    type="url"
+                    id="background_image_url"
+                    name="background_image_url"
+                    class="form-control"
+                    placeholder="https://example.com/background.png"
+                    value="<?php echo $formData ? htmlspecialchars($formData['background_image_url'] ?? '') : ($editPiece ? htmlspecialchars($editPiece['background_image_url'] ?? '') : ''); ?>"
+                >
+                <small class="form-help">Optional background image for the scene. Individual geometry textures are configured in the Geometry Builder below.</small>
             </div>
 
             <div class="form-group">
@@ -1383,16 +1364,6 @@ require_once(__DIR__ . '/includes/header.php');
         }
     });
     <?php endif; ?>
-
-    function addTextureUrl() {
-        const container = document.getElementById('texture-urls-container');
-        const input = document.createElement('input');
-        input.type = 'url';
-        input.name = 'texture_urls[]';
-        input.className = 'form-control mb-1';
-        input.placeholder = 'https://example.com/texture.png';
-        container.appendChild(input);
-    }
 
     function updateSlugPreview() {
         const titleInput = document.getElementById('title');
