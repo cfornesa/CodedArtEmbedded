@@ -695,25 +695,62 @@ function drawFlowPattern(count, size, shapes, variation) {
 // Draw initial pattern
 drawPattern();
 
-// Animation support
-if (config.animation && config.animation.enabled && config.animation.loop) {
-    let animationFrame = 0;
+// Animation if enabled - Backward compatibility for both old and new formats
+// Old format: config.animation.enabled (single toggle)
+// New format: config.animation.rotation.enabled, pulse.enabled, move.enabled, color.enabled (granular)
+const isAnimationEnabled = config.animation && (
+    config.animation.enabled || // Old format
+    (config.animation.rotation && config.animation.rotation.enabled) || // New format: rotation
+    (config.animation.pulse && config.animation.pulse.enabled) || // New format: pulse
+    (config.animation.move && config.animation.move.enabled) || // New format: move
+    (config.animation.color && config.animation.color.enabled) // New format: color
+);
+
+if (isAnimationEnabled) {
+    let frame = 0;
+
+    // Determine speed and loop from either old or new format
+    let speed = 1;
+    let loop = true;
+
+    if (config.animation.enabled) {
+        // Old format
+        speed = config.animation.speed || 1;
+        loop = config.animation.loop !== false;
+    } else {
+        // New format - use speed from first enabled animation type
+        if (config.animation.rotation?.enabled) {
+            speed = config.animation.rotation.speed || 1;
+            loop = config.animation.rotation.loop !== false;
+        } else if (config.animation.pulse?.enabled) {
+            speed = config.animation.pulse.speed || 1;
+            loop = config.animation.pulse.loop !== false;
+        } else if (config.animation.move?.enabled) {
+            speed = config.animation.move.speed || 1;
+            loop = config.animation.move.loop !== false;
+        } else if (config.animation.color?.enabled) {
+            speed = config.animation.color.speed || 1;
+            loop = config.animation.color.loop !== false;
+        }
+    }
 
     function animate() {
-        animationFrame++;
+        if (!loop && frame > 60 * 10) return; // Stop after 10 seconds if not looping
 
-        // Clear canvas based on settings
-        if (!config.advanced?.enableTrails) {
-            ctx.fillStyle = config.canvas?.background || '#FFFFFF';
+        // Clear with trails effect if enabled
+        if (config.advanced?.enableTrails) {
+            ctx.fillStyle = config.canvas.background + '20'; // Semi-transparent
+            ctx.fillRect(0, 0, width, height);
+        } else {
+            ctx.fillStyle = config.canvas.background || '#FFFFFF';
             ctx.fillRect(0, 0, width, height);
         }
 
-        // Modify seed for animation
-        seed = (config.advanced?.randomSeed || 12345) + animationFrame * (config.animation.speed || 1);
-
-        // Redraw pattern
+        // Redraw with animation offset
+        seed = (config.advanced?.randomSeed || 12345) + frame * speed;
         drawPattern();
 
+        frame++;
         requestAnimationFrame(animate);
     }
 
@@ -833,10 +870,39 @@ function renderP5Preview($piece) {
     $noStroke = !empty($drawingConfig['noStroke']);
     $noFill = !empty($drawingConfig['noFill']);
 
-    // Animation settings
-    $animated = !empty($animationConfig['animated']);
-    $loop = !empty($animationConfig['loop']);
-    $speed = $animationConfig['speed'] ?? 1;
+    // Animation settings - Backward compatibility for both old and new formats
+    // Old format: animationConfig['animated'] (single toggle)
+    // New format: animationConfig['rotation']['enabled'], scale, translation, color (granular)
+    $animated = !empty($animationConfig['animated']) || // Old format
+        (!empty($animationConfig['rotation']) && !empty($animationConfig['rotation']['enabled'])) || // New: rotation
+        (!empty($animationConfig['scale']) && !empty($animationConfig['scale']['enabled'])) || // New: scale/pulse
+        (!empty($animationConfig['translation']) && !empty($animationConfig['translation']['enabled'])) || // New: translation/move
+        (!empty($animationConfig['color']) && !empty($animationConfig['color']['enabled'])); // New: color
+
+    // Extract speed and loop from either old or new format
+    $speed = 1;
+    $loop = true;
+
+    if (!empty($animationConfig['animated'])) {
+        // Old format
+        $speed = $animationConfig['speed'] ?? 1;
+        $loop = !empty($animationConfig['loop']);
+    } else {
+        // New format - use speed from first enabled animation type
+        if (!empty($animationConfig['rotation']['enabled'])) {
+            $speed = $animationConfig['rotation']['speed'] ?? 1;
+            $loop = isset($animationConfig['rotation']['loop']) ? !empty($animationConfig['rotation']['loop']) : true;
+        } elseif (!empty($animationConfig['scale']['enabled'])) {
+            $speed = $animationConfig['scale']['speed'] ?? 1;
+            $loop = isset($animationConfig['scale']['loop']) ? !empty($animationConfig['scale']['loop']) : true;
+        } elseif (!empty($animationConfig['translation']['enabled'])) {
+            $speed = $animationConfig['translation']['speed'] ?? 1;
+            $loop = isset($animationConfig['translation']['loop']) ? !empty($animationConfig['translation']['loop']) : true;
+        } elseif (!empty($animationConfig['color']['enabled'])) {
+            $speed = $animationConfig['color']['speed'] ?? 1;
+            $loop = isset($animationConfig['color']['loop']) ? !empty($animationConfig['color']['loop']) : true;
+        }
+    }
 
     // Advanced settings
     $mouseInteraction = !empty($advancedConfig['mouseInteraction']);
@@ -893,6 +959,40 @@ function renderP5Preview($piece) {
     <script>
 // P5.js Configuration
 const config = <?php echo json_encode($config); ?>;
+
+// Backward compatibility for animation format (JavaScript side)
+// This ensures preview works exactly like view page
+if (config.animation) {
+    const animationConfig = config.animation;
+
+    // Old format: animationConfig.animated (single toggle)
+    // New format: animationConfig.rotation.enabled, scale.enabled, translation.enabled, color.enabled (granular)
+    const isAnimated = animationConfig.animated || // Old format
+        (animationConfig.rotation && animationConfig.rotation.enabled) || // New format: rotation
+        (animationConfig.scale && animationConfig.scale.enabled) || // New format: scale/pulse
+        (animationConfig.translation && animationConfig.translation.enabled) || // New format: translation/move
+        (animationConfig.color && animationConfig.color.enabled); // New format: color
+
+    // Override animationConfig.animated with computed value for backward compatibility
+    config.animation.animated = isAnimated;
+
+    // If using new format, extract speed and loop from first enabled animation
+    if (isAnimated && !config.animation.speed) {
+        if (animationConfig.rotation && animationConfig.rotation.enabled) {
+            config.animation.speed = animationConfig.rotation.speed || 1;
+            config.animation.loop = animationConfig.rotation.loop !== false;
+        } else if (animationConfig.scale && animationConfig.scale.enabled) {
+            config.animation.speed = animationConfig.scale.speed || 1;
+            config.animation.loop = animationConfig.scale.loop !== false;
+        } else if (animationConfig.translation && animationConfig.translation.enabled) {
+            config.animation.speed = animationConfig.translation.speed || 1;
+            config.animation.loop = animationConfig.translation.loop !== false;
+        } else if (animationConfig.color && animationConfig.color.enabled) {
+            config.animation.speed = animationConfig.color.speed || 1;
+            config.animation.loop = animationConfig.color.loop !== false;
+        }
+    }
+}
 
 // Canvas settings
 const canvasWidth = <?php echo $canvasWidth; ?>;
