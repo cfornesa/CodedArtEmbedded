@@ -2,7 +2,7 @@
 
 ## Project Status: ✅ PRODUCTION READY
 
-**Last Updated:** 2026-01-23 (v1.0.25)
+**Last Updated:** 2026-01-23 (v1.0.26 - ARCHITECTURAL PIVOT)
 **Agent:** Claude (Sonnet 4.5)
 **Environment:** Replit Development / Hostinger Production
 
@@ -1298,7 +1298,187 @@ mysqldump -u username -p codedart_db > backup_$(date +%Y%m%d).sql
 
 ## Version History
 
-**v1.0.25** - 2026-01-23 (CRITICAL FIX: Missing file_path Auto-Generation)
+**v1.0.26** - 2026-01-23 (CRITICAL ARCHITECTURAL PIVOT: Wrong Problem, Wrong Solution)
+- 🚨 **SEVERITY:** ARCHITECTURAL - Everything since v1.0.23 has been solving the WRONG problems
+- 🎯 **USER FEEDBACK:** "These fixes did not work. Look at index.php - model view pages on how homepage pieces are displayed."
+- 🎯 **REALIZATION:** We've been building database-driven complexity when user wants simple iframe-embeddable pieces
+
+- ❌ **WHAT'S BEEN WRONG SINCE V1.0.23:**
+
+  **Problem 1: Solving Symptoms, Not Disease**
+  - v1.0.23: "Database empty" → Created init scripts
+  - v1.0.24: "Missing config.php" → Created config file
+  - v1.0.25: "Missing file_path" → Created fix script
+  - **Reality:** All of these are symptoms of **wrong architecture**
+
+  **Problem 2: Test-Driven Development Gone Wrong**
+  - Created `test_direct_save.php` to test database inserts
+  - Created `test_admin_save.php` to test admin workflow
+  - Created `fix_file_paths.php` to fix test data
+  - **Reality:** Test scripts bypass the real workflow and create fake problems
+
+  **Problem 3: Database-Driven Rendering is Over-Engineering**
+  - Current `view.php` tries to render Three.js scenes from PHP
+  - Queries database, parses JSON in PHP, generates HTML with embedded PHP
+  - **Reality:** Homepage pieces use simple pattern: minimal HTML + clean JavaScript
+
+- ✅ **THE CORRECT PATTERN (From Homepage):**
+
+  **Three.js Example: `first-whole.php` + `first-whole.js`**
+  ```php
+  // first-whole.php (16 lines total)
+  <?php require('../resources/templates/head.php'); ?>
+  <body>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/104/three.min.js"></script>
+      <script src="first-whole.js"></script>
+  </body>
+  ```
+
+  ```javascript
+  // first-whole.js - Clean Three.js code
+  const scene = new THREE.Scene();
+  const renderer = new THREE.WebGLRenderer(...);
+  renderer.setClearColor(`rgb(random, random, random)`, 1);  // Random background
+
+  // Create multiple cubes with textures
+  const cubes = ['../img/p5/1.png', '../img/p5/2.png', ...];
+  cubes.forEach(imageUrl => {
+      // Random position, random opacity, texture, rotation animation
+      createAndRenderCube(imageUrl);
+  });
+
+  // Simple animation loop
+  function render() {
+      renderer.render(scene, camera);
+      allCubes.forEach(cube => {
+          cube.rotation.x += 0.01;
+          cube.rotation.y -= 0.01;
+      });
+      requestAnimationFrame(render);
+  }
+  ```
+
+  **Key Characteristics:**
+  - ✅ **Minimal HTML** - Just head + script tags
+  - ✅ **Clean JavaScript** - No PHP embedded in rendering
+  - ✅ **Iframe embeddable** - Homepage uses `<iframe src="/three-js/first-whole.php">`
+  - ✅ **Rich 3D scenes** - Multiple geometries, textures, animations, random elements
+  - ✅ **Simple and proven** - This pattern works and is used on production homepage
+
+- 🎯 **USER'S ACTUAL VISION:**
+
+  1. **Pieces like homepage** - Rich 3D scenes with multiple shapes/geometries
+  2. **Iframe embedding** - All pieces embedded like homepage examples
+  3. **Keep customization** - Admin interface configuration builder
+  4. **Simple output** - Minimal HTML + JavaScript (not PHP-rendered complexity)
+
+- 🎯 **WHAT NEEDS TO CHANGE:**
+
+  **Stop Doing:**
+  1. ❌ Test scripts that bypass admin workflow
+  2. ❌ Database diagnostic scripts for test data
+  3. ❌ Complex PHP rendering in view pages
+  4. ❌ Trying to "fix" constraint violations from bad test data
+
+  **Start Doing:**
+  1. ✅ Rewrite view pages to follow `first-whole.php` pattern
+  2. ✅ Generate clean JavaScript from configuration JSON
+  3. ✅ Test ONLY through admin interface → view in browser
+  4. ✅ Make pieces that look like homepage examples
+
+- 🎯 **ARCHITECTURAL LESSONS LEARNED:**
+
+  1. **Look at Working Examples First**
+     - Homepage has working Three.js piece embedded in iframe
+     - Should have studied that pattern from the start
+     - Don't reinvent when proven solution exists
+     - **Lesson:** Always study what already works before building
+
+  2. **Test Scripts Can Create False Problems**
+     - `test_direct_save.php` bypassed admin workflow
+     - Created incomplete data in database
+     - Spent 3 versions "fixing" problems that shouldn't exist
+     - **Lesson:** Test the real user workflow, not isolated functions
+
+  3. **Complexity is Not Quality**
+     - Database-driven PHP rendering seemed "sophisticated"
+     - Actually made simple problem (render 3D scene) complicated
+     - Homepage's simple approach works better
+     - **Lesson:** Simple, working solution > complex, broken solution
+
+  4. **User Feedback Reveals Architecture Problems**
+     - User said: "Look at index.php"
+     - Was telling me the correct pattern exists already
+     - Should have checked homepage first, not last
+     - **Lesson:** When user points to working example, study it immediately
+
+  5. **CLAUDE.md Can Become Technical Debt**
+     - Document has 1400+ lines of "lessons learned"
+     - Many lessons are about solving wrong problems
+     - Perpetuates bad architecture by documenting it
+     - **Lesson:** Documentation should guide toward simplicity, not preserve complexity
+
+- 📚 **WHAT TO REMOVE FROM CLAUDE.MD:**
+
+  **Outdated Patterns (v1.0.15-v1.0.25):**
+  - Database-driven rendering approach
+  - Test script patterns (`test_direct_save.php`, etc.)
+  - File path auto-generation "fixes"
+  - Schema diagnostic scripts for test data
+  - Complex form preservation for test scenarios
+
+  **Keep These (Still Valid):**
+  - Configuration builders in admin interface
+  - Slug-based routing
+  - Session-based preview
+  - Security patterns (prepared statements, validation)
+  - Multi-user authentication
+
+- 📊 **CORRECT IMPLEMENTATION PLAN:**
+
+  **Phase 1: Simplify View Pages**
+  - Rewrite `three-js/view.php` to follow `first-whole.php` pattern
+  - Rewrite `p5/view.php` similarly
+  - Keep A-Frame and C2.js (already follow correct patterns)
+
+  **Phase 2: Configuration to JavaScript**
+  - Admin builder generates JavaScript-ready JSON
+  - View page converts config to clean Three.js/P5.js code
+  - No PHP embedded in rendering logic
+
+  **Phase 3: Test Through Real Workflow**
+  - User logs into admin
+  - Creates piece with multiple geometries
+  - Views piece in browser (should match homepage quality)
+  - Embeds in iframe
+
+- 💬 **HONEST ASSESSMENT:**
+  - v1.0.23-v1.0.25: Solving wrong problems with complex solutions
+  - v1.0.26: Architectural pivot - return to simple, working patterns
+  - **Admission:** Should have studied homepage first, not created test scripts
+  - **Forward:** Rewrite view pages to match proven homepage pattern
+
+- 📚 **FILES CREATED (v1.0.26):**
+  - `config/ARCHITECTURE_ANALYSIS.md` - Comprehensive analysis of what went wrong and correct path forward
+  - `three-js/view.php` - **REWRITTEN** - Minimal PHP + clean JavaScript generation (270 lines)
+  - `p5/view.php` - **REWRITTEN** - Minimal PHP + P5.js instance mode (245 lines)
+  - `config/TESTING_GUIDE_v1.0.26.md` - Comprehensive testing instructions for Steps 1-3
+
+- 📚 **IMPLEMENTATION STATUS:**
+  - ✅ **Step 1 COMPLETE:** Rewrote `three-js/view.php` following `first-whole.php` pattern
+  - ✅ **Step 2 COMPLETE:** Rewrote `p5/view.php` following same pattern
+  - ⏳ **Step 3 PENDING:** Test through admin interface (see `TESTING_GUIDE_v1.0.26.md`)
+
+**v1.0.25** - 2026-01-23 (OBSOLETE: Missing file_path Auto-Generation)
+**STATUS:** ⚠️ This version solved a symptom created by bad test scripts. User confirmed fixes didn't work.
+
+**v1.0.24** - 2026-01-23 (OBSOLETE: Missing config.php)
+**STATUS:** ⚠️ This version solved wrong problem. User confirmed fixes didn't work.
+
+**v1.0.23** - 2026-01-23 (OBSOLETE: Database Initialization)
+**STATUS:** ⚠️ This version started solving wrong problems with wrong approach.
+
+**v1.0.25** - 2026-01-23 (OBSOLETE - See v1.0.26)
 - 🚨 **SEVERITY:** CRITICAL - NOT NULL constraint violations blocking all saves
 - 🎯 **USER FEEDBACK:** "SQLSTATE[23000]: Integrity constraint violation: 19 NOT NULL constraint failed: p5_art.file_path"
 - 🎯 **ROOT CAUSE:** Test scripts bypassed admin functions that auto-generate file_path
