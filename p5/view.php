@@ -78,8 +78,39 @@ try {
 // P5.js Sketch Configuration
 const config = <?php echo json_encode($config); ?>;
 
+// Background image URL (from database)
+<?php
+$backgroundImageUrl = $piece['background_image_url'] ?? null;
+// Backward compatibility: fallback to first image from old image_urls array
+if (empty($backgroundImageUrl) && !empty($piece['image_urls'])) {
+    $imageUrls = is_array($piece['image_urls']) ? $piece['image_urls'] : json_decode($piece['image_urls'], true);
+    if (is_array($imageUrls) && !empty($imageUrls)) {
+        $backgroundImageUrl = $imageUrls[0];
+    }
+}
+if (!empty($backgroundImageUrl)):
+?>
+const backgroundImageUrl = '<?php echo htmlspecialchars($backgroundImageUrl, ENT_QUOTES); ?>';
+<?php else: ?>
+const backgroundImageUrl = null;
+<?php endif; ?>
+
 // P5.js sketch function
 const sketch = (p) => {
+    let backgroundImage = null; // Will be loaded in preload()
+
+    // Preload background image if specified
+    p.preload = function() {
+        if (backgroundImageUrl) {
+            try {
+                backgroundImage = p.loadImage(backgroundImageUrl);
+            } catch (e) {
+                console.error('Error loading background image:', e);
+                backgroundImage = null;
+            }
+        }
+    };
+
     // Extract configuration
     const canvasConfig = config.canvas || {};
     const drawingConfig = config.drawing || {};
@@ -175,14 +206,24 @@ const sketch = (p) => {
         initializePattern();
 
         // Background
-        p.background(canvasConfig.background || '#FFFFFF');
+        if (backgroundImage) {
+            // Draw background image scaled to canvas
+            p.image(backgroundImage, 0, 0, canvasConfig.width || 800, canvasConfig.height || 600);
+        } else {
+            p.background(canvasConfig.background || '#FFFFFF');
+        }
     };
 
     // Draw function
     p.draw = function() {
         // Clear background if configured
         if (!animationConfig.animated || animationConfig.clearBackground) {
-            p.background(canvasConfig.background || '#FFFFFF');
+            if (backgroundImage) {
+                // Draw background image scaled to canvas
+                p.image(backgroundImage, 0, 0, canvasConfig.width || 800, canvasConfig.height || 600);
+            } else {
+                p.background(canvasConfig.background || '#FFFFFF');
+            }
         }
 
         // Set blend mode

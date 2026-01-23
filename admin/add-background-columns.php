@@ -20,6 +20,32 @@ echo ".success{color:green;}.error{color:red;}.info{color:blue;}</style></head><
 
 echo "<h1>Add background_image_url Columns</h1>";
 
+echo "<div style='background: #fff3cd; border: 2px solid #ffc107; padding: 15px; margin-bottom: 20px; border-radius: 4px;'>";
+echo "<h3 style='margin-top:0;'>⚠️ Important: Clear Web Server Cache</h3>";
+echo "<p>After running this migration, you MUST restart your web server or clear PHP opcache:</p>";
+echo "<ul>";
+echo "<li><strong>Replit:</strong> Stop and restart the run</li>";
+echo "<li><strong>Apache:</strong> <code>sudo service apache2 restart</code></li>";
+echo "<li><strong>PHP-FPM:</strong> <code>sudo service php-fpm restart</code></li>";
+echo "</ul>";
+echo "</div>";
+
+// Clear opcache if available
+echo "<h2>Clearing PHP Cache</h2>";
+if (function_exists('opcache_reset')) {
+    opcache_reset();
+    echo "<p class='success'>✓ Opcache cleared</p>";
+} else {
+    echo "<p class='info'>ℹ️ Opcache not available or not enabled</p>";
+}
+
+if (function_exists('apc_clear_cache')) {
+    apc_clear_cache();
+    echo "<p class='success'>✓ APC cache cleared</p>";
+} else {
+    echo "<p class='info'>ℹ️ APC cache not available</p>";
+}
+
 try {
     // Check and add to p5_art
     echo "<h2>P5.js Table (p5_art)</h2>";
