@@ -1,6 +1,7 @@
 #!/bin/bash
 # Comprehensive Database Fix and Validation Script
 # Run with: bash config/fix_database.sh
+# Must be run from the CodedArtEmbedded directory
 
 set -e  # Exit on any error
 
@@ -11,14 +12,14 @@ echo ""
 
 # Step 1: Find the database file
 echo "Step 1: Locating database..."
-if [ -f "/home/user/CodedArtEmbedded/config/codedart.db" ]; then
-    DB_PATH="/home/user/CodedArtEmbedded/config/codedart.db"
+if [ -f "config/codedart.db" ]; then
+    DB_PATH="config/codedart.db"
     echo "✓ Found database at: $DB_PATH"
 else
     echo "❌ Database not found at expected location"
     echo "Creating new database..."
-    touch /home/user/CodedArtEmbedded/config/codedart.db
-    DB_PATH="/home/user/CodedArtEmbedded/config/codedart.db"
+    touch config/codedart.db
+    DB_PATH="config/codedart.db"
     echo "✓ Created database at: $DB_PATH"
 fi
 echo ""
@@ -26,7 +27,7 @@ echo ""
 # Step 2: Check current state
 echo "Step 2: Checking current database state..."
 php -r "
-\$pdo = new PDO('sqlite:/home/user/CodedArtEmbedded/config/codedart.db');
+\$pdo = new PDO('sqlite:config/codedart.db');
 \$tables = \$pdo->query(\"SELECT name FROM sqlite_master WHERE type='table'\")->fetchAll(PDO::FETCH_COLUMN);
 echo 'Tables found: ' . count(\$tables) . PHP_EOL;
 foreach (\$tables as \$table) {
@@ -37,18 +38,23 @@ echo ""
 
 # Step 3: Initialize all tables
 echo "Step 3: Initializing/fixing database tables..."
-php /home/user/CodedArtEmbedded/config/init_all_tables.php
+php config/init_all_tables.php
 echo ""
 
 # Step 4: Verify schema
 echo "Step 4: Verifying schema..."
-php /home/user/CodedArtEmbedded/config/check_threejs_schema.php
+php config/check_threejs_schema.php
 echo ""
 
-# Step 5: Test save functionality
-echo "Step 5: Testing Three.js save functionality..."
-php /home/user/CodedArtEmbedded/config/test_threejs_save.php
-echo ""
+# Step 5: Test save functionality (if test script exists)
+if [ -f "config/test_threejs_save.php" ]; then
+    echo "Step 5: Testing Three.js save functionality..."
+    php config/test_threejs_save.php
+    echo ""
+else
+    echo "Step 5: Skipping save test (test_threejs_save.php not found)"
+    echo ""
+fi
 
 echo "=========================================="
 echo "DATABASE FIX COMPLETE"
