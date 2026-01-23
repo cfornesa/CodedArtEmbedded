@@ -619,7 +619,42 @@ require_once(__DIR__ . '/includes/header.php');
                                         </label>
                                     </div>
                                 </div>
-                                <div class="sketch-row">
+
+                                <!-- Dual-thumb slider for scale min/max -->
+                                <div class="sketch-field-group" style="margin-top: 15px;">
+                                    <label class="sketch-field-label">Scale Range (0.1x - 10x)</label>
+                                    <!-- Dual-thumb slider container -->
+                                    <div id="p5-scale-slider" style="position: relative; height: 50px;">
+                                        <!-- Track background -->
+                                        <div style="position: absolute; top: 20px; left: 0; right: 0; height: 6px; background: #e9ecef; border-radius: 3px;"></div>
+                                        <!-- Range highlight (between min and max) -->
+                                        <div id="p5-scale-range-highlight" style="position: absolute; top: 20px; height: 6px; background: #28a745; border-radius: 3px; pointer-events: none;"></div>
+                                        <!-- Minimum slider -->
+                                        <input type="range" id="p5-scale-min"
+                                               min="0.1" max="10" step="0.1"
+                                               value="0.5"
+                                               oninput="updateDualThumbScaleP5('min', parseFloat(this.value))"
+                                               style="position: absolute; width: 100%; top: 12px; pointer-events: all; background: transparent; -webkit-appearance: none; appearance: none;">
+                                        <!-- Maximum slider -->
+                                        <input type="range" id="p5-scale-max"
+                                               min="0.1" max="10" step="0.1"
+                                               value="2.0"
+                                               oninput="updateDualThumbScaleP5('max', parseFloat(this.value))"
+                                               style="position: absolute; width: 100%; top: 12px; pointer-events: all; background: transparent; -webkit-appearance: none; appearance: none;">
+                                    </div>
+                                    <!-- Value labels -->
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 5px;">
+                                        <span style="font-size: 13px; color: #6c757d;">
+                                            Min: <strong id="p5-scale-min-label" style="color: #495057;">0.5x</strong>
+                                        </span>
+                                        <span style="font-size: 13px; color: #6c757d;">
+                                            Max: <strong id="p5-scale-max-label" style="color: #495057;">2.0x</strong>
+                                        </span>
+                                    </div>
+                                    <small style="display: block; margin-top: 5px; color: #6c757d; font-size: 0.875em;">Drag left thumb for minimum, right thumb for maximum. 0.1 = 10% size, 1.0 = 100% size, 10 = 1000% size</small>
+                                </div>
+
+                                <div class="sketch-row" style="margin-top: 15px;">
                                     <div class="sketch-field-group">
                                         <label class="sketch-field-label">Speed</label>
                                         <input type="range" id="p5-animation-scale-speed" class="sketch-field-input" value="1" step="0.1" min="1" max="10" onchange="updateP5Configuration()">
@@ -864,6 +899,66 @@ require_once(__DIR__ . '/includes/header.php');
     .p5-color-remove-btn:hover {
         background: #c82333;
     }
+
+    /* Dual-thumb range slider styling for P5.js scale animation */
+    input[type="range"]#p5-scale-min,
+    input[type="range"]#p5-scale-max {
+        -webkit-appearance: none;
+        appearance: none;
+        background: transparent;
+        cursor: pointer;
+    }
+
+    /* Webkit browsers (Chrome, Safari, Edge) */
+    input[type="range"]#p5-scale-min::-webkit-slider-track,
+    input[type="range"]#p5-scale-max::-webkit-slider-track {
+        background: transparent;
+        height: 6px;
+    }
+
+    input[type="range"]#p5-scale-min::-webkit-slider-thumb,
+    input[type="range"]#p5-scale-max::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: #ED225D;
+        border: 2px solid white;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        cursor: grab;
+        margin-top: -6px;
+    }
+
+    input[type="range"]#p5-scale-min::-webkit-slider-thumb:active,
+    input[type="range"]#p5-scale-max::-webkit-slider-thumb:active {
+        cursor: grabbing;
+        background: #c81d4f;
+    }
+
+    /* Firefox */
+    input[type="range"]#p5-scale-min::-moz-range-track,
+    input[type="range"]#p5-scale-max::-moz-range-track {
+        background: transparent;
+        height: 6px;
+    }
+
+    input[type="range"]#p5-scale-min::-moz-range-thumb,
+    input[type="range"]#p5-scale-max::-moz-range-thumb {
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: #ED225D;
+        border: 2px solid white;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        cursor: grab;
+    }
+
+    input[type="range"]#p5-scale-min::-moz-range-thumb:active,
+    input[type="range"]#p5-scale-max::-moz-range-thumb:active {
+        cursor: grabbing;
+        background: #c81d4f;
+    }
     </style>
 
     <script>
@@ -911,6 +1006,8 @@ require_once(__DIR__ . '/includes/header.php');
             scale: {
                 enabled: false,
                 loop: true,
+                min: 0.5,      // NEW: Minimum scale (default different from max for visibility)
+                max: 2.0,      // NEW: Maximum scale
                 speed: 1
             },
             translation: {
@@ -1057,6 +1154,8 @@ require_once(__DIR__ . '/includes/header.php');
 
         p5Config.animation.scale.enabled = document.getElementById('p5-animation-scale-enabled').checked;
         p5Config.animation.scale.loop = document.getElementById('p5-animation-scale-loop').checked;
+        p5Config.animation.scale.min = parseFloat(document.getElementById('p5-scale-min').value);
+        p5Config.animation.scale.max = parseFloat(document.getElementById('p5-scale-max').value);
         p5Config.animation.scale.speed = parseFloat(document.getElementById('p5-animation-scale-speed').value);
 
         p5Config.animation.translation.enabled = document.getElementById('p5-animation-translation-enabled').checked;
@@ -1079,6 +1178,58 @@ require_once(__DIR__ . '/includes/header.php');
         p5Config.advanced.rectMode = document.getElementById('p5-rect-mode').value;
         p5Config.advanced.ellipseMode = document.getElementById('p5-ellipse-mode').value;
         p5Config.advanced.angleMode = document.getElementById('p5-angle-mode').value;
+    }
+
+    // Dual-thumb scale slider functions
+    function updateDualThumbScaleP5(thumb, value) {
+        // Update the value
+        if (thumb === 'min') {
+            // If min is dragged above max, swap them
+            if (value > p5Config.animation.scale.max) {
+                p5Config.animation.scale.min = p5Config.animation.scale.max;
+                p5Config.animation.scale.max = value;
+            } else {
+                p5Config.animation.scale.min = value;
+            }
+        } else { // max thumb
+            // If max is dragged below min, swap them
+            if (value < p5Config.animation.scale.min) {
+                p5Config.animation.scale.max = p5Config.animation.scale.min;
+                p5Config.animation.scale.min = value;
+            } else {
+                p5Config.animation.scale.max = value;
+            }
+        }
+
+        // Update the UI
+        updateDualThumbScaleP5UI();
+        updateP5Configuration();
+    }
+
+    function updateDualThumbScaleP5UI() {
+        const min = p5Config.animation.scale.min;
+        const max = p5Config.animation.scale.max;
+
+        // Update slider values
+        const minSlider = document.getElementById('p5-scale-min');
+        const maxSlider = document.getElementById('p5-scale-max');
+        if (minSlider) minSlider.value = min;
+        if (maxSlider) maxSlider.value = max;
+
+        // Update labels
+        const minLabel = document.getElementById('p5-scale-min-label');
+        const maxLabel = document.getElementById('p5-scale-max-label');
+        if (minLabel) minLabel.textContent = min.toFixed(1) + 'x';
+        if (maxLabel) maxLabel.textContent = max.toFixed(1) + 'x';
+
+        // Update range highlight visual
+        const rangeHighlight = document.getElementById('p5-scale-range-highlight');
+        if (rangeHighlight) {
+            const minPercent = ((min - 0.1) / (10 - 0.1)) * 100;
+            const maxPercent = ((max - 0.1) / (10 - 0.1)) * 100;
+            rangeHighlight.style.left = minPercent + '%';
+            rangeHighlight.style.right = (100 - maxPercent) + '%';
+        }
     }
 
     // Update the hidden configuration field
@@ -1145,6 +1296,19 @@ require_once(__DIR__ . '/includes/header.php');
             });
         }
 
+        // CRITICAL: Explicit background color listener (defensive programming)
+        // Ensures background color changes are always captured
+        const backgroundColorInput = document.getElementById('p5-background');
+        if (backgroundColorInput) {
+            backgroundColorInput.addEventListener('change', function() {
+                console.log('P5.js background color changed to:', this.value);
+                updateP5Configuration();
+            });
+            backgroundColorInput.addEventListener('input', function() {
+                updateP5Configuration();
+            });
+        }
+
         // Add change listeners to all inputs
         const inputs = document.querySelectorAll('.sketch-field-input, #p5-no-stroke, #p5-no-fill, #p5-use-palette, #p5-clear-background, #p5-mouse-interaction, #p5-keyboard-interaction');
         inputs.forEach(input => {
@@ -1154,6 +1318,17 @@ require_once(__DIR__ . '/includes/header.php');
 
         // Initialize shape palette
         initializeP5ShapePalette();
+
+        // CRITICAL: Update configuration before form submission
+        // Ensures latest values (especially background color) are captured
+        const artForm = document.getElementById('art-form');
+        if (artForm) {
+            artForm.addEventListener('submit', function(e) {
+                console.log('P5.js form submitting - updating configuration...');
+                updateP5Configuration();
+                console.log('Configuration JSON:', document.getElementById('configuration_json').value);
+            });
+        }
 
         // Load existing configuration if editing or on form errors
         <?php
@@ -1246,6 +1421,16 @@ require_once(__DIR__ . '/includes/header.php');
                         if (savedConfig.animation.scale) {
                             document.getElementById('p5-animation-scale-enabled').checked = savedConfig.animation.scale.enabled || false;
                             document.getElementById('p5-animation-scale-loop').checked = savedConfig.animation.scale.loop !== false;
+
+                            // Load min/max values (with backward compatibility)
+                            p5Config.animation.scale.min = savedConfig.animation.scale.min !== undefined ? savedConfig.animation.scale.min : 0.5;
+                            p5Config.animation.scale.max = savedConfig.animation.scale.max !== undefined ? savedConfig.animation.scale.max : 2.0;
+                            document.getElementById('p5-scale-min').value = p5Config.animation.scale.min;
+                            document.getElementById('p5-scale-max').value = p5Config.animation.scale.max;
+
+                            // Update UI for dual-thumb slider
+                            updateDualThumbScaleP5UI();
+
                             document.getElementById('p5-animation-scale-speed').value = savedConfig.animation.scale.speed || 1;
                             document.getElementById('p5-animation-scale-speed-value').textContent = parseFloat(savedConfig.animation.scale.speed || 1).toFixed(1);
                         }
