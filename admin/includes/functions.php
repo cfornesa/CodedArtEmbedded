@@ -442,9 +442,7 @@ function prepareArtPieceData($type, $data, $userId, $isUpdate = false) {
             break;
 
         case 'threejs':
-            $prepared['texture_urls'] = !empty($data['texture_urls'])
-                ? jsonEncode($data['texture_urls'])
-                : null;
+            $prepared['background_image_url'] = !empty($data['background_image_url']) ? sanitize($data['background_image_url']) : null;
             $prepared['configuration'] = !empty($data['configuration'])
                 ? jsonEncode($data['configuration'])
                 : null;

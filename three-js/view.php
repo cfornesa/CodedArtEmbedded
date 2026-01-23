@@ -110,6 +110,24 @@ const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(container.clientWidth, container.clientHeight);
 container.appendChild(renderer.domElement);
 
+// Load background image if specified
+<?php
+$backgroundImageUrl = $piece['background_image_url'] ?? null;
+// Backward compatibility: fallback to first texture from old texture_urls array
+if (empty($backgroundImageUrl) && !empty($piece['texture_urls'])) {
+    $textureUrls = json_decode($piece['texture_urls'], true);
+    if (is_array($textureUrls) && !empty($textureUrls)) {
+        $backgroundImageUrl = $textureUrls[0];
+    }
+}
+if (!empty($backgroundImageUrl)):
+?>
+const backgroundTextureLoader = new THREE.TextureLoader();
+backgroundTextureLoader.load('<?php echo htmlspecialchars(proxifyImageUrl($backgroundImageUrl), ENT_QUOTES); ?>', function(texture) {
+    scene.background = texture;
+});
+<?php endif; ?>
+
 // Lights from configuration
 if (config.sceneSettings && config.sceneSettings.lights) {
     config.sceneSettings.lights.forEach(lightConfig => {
