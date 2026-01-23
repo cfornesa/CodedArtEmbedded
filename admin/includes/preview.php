@@ -1589,10 +1589,10 @@ function animate() {
 
             if (min !== max) {
                 const duration = anim.scale.duration || 10000;
-                const time = Date.now() * 0.001;
+                const time = Date.now();
                 const range = (max - min) / 2;
                 const mid = (max + min) / 2;
-                const scaleValue = mid + Math.sin(time * 1000 / duration) * range;
+                const scaleValue = mid + Math.sin(time / duration * Math.PI * 2) * range;
                 mesh.scale.set(scaleValue, scaleValue, scaleValue);
             }
         }

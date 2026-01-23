@@ -341,9 +341,12 @@ require_once(__DIR__ . '/includes/header.php');
                         class="form-control"
                         style="width: 80px; height: 40px; padding: 2px;"
                         value="<?php echo $formData ? ($formData['background_color'] ?? '#000000') : ($editPiece && !empty($editPiece['background_color']) ? $editPiece['background_color'] : '#000000'); ?>"
+                        onchange="document.getElementById('background_color_text').value = this.value"
+                        oninput="document.getElementById('background_color_text').value = this.value"
                     >
                     <input
                         type="text"
+                        id="background_color_text"
                         class="form-control"
                         placeholder="#000000"
                         value="<?php echo $formData ? ($formData['background_color'] ?? '#000000') : ($editPiece && !empty($editPiece['background_color']) ? $editPiece['background_color'] : '#000000'); ?>"
