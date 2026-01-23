@@ -92,6 +92,35 @@ const sketch = (p) => {
     const interactionConfig = config.interaction || {};
     const advancedConfig = config.advanced || {};
 
+    // Backward compatibility for animation format
+    // Old format: animationConfig.animated (single toggle)
+    // New format: animationConfig.rotation.enabled, scale.enabled, translation.enabled, color.enabled (granular)
+    const isAnimated = animationConfig.animated || // Old format
+        (animationConfig.rotation && animationConfig.rotation.enabled) || // New format: rotation
+        (animationConfig.scale && animationConfig.scale.enabled) || // New format: scale/pulse
+        (animationConfig.translation && animationConfig.translation.enabled) || // New format: translation/move
+        (animationConfig.color && animationConfig.color.enabled); // New format: color
+
+    // Override animationConfig.animated with computed value for backward compatibility
+    animationConfig.animated = isAnimated;
+
+    // If using new format, extract speed and loop from first enabled animation
+    if (isAnimated && !config.animation.speed) {
+        if (animationConfig.rotation?.enabled) {
+            animationConfig.speed = animationConfig.rotation.speed || 1;
+            animationConfig.loop = animationConfig.rotation.loop !== false;
+        } else if (animationConfig.scale?.enabled) {
+            animationConfig.speed = animationConfig.scale.speed || 1;
+            animationConfig.loop = animationConfig.scale.loop !== false;
+        } else if (animationConfig.translation?.enabled) {
+            animationConfig.speed = animationConfig.translation.speed || 1;
+            animationConfig.loop = animationConfig.translation.loop !== false;
+        } else if (animationConfig.color?.enabled) {
+            animationConfig.speed = animationConfig.color.speed || 1;
+            animationConfig.loop = animationConfig.color.loop !== false;
+        }
+    }
+
     // Variables for animation
     let time = 0;
     let elements = [];
