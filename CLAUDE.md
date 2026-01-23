@@ -1298,6 +1298,187 @@ mysqldump -u username -p codedart_db > backup_$(date +%Y%m%d).sql
 
 ## Version History
 
+**v1.0.18** - 2026-01-22 (CRITICAL FIX: Live Preview Parity + P5.js Rendering)
+- 🚨 **SEVERITY:** CRITICAL - P5.js completely broken (404 errors), C2.js/P5.js previews not matching view pages
+- 🎯 **ROOT CAUSE:** v1.0.16 and v1.0.17 fixed view pages but forgot to update preview.php
+- 🎯 **USER IMPACT:** P5.js pieces don't render at all, live previews show wrong patterns/no animations
+- 🎯 **SCOPE:** Preview/view page parity for C2.js and P5.js, P5.js library loading
+
+- 🐛 **CRITICAL BUG: P5.js Complete Rendering Failure**
+  - **Problem:** P5.js view page throwing 404 error for p5.min.js library
+  - **Error Messages:**
+    - `p5.min.js:1 Failed to load resource: the server responded with a status of 404 (Not Found)`
+    - `view.php?slug=piece-1:430 Uncaught ReferenceError: p5 is not defined`
+  - **Root Cause:** View page trying to load local file `url('js/p5.min.js')` but file doesn't exist
+  - **Impact:** P5.js pieces completely fail to render (user quote: "does not even render")
+  - **Fix:** Changed to CDN: `https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js`
+
+- 🐛 **CRITICAL BUG: Live Previews Not Matching View Pages**
+  - **Problem:** C2.js and P5.js live previews still using OLD animation format
+  - **User Feedback:** "Live preview not responsive in real-time and does not even look like the wave pattern that I specified"
+  - **Root Cause:** `admin/includes/preview.php` never updated with backward compatibility from v1.0.17
+  - **Impact:** Users see different behavior in preview vs view page (breaks confidence)
+  - **What Was Missed:**
+    - ✅ v1.0.16: Fixed shapes in view pages (colors → shapes backward compat)
+    - ✅ v1.0.17: Fixed animations in view pages (enabled → granular backward compat)
+    - ❌ **BOTH TIMES:** Forgot to update preview.php with same fixes
+  - **Pattern:** Preview.php is a separate rendering path that must be updated independently
+
+- ✅ **C2.JS PREVIEW FIX** (COMPLETE)
+  - **Animation Backward Compatibility:**
+    ```javascript
+    const isAnimationEnabled = config.animation && (
+        config.animation.enabled || // Old format
+        (config.animation.rotation && config.animation.rotation.enabled) ||
+        (config.animation.pulse && config.animation.pulse.enabled) ||
+        (config.animation.move && config.animation.move.enabled) ||
+        (config.animation.color && config.animation.color.enabled)
+    );
+    ```
+  - **Speed/Loop Extraction:** From either old format OR first enabled granular type
+  - **Result:** Preview now matches view page exactly (same animation behavior)
+
+- ✅ **P5.JS PREVIEW FIX** (COMPLETE)
+  - **PHP-side backward compatibility:**
+    ```php
+    $animated = !empty($animationConfig['animated']) || // Old
+        (!empty($animationConfig['rotation']['enabled'])) ||
+        (!empty($animationConfig['scale']['enabled'])) ||
+        (!empty($animationConfig['translation']['enabled'])) ||
+        (!empty($animationConfig['color']['enabled']));
+    ```
+  - **JavaScript-side backward compatibility:**
+    ```javascript
+    const isAnimated = animationConfig.animated ||
+        (animationConfig.rotation?.enabled) ||
+        (animationConfig.scale?.enabled) ||
+        (animationConfig.translation?.enabled) ||
+        (animationConfig.color?.enabled);
+    config.animation.animated = isAnimated;
+    ```
+  - **CDN Library:** Preview already using CDN (no fix needed)
+  - **Result:** Preview matches view page exactly
+
+- 🎯 **CRITICAL LESSONS LEARNED**
+
+  **1. Every Rendering Path Must Be Updated Together:**
+  - **Problem:** Fixed view pages in v1.0.16/v1.0.17, forgot preview.php both times
+  - **Why Dangerous:** Users see inconsistent behavior (preview ≠ view page)
+  - **Rendering Locations:**
+    - `admin/includes/preview.php` - Live preview during editing
+    - `{framework}/view.php` - Public view page for embedding
+    - Both consume same configuration JSON, must render identically
+  - **Checklist When Changing Data Structures:**
+    1. ✓ Update admin form to generate new format
+    2. ✓ Update preview.php to render both old and new formats
+    3. ✓ Update view.php to render both old and new formats
+    4. ✓ Test BOTH preview and view page with old and new pieces
+
+  **2. "Works in Preview" ≠ "Works in View":**
+  - **Problem:** Assumed if admin form works, everything works
+  - **Reality:** Preview and view are SEPARATE CODE PATHS with SEPARATE LOGIC
+  - **Testing Matrix Must Include:**
+    - ✓ Admin form (editing pieces)
+    - ✓ Live preview (during editing) ← **THIS WAS MISSED**
+    - ✓ Public view pages (actual viewing/embedding)
+    - ✓ With old data (backward compatibility)
+    - ✓ With new data (new features)
+  - **Lesson:** Test EVERY rendering location, not just one
+
+  **3. Preview/View Parity is Non-Negotiable:**
+  - **User Said:** "make the live preview more like the view page"
+  - **What This Reveals:** Preview must be IDENTICAL to view page for user confidence
+  - **Why It Matters:** Users trust preview to show what they'll get
+  - **If Preview ≠ View:** Users lose confidence, have to save-test-reload cycle (defeats purpose of preview)
+  - **Implementation Pattern:** Copy-paste view.php logic into preview.php, don't try to "simplify"
+
+  **4. Local Library Files = 404 Risk:**
+  - **Problem:** P5.js view page using `url('js/p5.min.js')` but file doesn't exist
+  - **Why It Happens:** Assumed library was installed, never verified
+  - **Better Approach:** Use CDN for external libraries
+  - **Benefits of CDN:**
+    - No 404 errors (external host responsible for uptime)
+    - Automatic caching (users likely already have it cached)
+    - No deployment step (don't need to upload library files)
+    - Easy version updates (just change URL)
+  - **Lesson:** Use CDN for third-party libraries unless you have specific reason not to
+
+  **5. User Feedback Reveals Rendering Path Gaps:**
+  - **User Said:** "Live preview not responsive and doesn't match view page"
+  - **What It Revealed:** Preview.php has different code path, wasn't updated
+  - **User Said:** "P5.js does not even render"
+  - **What It Revealed:** Library loading issue (404 error)
+  - **Lesson:** When user says "X doesn't match Y", check if X and Y are different code paths
+
+  **6. Backward Compatibility Must Be Applied Everywhere:**
+  - **Pattern:** v1.0.15 changed data structures, v1.0.16/17 added backward compat to view pages
+  - **What We Missed:** Adding backward compat to preview.php
+  - **Migration Locations:**
+    - ✓ Admin form (when loading old pieces)
+    - ✓ View pages (when rendering old pieces)
+    - ✗ **Preview pages** (FORGOT THIS) ← **FIXED IN v1.0.18**
+  - **Lesson:** List ALL consumption points of data structure, add migration to ALL of them
+
+  **7. Standardization Observations (For Future Cleanup):**
+  - **P5.js Field Issues Noted by User:**
+    - "Piece Path" shows "N/A" - should be automated from slug
+    - "Screenshot URL" field exists - purpose unclear, may be redundant with thumbnail
+    - "Image URLs" field exists - confusing name, should clarify it's for background images
+  - **Current Field Patterns Across Frameworks:**
+    - A-Frame: thumbnail + sky_texture + ground_texture (environment-specific)
+    - C2.js: thumbnail + single background_image_url
+    - Three.js: thumbnail + multiple background_image_urls (random selection)
+    - P5.js: thumbnail + screenshot + image_urls (inconsistent with others)
+  - **Recommendation (Not Implemented in v1.0.18):**
+    - Standardize background image fields across frameworks
+    - Remove or clarify purpose of screenshot_url
+    - Auto-compute piece_path from slug (remove manual field)
+    - Future version should address these for consistency
+
+- 📊 **IMPLEMENTATION METRICS**
+  - **Bug Severity:** 🔴 CRITICAL (P5.js completely broken, previews misleading)
+  - **Time to Fix:** ~1.5 hours (analysis + C2 preview + P5 preview + P5 CDN + docs)
+  - **Files Modified:** 2 (preview.php, p5/view.php)
+  - **Lines Changed:** ~120 (backward compatibility logic)
+  - **Breaking Changes:** 0 (fully backward compatible)
+  - **Frameworks Fixed:** 2 (C2.js, P5.js)
+  - **Root Cause:** Incomplete implementation in v1.0.16 and v1.0.17 (forgot preview.php)
+
+- 📚 **FILES MODIFIED**
+  - `admin/includes/preview.php` - C2.js and P5.js animation backward compatibility (lines 695-759, 873-906, 959-995)
+  - `p5/view.php` - Changed to use P5.js CDN instead of local file (line 76)
+  - `CLAUDE.md` - This comprehensive v1.0.18 documentation
+
+- 🧪 **TESTING CHECKLIST** (For All Future Data Structure Changes)
+  - ✓ Admin form loads old pieces correctly (migration on load)
+  - ✓ Admin form saves new format
+  - ✓ Live preview renders old pieces correctly
+  - ✓ Live preview renders new pieces correctly
+  - ✓ View page renders old pieces correctly
+  - ✓ View page renders new pieces correctly
+  - ✓ Preview matches view page exactly (same animation, same pattern)
+  - ✓ No console errors in any rendering location
+
+- 🔒 **SECURITY**
+  - No security regressions
+  - CDN uses HTTPS (secure delivery)
+  - Backward compatibility is read-only transformation (no data modification)
+  - Preview rendering still session-based (no database modifications)
+
+- 👤 **USER EXPERIENCE IMPACT**
+  - **Before:** P5.js completely broken (404 errors), C2.js/P5.js previews misleading
+  - **After:** All pieces render correctly, previews match view pages exactly
+  - **Result:** User confidence restored, preview is now trustworthy
+
+- 💬 **USER FEEDBACK ADDRESSED**
+  - ✓ "Live preview not responsive in real-time" - FIXED (animation backward compat)
+  - ✓ "Doesn't look like the wave pattern I specified" - FIXED (preview now matches view)
+  - ✓ "P5.js does not even render" - FIXED (CDN for p5.min.js)
+  - ✓ "Configuration options don't reflect in live preview" - FIXED (backward compat)
+  - ✓ "Failed to load resource: 404 (Not Found)" - FIXED (CDN instead of local file)
+  - ✓ "Uncaught ReferenceError: p5 is not defined" - FIXED (library now loads correctly)
+  - ⚠️ Standardization issues (piece_path, screenshot_url, image_urls) - DOCUMENTED for future cleanup
+
 **v1.0.17** - 2026-01-22 (CRITICAL FIX: Animation Backward Compatibility)
 - 🚨 **SEVERITY:** CRITICAL - Animations completely broken in C2.js and P5.js view pages
 - 🎯 **ROOT CAUSE:** v1.0.16 fixed shapes rendering, but missed animation format change from v1.0.15
