@@ -73,7 +73,7 @@ try {
 <body>
 <div id="p5-container"></div>
 
-<script src="<?php echo url('js/p5.min.js'); ?>"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
 <script>
 // P5.js Sketch Configuration
 const config = <?php echo json_encode($config); ?>;
