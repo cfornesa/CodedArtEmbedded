@@ -51,8 +51,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array($action, ['create', 'edit'
             'title' => $_POST['title'] ?? '',
             'slug' => $_POST['slug'] ?? '',  // Optional: auto-generated if empty
             'description' => $_POST['description'] ?? '',
-            'embedded_path' => $_POST['embedded_path'] ?? '',
-            'js_file' => $_POST['js_file'] ?? '',
             'thumbnail_url' => $_POST['thumbnail_url'] ?? '',
             'tags' => $_POST['tags'] ?? '',
             'status' => $_POST['status'] ?? 'active',
@@ -159,7 +157,6 @@ require_once(__DIR__ . '/includes/header.php');
                         <th>Thumbnail</th>
                         <th>Title</th>
                         <th>Slug</th>
-                        <th>JS File</th>
                         <th>Status</th>
                         <th>Sort Order</th>
                         <th>Actions</th>
@@ -188,9 +185,6 @@ require_once(__DIR__ . '/includes/header.php');
                         </td>
                         <td>
                             <code style="font-size: 0.85em;"><?php echo htmlspecialchars($piece['slug'] ?? 'N/A'); ?></code>
-                        </td>
-                        <td>
-                            <small><?php echo htmlspecialchars($piece['js_file'] ?: 'N/A'); ?></small>
                         </td>
                         <td>
                             <span class="badge badge-<?php
@@ -293,32 +287,6 @@ require_once(__DIR__ . '/includes/header.php');
             </div>
 
             <!-- File path is auto-generated from slug: /three-js/view.php?slug=your-slug -->
-
-            <div class="form-group">
-                <label for="embedded_path" class="form-label">Embedded Path</label>
-                <input
-                    type="text"
-                    id="embedded_path"
-                    name="embedded_path"
-                    class="form-control"
-                    placeholder="/three-js/first-whole.php"
-                    value="<?php echo $formData ? htmlspecialchars($formData['embedded_path']) : ($editPiece ? htmlspecialchars($editPiece['embedded_path']) : ''); ?>"
-                >
-                <small class="form-help">Path to *-whole.php version for embedding</small>
-            </div>
-
-            <div class="form-group">
-                <label for="js_file" class="form-label">JavaScript File</label>
-                <input
-                    type="text"
-                    id="js_file"
-                    name="js_file"
-                    class="form-control"
-                    placeholder="first.js"
-                    value="<?php echo $formData ? htmlspecialchars($formData['js_file']) : ($editPiece ? htmlspecialchars($editPiece['js_file']) : ''); ?>"
-                >
-                <small class="form-help">JavaScript filename (e.g., first.js)</small>
-            </div>
 
             <div class="form-group">
                 <label for="thumbnail_url" class="form-label">Thumbnail URL</label>

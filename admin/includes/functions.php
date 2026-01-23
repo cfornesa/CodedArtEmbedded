@@ -435,19 +435,13 @@ function prepareArtPieceData($type, $data, $userId, $isUpdate = false) {
             break;
 
         case 'p5':
-            $prepared['piece_path'] = sanitize($data['piece_path'] ?? '');
-            $prepared['screenshot_url'] = !empty($data['screenshot_url']) ? sanitize($data['screenshot_url']) : null;
-            $prepared['image_urls'] = !empty($data['image_urls'])
-                ? jsonEncode($data['image_urls'])
-                : null;
+            $prepared['background_image_url'] = !empty($data['background_image_url']) ? sanitize($data['background_image_url']) : null;
             $prepared['configuration'] = !empty($data['configuration'])
                 ? jsonEncode($data['configuration'])
                 : null;
             break;
 
         case 'threejs':
-            $prepared['embedded_path'] = sanitize($data['embedded_path'] ?? '');
-            $prepared['js_file'] = sanitize($data['js_file'] ?? '');
             $prepared['texture_urls'] = !empty($data['texture_urls'])
                 ? jsonEncode($data['texture_urls'])
                 : null;
