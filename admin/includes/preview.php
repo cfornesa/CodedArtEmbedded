@@ -1255,8 +1255,8 @@ function renderThreeJSPreview($piece) {
     $geometries = $config['geometries'] ?? [];
     $sceneSettings = $config['sceneSettings'] ?? [];
 
-    // Scene background color
-    $sceneBackground = $sceneSettings['background'] ?? '#000000';
+    // Scene background color (check database field first, then config, then default)
+    $sceneBackground = $piece['background_color'] ?? ($sceneSettings['background'] ?? '#000000');
 
     ?>
 <!DOCTYPE html>

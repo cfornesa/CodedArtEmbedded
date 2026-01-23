@@ -94,7 +94,12 @@ const config = <?php echo json_encode($config); ?>;
 // Scene setup
 const container = document.getElementById('threejs-container');
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(config.sceneSettings?.background || '#000000');
+
+// Set initial background color (from database or config)
+<?php
+$backgroundColor = $piece['background_color'] ?? ($config['sceneSettings']['background'] ?? '#000000');
+?>
+scene.background = new THREE.Color('<?php echo htmlspecialchars($backgroundColor); ?>');
 
 // Camera
 const camera = new THREE.PerspectiveCamera(

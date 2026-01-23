@@ -332,6 +332,29 @@ require_once(__DIR__ . '/includes/header.php');
             </div>
 
             <div class="form-group">
+                <label class="form-label">Background Color</label>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <input
+                        type="color"
+                        id="background_color"
+                        name="background_color"
+                        class="form-control"
+                        style="width: 80px; height: 40px; padding: 2px;"
+                        value="<?php echo $formData ? ($formData['background_color'] ?? '#000000') : ($editPiece && !empty($editPiece['background_color']) ? $editPiece['background_color'] : '#000000'); ?>"
+                    >
+                    <input
+                        type="text"
+                        class="form-control"
+                        placeholder="#000000"
+                        value="<?php echo $formData ? ($formData['background_color'] ?? '#000000') : ($editPiece && !empty($editPiece['background_color']) ? $editPiece['background_color'] : '#000000'); ?>"
+                        onchange="document.getElementById('background_color').value = this.value"
+                        oninput="document.getElementById('background_color').value = this.value"
+                    >
+                </div>
+                <small class="form-help">Scene background color (used when no background image is set)</small>
+            </div>
+
+            <div class="form-group">
                 <label class="form-label">Background Image URL (optional)</label>
                 <input
                     type="url"
@@ -341,7 +364,7 @@ require_once(__DIR__ . '/includes/header.php');
                     placeholder="https://example.com/background.png"
                     value="<?php echo $formData ? htmlspecialchars($formData['background_image_url'] ?? '') : ($editPiece ? htmlspecialchars($editPiece['background_image_url'] ?? '') : ''); ?>"
                 >
-                <small class="form-help">Optional background image for the scene. Individual geometry textures are configured in the Geometry Builder below.</small>
+                <small class="form-help">Optional background image for the scene. Overrides background color if set. Individual geometry textures are configured in the Geometry Builder below.</small>
             </div>
 
             <div class="form-group">
@@ -1357,10 +1380,14 @@ require_once(__DIR__ . '/includes/header.php');
 
     // Update the hidden configuration field
     function updateConfiguration() {
+        // Get background color from form
+        const backgroundColorField = document.getElementById('background_color');
+        const backgroundColor = backgroundColorField ? backgroundColorField.value : '#000000';
+
         const config = {
             geometries: geometries,
             sceneSettings: {
-                background: '#000000',
+                background: backgroundColor,
                 lights: [
                     { type: 'AmbientLight', color: '#ffffff', intensity: 0.5 },
                     { type: 'DirectionalLight', color: '#ffffff', intensity: 0.8, position: { x: 5, y: 10, z: 7.5 } }
@@ -1591,6 +1618,14 @@ require_once(__DIR__ . '/includes/header.php');
         setTimeout(() => {
             updateLivePreview();
         }, 1000); // Wait 1 second for configuration to initialize
+
+        // Add event listener for background color changes
+        const backgroundColorField = document.getElementById('background_color');
+        if (backgroundColorField) {
+            backgroundColorField.addEventListener('input', function() {
+                updateConfiguration(); // Update config with new background color
+            });
+        }
     });
 
     </script>
