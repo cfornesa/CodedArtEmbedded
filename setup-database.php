@@ -47,20 +47,18 @@ echo PHP_EOL;
 // Check if tables exist
 output("Checking database tables...", 'yellow');
 
-$requiredTables = function_exists('getRequiredTables')
-    ? getRequiredTables()
-    : [
-        'users',
-        'aframe_art',
-        'c2_art',
-        'p5_art',
-        'threejs_art',
-        'site_config',
-        'activity_log',
-        'slug_redirects',
-        'auth_log',
-        'auth_rate_limits'
-    ];
+$requiredTables = [
+    'aframe_art',
+    'c2_art',
+    'p5_art',
+    'threejs_art',
+    'users',
+    'site_config',
+    'activity_log',
+    'slug_redirects',
+    'auth_log',
+    'auth_rate_limits'
+];
 
 $pdo = getDBConnection();
 $missingTables = [];
