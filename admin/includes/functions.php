@@ -432,11 +432,19 @@ function prepareArtPieceData($type, $data, $userId, $isUpdate = false) {
 
         case 'c2':
             $prepared['canvas_count'] = isset($data['canvas_count']) ? (int)$data['canvas_count'] : 1;
-            $prepared['js_files'] = !empty($data['js_files'])
-                ? jsonEncode($data['js_files'])
+            $jsFiles = [];
+            if (!empty($data['js_files']) && is_array($data['js_files'])) {
+                $jsFiles = array_values(array_filter($data['js_files']));
+            }
+            $prepared['js_files'] = !empty($jsFiles)
+                ? jsonEncode($jsFiles)
                 : null;
-            $prepared['image_urls'] = !empty($data['image_urls'])
-                ? jsonEncode($data['image_urls'])
+            $imageUrls = [];
+            if (!empty($data['image_urls']) && is_array($data['image_urls'])) {
+                $imageUrls = array_values(array_filter($data['image_urls']));
+            }
+            $prepared['image_urls'] = !empty($imageUrls)
+                ? jsonEncode($imageUrls)
                 : null;
             $prepared['configuration'] = !empty($data['configuration'])
                 ? jsonEncode($data['configuration'])

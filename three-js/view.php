@@ -41,12 +41,10 @@ try {
 // Get background color (from database field or config, with fallback)
 $backgroundColor = $piece['background_color'] ?? ($config['sceneSettings']['background'] ?? '#000000');
 
-// Get background image URL if specified (standardized field)
-$backgroundImageUrl = $piece['background_image_url'] ?? null;
-// Get background image URL if specified (prefer texture_urls array)
+// Get background image URL (prefer texture_urls array)
 $backgroundImageUrl = null;
 if (!empty($piece['texture_urls'])) {
-    $textureUrls = json_decode($piece['texture_urls'], true);
+    $textureUrls = is_array($piece['texture_urls']) ? $piece['texture_urls'] : json_decode($piece['texture_urls'], true);
     if (is_array($textureUrls)) {
         $textureUrls = array_values(array_filter($textureUrls));
         if (!empty($textureUrls)) {
@@ -55,7 +53,7 @@ if (!empty($piece['texture_urls'])) {
     }
 }
 
-// Backward compatibility: fallback to background_image_url
+// Backward compatibility: fallback to legacy single background_image_url
 if (empty($backgroundImageUrl) && !empty($piece['background_image_url'])) {
     $backgroundImageUrl = $piece['background_image_url'];
 }
