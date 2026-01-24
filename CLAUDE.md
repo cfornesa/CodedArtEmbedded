@@ -20,7 +20,7 @@ CodedArtEmbedded is a comprehensive, database-driven art gallery management syst
 ✅ **Slug-based routing** - SEO-friendly URLs with auto-generation
 ✅ **Real-time validation** - Instant feedback on slug availability
 ✅ **Form preservation** - Never lose work on validation errors
-✅ **Background image system** - Random selection from URL pool
+✅ **Background images** - Single URL for C2/P5, optional URL list (randomized) for Three.js
 ✅ **Per-shape textures** - Individual texture URLs in configuration builders
 ✅ **Soft delete** - Recoverable deletion with trash management
 ✅ **Dynamic view pages** - Auto-generated piece display pages
@@ -124,7 +124,8 @@ CREATE TABLE p5_art (
     piece_path VARCHAR(255),              -- Path to piece/*.php file
     thumbnail_url VARCHAR(500),
     screenshot_url VARCHAR(500),
-    image_urls TEXT,                      -- JSON: Image URLs used in sketch
+    image_urls TEXT,                      -- JSON: Image URLs used in sketch (legacy)
+    background_image_url VARCHAR(500),    -- Single background image URL
     configuration TEXT,                   -- JSON: Sketch configuration from builder
     tags TEXT,
     created_by INT,
@@ -152,6 +153,8 @@ CREATE TABLE threejs_art (
     embedded_path VARCHAR(255),           -- *-whole.php version for embedding
     js_file VARCHAR(255),
     thumbnail_url VARCHAR(500),
+    background_color VARCHAR(20),         -- Scene background color (fallback)
+    background_image_url VARCHAR(500),    -- Single background image URL (legacy fallback)
     texture_urls TEXT,                    -- JSON: Background image URLs (random selection)
     configuration TEXT,                   -- JSON: Geometry configurations with per-geometry textures
     tags TEXT,
@@ -245,12 +248,12 @@ CREATE TABLE slug_redirects (
 ### Background Image URLs (Top-Level Field)
 
 **Location:** Admin form top-level field labeled "Background Image URL" (C2.js/P5.js) or "Background Image URLs" (Three.js)
-**Database Field:** `background_image_url` (C2.js, P5.js) or `texture_urls` (Three.js)
+**Database Field:** `background_image_url` (C2.js, P5.js) or `texture_urls` (Three.js list; `background_image_url` retained as a legacy fallback)
 **Purpose:** Scene background images
-**Behavior:** **Three.js randomly selects one image on each load; C2.js/P5.js use a single image**
+**Behavior:** **P5.js/C2.js load a single URL; Three.js randomly selects one image per page load from the URL list**
 **Format:** Single URL (C2.js/P5.js) or JSON array of URLs (Three.js)
 
-**Example:**
+**Example (Three.js URL list):**
 ```json
 [
   "https://example.com/background1.webp",
@@ -318,6 +321,9 @@ CREATE TABLE slug_redirects (
 - Max file size: 10MB (configurable)
 
 **User Experience:**
+- **Validation rules:** Admin saves validate image URLs with `isValidImageUrl()` (jpg, jpeg, png, webp, gif + full URL required).
+- **P5.js feedback:** Invalid background image URLs return a form-level error message.
+- **Three.js feedback:** Invalid entries in the background URL list return a numbered error message (e.g., “Texture URL #2…”), and the form preserves input on failure.
 - Completely transparent - users just enter image URLs
 - Works with any external image source (fornesus.com, imgur.com, etc.)
 - No configuration or manual proxy setup required
@@ -495,7 +501,7 @@ admin/
 2. Query database for piece with matching slug
 3. Load configuration JSON
 4. Render art piece with framework-specific code
-5. Apply background image (randomly selected from texture_urls)
+5. Apply background image (P5/C2: single URL; Three.js: randomly selected from texture_urls)
 6. Apply per-shape textures from configuration
 
 ---
@@ -720,7 +726,7 @@ CodedArtEmbedded/
 8. **Soft Delete** - Trash system with restore capability
 9. **Configuration Builders** - Visual editors for all 4 frameworks
 10. **Dynamic Views** - Slug-based piece display pages
-11. **Background Images** - Random selection from URL pool
+11. **Background Images** - Single URL for C2/P5, randomized URL list for Three.js
 12. **Per-Shape Textures** - Individual texture URLs in builders
 13. **Gallery Pages** - Database-driven index pages
 14. **Security** - CSRF, bcrypt, prepared statements, input validation
@@ -3592,10 +3598,9 @@ mysqldump -u username -p codedart_db > backup_$(date +%Y%m%d).sql
   - ✅ P5.js: background_image_url (single sketch background) ← **NOW MATCHES C2.js**
   - ✅ Three.js: texture_urls array (random selection for variety) ← **Appropriate for WebGL**
 
-  **Fields Removed (Unnecessary Complexity):**
-  - ❌ P5.js: piece_path, screenshot_url, image_urls (3 fields removed)
-  - ❌ Three.js: embedded_path, js_file (2 fields removed)
-  - **Total:** 5 unnecessary fields eliminated
+  **Deprecated/Legacy Fields (Kept for Backward Compatibility):**
+  - ⚠️ P5.js: piece_path, screenshot_url, image_urls (legacy, no longer used in admin flow)
+  - ⚠️ Three.js: embedded_path, js_file (legacy, no longer used in admin flow)
 
 - 🎯 **SYSTEMS THINKING LESSONS**
 
