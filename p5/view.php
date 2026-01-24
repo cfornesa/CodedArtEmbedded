@@ -97,6 +97,33 @@ if (empty($backgroundImageUrl) && !empty($piece['image_urls'])) {
             let backgroundImage = null;
             let elements = [];
             let animationFrame = 0;
+            const interactionConfig = config.interaction || {};
+            const legacyInteractionEnabled = interactionConfig.enabled === true;
+            const mouseConfig = interactionConfig.mouse || {};
+            const keyboardConfig = interactionConfig.keyboard || {};
+            const mouseEnabled = mouseConfig.enabled !== undefined ? mouseConfig.enabled : legacyInteractionEnabled;
+            const keyboardEnabled = keyboardConfig.enabled !== undefined ? keyboardConfig.enabled : legacyInteractionEnabled;
+            const rawMouseType = mouseConfig.type || interactionConfig.mouseType;
+            const normalizeMouseType = (type) => {
+                const value = String(type).toLowerCase();
+                if (['move', 'moved', 'mousemove', 'mousemoved', 'hover'].includes(value)) {
+                    return 'move';
+                }
+                if (['press', 'pressed', 'click', 'mousepressed', 'mousedown'].includes(value)) {
+                    return 'press';
+                }
+                if (['drag', 'dragged', 'mousedragged'].includes(value)) {
+                    return 'drag';
+                }
+                return value;
+            };
+            const mouseTypeList = Array.isArray(rawMouseType)
+                ? rawMouseType.map(normalizeMouseType)
+                : rawMouseType
+                    ? [normalizeMouseType(rawMouseType)]
+                    : ['move'];
+            const allowedMouseTypes = new Set(mouseTypeList);
+            const shouldHandleMouse = (type) => mouseEnabled && allowedMouseTypes.has(type);
 
             // Preload background image
             p.preload = function() {
@@ -328,20 +355,44 @@ if (empty($backgroundImageUrl) && !empty($piece['image_urls'])) {
             };
 
             // Mouse interaction
-            p.mouseMoved = function() {
-                const interactionConfig = config.interaction || {};
-                if (interactionConfig.enabled) {
-                    // Simple repel effect
-                    elements.forEach(el => {
-                        const d = p.dist(p.mouseX, p.mouseY, el.x, el.y);
-                        if (d < 100) {
-                            const angle = p.atan2(el.y - p.mouseY, el.x - p.mouseX);
-                            el.x += p.cos(angle) * 2;
-                            el.y += p.sin(angle) * 2;
-                        }
-                    });
-                }
+            const applyMouseInteraction = () => {
+                // Simple repel effect
+                elements.forEach(el => {
+                    const d = p.dist(p.mouseX, p.mouseY, el.x, el.y);
+                    if (d < 100) {
+                        const angle = p.atan2(el.y - p.mouseY, el.x - p.mouseX);
+                        el.x += p.cos(angle) * 2;
+                        el.y += p.sin(angle) * 2;
+                    }
+                });
             };
+
+            p.mouseMoved = function() {
+                if (!shouldHandleMouse('move')) {
+                    return;
+                }
+                applyMouseInteraction();
+            };
+
+            p.mousePressed = function() {
+                if (!shouldHandleMouse('press')) {
+                    return;
+                }
+                applyMouseInteraction();
+            };
+
+            p.mouseDragged = function() {
+                if (!shouldHandleMouse('drag')) {
+                    return;
+                }
+                applyMouseInteraction();
+            };
+
+            if (keyboardEnabled) {
+                p.keyPressed = function() {
+                    return;
+                };
+            }
         };
 
         // Create P5.js instance
