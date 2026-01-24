@@ -43,6 +43,12 @@ function resolvePath($path) {
  */
 function url($path = '') {
     $base = defined('SITE_URL') ? SITE_URL : getBaseUrl();
+
+    // Replit runs on a dynamic host, so prefer the detected base URL.
+    if (isReplit()) {
+        $base = getBaseUrl();
+    }
+
     return $base . '/' . ltrim($path, '/');
 }
 
