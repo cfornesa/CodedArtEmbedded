@@ -67,6 +67,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array($action, ['create', 'edit'
         // Handle texture URLs (array input)
         if (isset($_POST['texture_urls']) && is_array($_POST['texture_urls'])) {
             $data['texture_urls'] = array_filter($_POST['texture_urls']);
+        } elseif (!empty($data['background_image_url'])) {
+            // Legacy fallback: treat single background image as the first texture URL
+            $data['texture_urls'] = [$data['background_image_url']];
         }
 
         // Handle configuration JSON if provided
@@ -364,11 +367,15 @@ require_once(__DIR__ . '/includes/header.php');
             $textureUrls = [];
             if ($formData && isset($formData['texture_urls_raw'])) {
                 $textureUrls = $formData['texture_urls_raw'];
+            } elseif ($formData && !empty($formData['texture_urls'])) {
+                $textureUrls = $formData['texture_urls'];
             } elseif ($editPiece && !empty($editPiece['texture_urls'])) {
                 $decodedTextureUrls = json_decode($editPiece['texture_urls'], true);
                 if (is_array($decodedTextureUrls)) {
                     $textureUrls = $decodedTextureUrls;
                 }
+            } elseif ($editPiece && !empty($editPiece['background_image_url'])) {
+                $textureUrls = [$editPiece['background_image_url']];
             }
 
             if (empty($textureUrls)) {

@@ -1361,8 +1361,6 @@ new p5(sketch);
 function renderThreeJSPreview($piece) {
     $config = is_array($piece['configuration']) ? $piece['configuration'] : [];
 
-    // Extract background image URL (standardized field)
-    $backgroundImageUrl = $piece['background_image_url'] ?? null;
     // Extract background image URL (prefer texture_urls array)
     $backgroundImageUrl = null;
     if (!empty($piece['texture_urls'])) {
@@ -1375,7 +1373,7 @@ function renderThreeJSPreview($piece) {
         }
     }
 
-    // Backward compatibility: fallback to background_image_url
+    // Backward compatibility: fallback to legacy single background_image_url
     if (empty($backgroundImageUrl) && !empty($piece['background_image_url'])) {
         $backgroundImageUrl = $piece['background_image_url'];
     }
