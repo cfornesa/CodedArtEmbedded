@@ -127,6 +127,26 @@ function getDBConnection() {
 }
 
 /**
+ * Get required database tables for initialization checks.
+ *
+ * @return array
+ */
+function getRequiredTables() {
+    return [
+        'users',
+        'aframe_art',
+        'c2_art',
+        'p5_art',
+        'threejs_art',
+        'site_config',
+        'activity_log',
+        'slug_redirects',
+        'auth_log',
+        'auth_rate_limits'
+    ];
+}
+
+/**
  * Execute a prepared SQL query
  *
  * @param string $sql SQL query with placeholders

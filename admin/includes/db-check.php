@@ -10,18 +10,20 @@
  * @return array ['initialized' => bool, 'missing_tables' => array]
  */
 function checkDatabaseInitialized() {
-    $requiredTables = [
-        'users',
-        'aframe_art',
-        'c2_art',
-        'p5_art',
-        'threejs_art',
-        'site_config',
-        'activity_log',
-        'slug_redirects',
-        'auth_log',
-        'auth_rate_limits'
-    ];
+    $requiredTables = function_exists('getRequiredTables')
+        ? getRequiredTables()
+        : [
+            'users',
+            'aframe_art',
+            'c2_art',
+            'p5_art',
+            'threejs_art',
+            'site_config',
+            'activity_log',
+            'slug_redirects',
+            'auth_log',
+            'auth_rate_limits'
+        ];
 
     $pdo = getDBConnection();
     $missingTables = [];
