@@ -852,6 +852,7 @@ function renderP5Preview($piece) {
     $colorsConfig = $config['colors'] ?? [];  // For backward compatibility
     $animationConfig = $config['animation'] ?? [];
     $advancedConfig = $config['advanced'] ?? [];
+    $interactionConfig = $config['interaction'] ?? [];
 
     // Support both new shapes format and old colors format (backward compatibility)
     if (!empty($shapesConfig)) {
@@ -914,10 +915,20 @@ function renderP5Preview($piece) {
         }
     }
 
-    // Advanced settings
-    $mouseInteraction = !empty($advancedConfig['mouseInteraction']);
-    $keyboardInteraction = !empty($advancedConfig['keyboardInteraction']);
-    $clearBackground = isset($advancedConfig['clearBackground']) ? (bool)$advancedConfig['clearBackground'] : true;
+    // Interaction settings (new) with backward-compatible advanced.* keys
+    $mouseInteraction = !empty($interactionConfig['mouse'])
+        || (!empty($advancedConfig['mouseInteraction']));
+    $keyboardInteraction = !empty($interactionConfig['keyboard'])
+        || (!empty($advancedConfig['keyboardInteraction']));
+
+    // Animation settings (new) with backward-compatible advanced.* keys
+    if (array_key_exists('clearBackground', $animationConfig)) {
+        $clearBackground = (bool)$animationConfig['clearBackground'];
+    } elseif (array_key_exists('clearBackground', $advancedConfig)) {
+        $clearBackground = (bool)$advancedConfig['clearBackground'];
+    } else {
+        $clearBackground = true;
+    }
     $randomSeed = isset($advancedConfig['randomSeed']) ? (int)$advancedConfig['randomSeed'] : null;
 
     // Color palette
