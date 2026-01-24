@@ -193,7 +193,11 @@ if (empty($backgroundImageUrl) && !empty($piece['image_urls'])) {
                     c.setAlpha(fillOpacity);
                     p.fill(c);
 
-                    if (drawingConfig.useStroke) {
+                    const noStroke = drawingConfig.noStroke !== undefined
+                        ? drawingConfig.noStroke
+                        : (drawingConfig.useStroke !== undefined ? !drawingConfig.useStroke : false);
+
+                    if (!noStroke) {
                         const strokeWeight = drawingConfig.strokeWeight || 1;
                         p.strokeWeight(strokeWeight);
                         p.stroke(el.color);
