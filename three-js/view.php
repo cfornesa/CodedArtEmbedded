@@ -38,25 +38,8 @@ try {
     die('Error loading art piece.');
 }
 
-// Get background color (from database field or config, with fallback)
-$backgroundColor = $piece['background_color'] ?? ($config['sceneSettings']['background'] ?? '#000000');
-
-// Get background image URL (prefer texture_urls array)
-$backgroundImageUrl = null;
-if (!empty($piece['texture_urls'])) {
-    $textureUrls = is_array($piece['texture_urls']) ? $piece['texture_urls'] : json_decode($piece['texture_urls'], true);
-    if (is_array($textureUrls)) {
-        $textureUrls = array_values(array_filter($textureUrls));
-        if (!empty($textureUrls)) {
-            $backgroundImageUrl = $textureUrls[array_rand($textureUrls)];
-        }
-    }
-}
-
-// Backward compatibility: fallback to legacy single background_image_url
-if (empty($backgroundImageUrl) && !empty($piece['background_image_url'])) {
-    $backgroundImageUrl = $piece['background_image_url'];
-}
+$backgroundColor = getThreeJsBackgroundColor($piece, $config);
+$backgroundImageUrl = getThreeJsBackgroundImageUrl($piece);
 ?>
 <!DOCTYPE html>
 <html lang="en">

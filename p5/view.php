@@ -37,15 +37,7 @@ try {
     die('Error loading art piece.');
 }
 
-// Get background image URL if specified
-$backgroundImageUrl = $piece['background_image_url'] ?? null;
-// Backward compatibility: fallback to first image from old image_urls array
-if (empty($backgroundImageUrl) && !empty($piece['image_urls'])) {
-    $imageUrls = is_array($piece['image_urls']) ? $piece['image_urls'] : json_decode($piece['image_urls'], true);
-    if (is_array($imageUrls) && !empty($imageUrls)) {
-        $backgroundImageUrl = $imageUrls[0];
-    }
-}
+$backgroundImageUrl = getP5BackgroundImageUrl($piece);
 ?>
 <!DOCTYPE html>
 <html lang="en">

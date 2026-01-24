@@ -834,16 +834,7 @@ function drawPatternWithInteraction(mouseX, mouseY, radius, type) {
 function renderP5Preview($piece) {
     $config = is_array($piece['configuration']) ? $piece['configuration'] : [];
 
-    // Extract background image URL (new standardized field)
-    $backgroundImageUrl = $piece['background_image_url'] ?? null;
-
-    // Backward compatibility: fallback to first image in old image_urls array
-    if (empty($backgroundImageUrl) && !empty($piece['image_urls'])) {
-        $imageUrls = is_array($piece['image_urls']) ? $piece['image_urls'] : json_decode($piece['image_urls'], true);
-        if (is_array($imageUrls) && !empty($imageUrls)) {
-            $backgroundImageUrl = $imageUrls[0];
-        }
-    }
+    $backgroundImageUrl = getP5BackgroundImageUrl($piece);
 
     // Extract configuration sections
     $canvasConfig = $config['canvas'] ?? [];
@@ -1361,29 +1352,14 @@ new p5(sketch);
 function renderThreeJSPreview($piece) {
     $config = is_array($piece['configuration']) ? $piece['configuration'] : [];
 
-    // Extract background image URL (prefer texture_urls array)
-    $backgroundImageUrl = null;
-    if (!empty($piece['texture_urls'])) {
-        $textureUrls = is_array($piece['texture_urls']) ? $piece['texture_urls'] : json_decode($piece['texture_urls'], true);
-        if (is_array($textureUrls)) {
-            $textureUrls = array_values(array_filter($textureUrls));
-            if (!empty($textureUrls)) {
-                $backgroundImageUrl = $textureUrls[array_rand($textureUrls)];
-            }
-        }
-    }
-
-    // Backward compatibility: fallback to legacy single background_image_url
-    if (empty($backgroundImageUrl) && !empty($piece['background_image_url'])) {
-        $backgroundImageUrl = $piece['background_image_url'];
-    }
+    $backgroundImageUrl = getThreeJsBackgroundImageUrl($piece);
 
     // Extract configuration sections
     $geometries = $config['geometries'] ?? [];
     $sceneSettings = $config['sceneSettings'] ?? [];
 
     // Scene background color (check database field first, then config, then default)
-    $sceneBackground = $piece['background_color'] ?? ($sceneSettings['background'] ?? '#000000');
+    $sceneBackground = getThreeJsBackgroundColor($piece, $config);
 
     ?>
 <!DOCTYPE html>
