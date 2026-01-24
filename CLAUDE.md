@@ -244,11 +244,11 @@ CREATE TABLE slug_redirects (
 
 ### Background Image URLs (Top-Level Field)
 
-**Location:** Admin form top-level field labeled "Background Image URLs"
-**Database Field:** `texture_urls` (A-Frame, Three.js) or `image_urls` (C2.js, P5.js)
+**Location:** Admin form top-level field labeled "Background Image URL" (C2.js/P5.js) or "Background Image URLs" (Three.js)
+**Database Field:** `background_image_url` (C2.js, P5.js) or `texture_urls` (Three.js)
 **Purpose:** Scene background images
-**Behavior:** **One image is randomly selected each time the piece loads**
-**Format:** JSON array of URLs
+**Behavior:** **Three.js randomly selects one image on each load; C2.js/P5.js use a single image**
+**Format:** Single URL (C2.js/P5.js) or JSON array of URLs (Three.js)
 
 **Example:**
 ```json
