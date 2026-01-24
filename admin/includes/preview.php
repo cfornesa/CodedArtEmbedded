@@ -1040,8 +1040,9 @@ const sketch = (p) => {
     <?php endif; ?>
 
     // Shapes palette (backward compatible with old colors)
+    // When usePalette is enabled, shapes are filled with their palette colors; otherwise use the single configured shape/style.
     const shapes = <?php echo json_encode($shapes); ?>;
-    const usePalette = config.usePalette || false;
+    const usePalette = config.usePalette || config.drawing?.usePalette || false;
 
     // Animation variables
     let animationFrame = 0;

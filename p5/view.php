@@ -107,6 +107,8 @@ if (empty($backgroundImageUrl) && !empty($piece['image_urls'])) {
                 const patternType = patternConfig.type || 'random';
                 const spacing = patternConfig.spacing || 50;
                 const randomSeed = patternConfig.randomSeed;
+                // Palette rendering: if enabled, use per-shape palette colors; otherwise use single configured shape/style.
+                const usePalette = config.usePalette || drawingConfig.usePalette || false;
 
                 // Set random seed if specified
                 if (randomSeed !== undefined) {
@@ -114,6 +116,9 @@ if (empty($backgroundImageUrl) && !empty($piece['image_urls'])) {
                 }
 
                 // Get shapes/colors (backward compatibility)
+                const shapes = config.shapes || (config.colors ? config.colors.map(c => ({ shape: 'ellipse', color: c })) : [{ shape: 'ellipse', color: '#ED225D' }]);
+                const defaultShapeType = drawingConfig.shapeType || drawingConfig.shape || 'ellipse';
+                const defaultFillColor = drawingConfig.fillColor || '#ED225D';
                 const shapes = config.shapes || (config.colors ? config.colors.map(c => ({ shape: 'ellipse', color: c })) : [{ shape: 'ellipse' }]);
 
                 // Create pattern elements based on pattern type
@@ -127,7 +132,7 @@ if (empty($backgroundImageUrl) && !empty($piece['image_urls'])) {
                     let count = 0;
                     for (let row = 0; row < rows && count < shapeCount; row++) {
                         for (let col = 0; col < cols && count < shapeCount; col++) {
-                            const shape = shapes[count % shapes.length];
+                            const shape = usePalette ? shapes[count % shapes.length] : { shape: defaultShapeType, color: defaultFillColor };
                             elements.push({
                                 x: col * spacing + offsetX,
                                 y: row * spacing + offsetY,
@@ -144,7 +149,7 @@ if (empty($backgroundImageUrl) && !empty($piece['image_urls'])) {
                 } else {
                     // Random positioning (default)
                     for (let i = 0; i < shapeCount; i++) {
-                        const shape = shapes[i % shapes.length];
+                        const shape = usePalette ? shapes[i % shapes.length] : { shape: defaultShapeType, color: defaultFillColor };
                         elements.push({
                             x: p.random(width),
                             y: p.random(height),
@@ -164,6 +169,10 @@ if (empty($backgroundImageUrl) && !empty($piece['image_urls'])) {
                 const canvasConfig = config.canvas || {};
                 const animationConfig = config.animation || {};
                 const drawingConfig = config.drawing || {};
+                const usePalette = config.usePalette || drawingConfig.usePalette || false;
+                const strokeEnabled = drawingConfig.useStroke !== undefined ? drawingConfig.useStroke : !drawingConfig.noStroke;
+                const strokeColor = drawingConfig.strokeColor || '#000000';
+                const noFillEnabled = drawingConfig.noFill || false;
 
                 // Check if animated (backward compatibility)
                 const animated = animationConfig.animated ||
@@ -194,6 +203,15 @@ if (empty($backgroundImageUrl) && !empty($piece['image_urls'])) {
                     // 4) For stroke, drawingConfig.noStroke overrides everything.
                     // 5) If stroke is enabled, drawingConfig.strokeColor takes precedence; otherwise use the fill color.
                     const fillOpacity = drawingConfig.fillOpacity !== undefined ? drawingConfig.fillOpacity : 255;
+                    if (noFillEnabled) {
+                        p.noFill();
+                    } else {
+                        const c = p.color(el.color);
+                        c.setAlpha(fillOpacity);
+                        p.fill(c);
+                    }
+
+                    if (strokeEnabled) {
                     const noFill = drawingConfig.noFill === true;
                     const defaultFill = drawingConfig.fillColor || '#ED225D';
                     const paletteFill = el.color || null;
