@@ -64,6 +64,34 @@ if (empty($backgroundImageUrl) && !empty($piece['image_urls'])) {
         // Configuration from database
         const config = <?php echo json_encode($config); ?>;
 
+        // Backward compatibility normalization (match preview behavior)
+        if (config.animation) {
+            const animationConfig = config.animation;
+            const isAnimated = animationConfig.animated ||
+                animationConfig.rotation?.enabled ||
+                animationConfig.scale?.enabled ||
+                animationConfig.translation?.enabled ||
+                animationConfig.color?.enabled;
+
+            config.animation.animated = isAnimated;
+
+            if (isAnimated && !config.animation.speed) {
+                if (animationConfig.rotation?.enabled) {
+                    config.animation.speed = animationConfig.rotation.speed || 1;
+                    config.animation.loop = animationConfig.rotation.loop !== false;
+                } else if (animationConfig.scale?.enabled) {
+                    config.animation.speed = animationConfig.scale.speed || 1;
+                    config.animation.loop = animationConfig.scale.loop !== false;
+                } else if (animationConfig.translation?.enabled) {
+                    config.animation.speed = animationConfig.translation.speed || 1;
+                    config.animation.loop = animationConfig.translation.loop !== false;
+                } else if (animationConfig.color?.enabled) {
+                    config.animation.speed = animationConfig.color.speed || 1;
+                    config.animation.loop = animationConfig.color.loop !== false;
+                }
+            }
+        }
+
         // P5.js sketch in instance mode
         const sketch = (p) => {
             let backgroundImage = null;
