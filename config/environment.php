@@ -20,10 +20,15 @@
  * @return bool True if running on Replit
  */
 function isReplit() {
+    $host = $_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_NAME'] ?? '';
+
     return isset($_ENV['REPL_ID']) ||
            isset($_SERVER['REPL_ID']) ||
            getenv('REPL_ID') !== false ||
-           isset($_ENV['REPLIT_DB_URL']);
+           isset($_ENV['REPLIT_DB_URL']) ||
+           stripos($host, 'replit') !== false ||
+           stripos($host, 'repl.co') !== false ||
+           stripos($host, 'replit.dev') !== false;
 }
 
 /**
