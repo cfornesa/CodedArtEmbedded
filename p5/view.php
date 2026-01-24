@@ -162,6 +162,8 @@ if (empty($backgroundImageUrl) && !empty($piece['image_urls'])) {
                 const patternType = patternConfig.type || 'random';
                 const spacing = patternConfig.spacing || 50;
                 const randomSeed = patternConfig.randomSeed;
+                const noiseScale = patternConfig.noiseScale || 0.01;
+                const noiseDetail = patternConfig.noiseDetail || 4;
                 // Palette rendering: if enabled, use per-shape palette colors; otherwise use single configured shape/style.
                 const usePalette = config.usePalette || drawingConfig.usePalette || false;
 
@@ -195,6 +197,37 @@ if (empty($backgroundImageUrl) && !empty($piece['image_urls'])) {
                                 color: shape.color ?? null,
                                 shapeType: shape.shape || 'ellipse',
                                 rotation: 0,
+                                vx: p.random(-2, 2),
+                                vy: p.random(-2, 2)
+                            });
+                            count++;
+                        }
+                    }
+                } else if (patternType === 'noise') {
+                    // Perlin noise pattern: noiseScale controls smoothness, noiseDetail sets octaves.
+                    p.noiseDetail(noiseDetail);
+                    const cols = Math.floor(width / spacing);
+                    const rows = Math.floor(height / spacing);
+                    const offsetX = (width - (cols - 1) * spacing) / 2;
+                    const offsetY = (height - (rows - 1) * spacing) / 2;
+
+                    let count = 0;
+                    for (let row = 0; row < rows && count < shapeCount; row++) {
+                        for (let col = 0; col < cols && count < shapeCount; col++) {
+                            const shape = shapes[count % shapes.length];
+                            const baseX = col * spacing + offsetX;
+                            const baseY = row * spacing + offsetY;
+                            const noiseX = p.noise(baseX * noiseScale, baseY * noiseScale);
+                            const noiseY = p.noise(baseX * noiseScale + 1000, baseY * noiseScale + 1000);
+                            const jitter = spacing * 0.5;
+
+                            elements.push({
+                                x: baseX + (noiseX - 0.5) * jitter,
+                                y: baseY + (noiseY - 0.5) * jitter,
+                                size: shapeSize * (0.7 + noiseX * 0.6),
+                                color: shape.color || '#ED225D',
+                                shapeType: shape.shape || 'ellipse',
+                                rotation: p.TWO_PI * noiseY,
                                 vx: p.random(-2, 2),
                                 vy: p.random(-2, 2)
                             });
