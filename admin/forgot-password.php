@@ -24,26 +24,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Invalid request. Please try again.';
     } else {
         $email = $_POST['email'] ?? '';
-
-        $result = initiatePasswordReset($email);
-
-        if ($result['success']) {
-            $success = $result['message'];
-
-            // Send email if token was generated
-            if (isset($result['token']) && $result['token']) {
-                $user = dbFetchOne("SELECT * FROM users WHERE email = ?", [sanitizeEmail($email)]);
-                if ($user) {
-                    sendPasswordResetEmail(
-                        $user['email'],
-                        $result['token'],
-                        $user['first_name'] . ' ' . $user['last_name']
-                    );
-                }
-            }
+        $rateLimitResult = checkPasswordResetRateLimit($email);
+        if (!$rateLimitResult['allowed']) {
+            $error = $rateLimitResult['message'];
+            logAuthEvent('password_reset_blocked', null, $email, ['reason' => $rateLimitResult['message']]);
         } else {
-            // Don't show error to prevent user enumeration
-            $success = $result['message'];
+            recordPasswordResetAttempt($email, getClientIp());
+        }
+
+        if (empty($error)) {
+            $result = initiatePasswordReset($email);
+
+            if ($result['success']) {
+                $success = $result['message'];
+
+                // Send email if token was generated
+                if (isset($result['token']) && $result['token']) {
+                    $user = dbFetchOne("SELECT * FROM users WHERE email = ?", [sanitizeEmail($email)]);
+                    if ($user) {
+                        sendPasswordResetEmail(
+                            $user['email'],
+                            $result['token'],
+                            $user['first_name'] . ' ' . $user['last_name']
+                        );
+                    }
+                }
+            } else {
+                // Don't show error to prevent user enumeration
+                $success = $result['message'];
+            }
         }
     }
 }

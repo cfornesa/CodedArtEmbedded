@@ -330,6 +330,53 @@ CREATE TABLE IF NOT EXISTS activity_log (
 createTable('activity_log', $sql_activity);
 
 // ==========================================
+// TABLE 8: auth_log
+// ==========================================
+
+output("\n📋 Creating table: auth_log", 'info');
+
+$sql_auth_log = "
+CREATE TABLE IF NOT EXISTS auth_log (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NULL,
+    email VARCHAR(255) NULL,
+    event_type VARCHAR(50) NOT NULL,
+    ip_address VARCHAR(45),
+    user_agent VARCHAR(255),
+    metadata TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_auth_user (user_id),
+    INDEX idx_auth_email (email),
+    INDEX idx_auth_event (event_type),
+    INDEX idx_auth_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+";
+
+createTable('auth_log', $sql_auth_log);
+
+// ==========================================
+// TABLE 9: auth_rate_limits
+// ==========================================
+
+output("\n📋 Creating table: auth_rate_limits", 'info');
+
+$sql_auth_rate_limits = "
+CREATE TABLE IF NOT EXISTS auth_rate_limits (
+    identifier VARCHAR(255) PRIMARY KEY,
+    attempt_count INT NOT NULL DEFAULT 0,
+    first_attempt DATETIME NULL,
+    last_attempt DATETIME NULL,
+    locked_until DATETIME NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_locked_until (locked_until),
+    INDEX idx_last_attempt (last_attempt)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+";
+
+createTable('auth_rate_limits', $sql_auth_rate_limits);
+
+// ==========================================
 // CREATE FOREIGN KEYS
 // ==========================================
 
@@ -344,7 +391,8 @@ try {
         "ALTER TABLE c2_art ADD CONSTRAINT fk_c2_user FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL",
         "ALTER TABLE p5_art ADD CONSTRAINT fk_p5_user FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL",
         "ALTER TABLE threejs_art ADD CONSTRAINT fk_threejs_user FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL",
-        "ALTER TABLE activity_log ADD CONSTRAINT fk_activity_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+        "ALTER TABLE activity_log ADD CONSTRAINT fk_activity_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
+        "ALTER TABLE auth_log ADD CONSTRAINT fk_auth_log_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL"
     ];
 
     foreach ($foreignKeys as $sql) {

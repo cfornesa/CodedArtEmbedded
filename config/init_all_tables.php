@@ -148,10 +148,44 @@ try {
     $pdo->exec("CREATE INDEX idx_users_status ON users(status)");
     echo "✓ users created\n\n";
 
+    // ==================== AUTH LOG TABLE ====================
+    echo "Creating auth_log table...\n";
+    $pdo->exec("DROP TABLE IF EXISTS auth_log");
+    $pdo->exec("CREATE TABLE auth_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        email VARCHAR(255),
+        event_type VARCHAR(50) NOT NULL,
+        ip_address VARCHAR(45),
+        user_agent VARCHAR(255),
+        metadata TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )");
+    $pdo->exec("CREATE INDEX idx_auth_user ON auth_log(user_id)");
+    $pdo->exec("CREATE INDEX idx_auth_email ON auth_log(email)");
+    $pdo->exec("CREATE INDEX idx_auth_event ON auth_log(event_type)");
+    echo "✓ auth_log created\n\n";
+
+    // ==================== AUTH RATE LIMITS TABLE ====================
+    echo "Creating auth_rate_limits table...\n";
+    $pdo->exec("DROP TABLE IF EXISTS auth_rate_limits");
+    $pdo->exec("CREATE TABLE auth_rate_limits (
+        identifier VARCHAR(255) PRIMARY KEY,
+        attempt_count INTEGER NOT NULL DEFAULT 0,
+        first_attempt DATETIME,
+        last_attempt DATETIME,
+        locked_until DATETIME,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )");
+    $pdo->exec("CREATE INDEX idx_auth_rate_last ON auth_rate_limits(last_attempt)");
+    $pdo->exec("CREATE INDEX idx_auth_rate_locked ON auth_rate_limits(locked_until)");
+    echo "✓ auth_rate_limits created\n\n";
+
     // ==================== VERIFICATION ====================
     echo "=== VERIFICATION ===" . PHP_EOL . PHP_EOL;
 
-    $tables = ['aframe_art', 'c2_art', 'p5_art', 'threejs_art', 'users'];
+    $tables = ['aframe_art', 'c2_art', 'p5_art', 'threejs_art', 'users', 'auth_log', 'auth_rate_limits'];
     foreach ($tables as $table) {
         $stmt = $pdo->query("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='$table'");
         $exists = $stmt->fetchColumn();

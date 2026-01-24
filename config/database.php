@@ -304,7 +304,16 @@ function dbGetStats() {
     $stats = [];
 
     try {
-        $tables = ['aframe_art', 'c2_art', 'p5_art', 'threejs_art', 'users', 'activity_log'];
+        $tables = [
+            'aframe_art',
+            'c2_art',
+            'p5_art',
+            'threejs_art',
+            'users',
+            'activity_log',
+            'auth_log',
+            'auth_rate_limits'
+        ];
 
         foreach ($tables as $table) {
             if (dbTableExists($table)) {

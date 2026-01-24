@@ -55,6 +55,67 @@ function needsCorsProxy($url) {
 }
 
 /**
+ * Determine if an IP address is public.
+ *
+ * @param string $ip IP address
+ * @return bool True if IP is public
+ */
+function isPublicIp($ip) {
+    if (!filter_var($ip, FILTER_VALIDATE_IP)) {
+        return false;
+    }
+
+    return filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) !== false;
+}
+
+/**
+ * Resolve host to IPs and ensure they are public (no private/reserved ranges).
+ *
+ * @param string $host Hostname to resolve
+ * @return array ['allowed' => bool, 'ips' => array]
+ */
+function resolvePublicIps($host) {
+    $allowPrivate = defined('CORS_PROXY_ALLOW_PRIVATE_IPS') && CORS_PROXY_ALLOW_PRIVATE_IPS;
+
+    if (filter_var($host, FILTER_VALIDATE_IP)) {
+        return [
+            'allowed' => $allowPrivate ? true : isPublicIp($host),
+            'ips' => [$host]
+        ];
+    }
+
+    $records = @dns_get_record($host, DNS_A + DNS_AAAA);
+    if (!$records) {
+        return ['allowed' => false, 'ips' => []];
+    }
+
+    $ips = [];
+    foreach ($records as $record) {
+        if (!empty($record['ip'])) {
+            $ips[] = $record['ip'];
+        } elseif (!empty($record['ipv6'])) {
+            $ips[] = $record['ipv6'];
+        }
+    }
+
+    if (empty($ips)) {
+        return ['allowed' => false, 'ips' => []];
+    }
+
+    if ($allowPrivate) {
+        return ['allowed' => true, 'ips' => $ips];
+    }
+
+    foreach ($ips as $ip) {
+        if (!isPublicIp($ip)) {
+            return ['allowed' => false, 'ips' => $ips];
+        }
+    }
+
+    return ['allowed' => true, 'ips' => $ips];
+}
+
+/**
  * Get proxied image URL
  * @param string $url Original image URL
  * @return string Proxied URL or original if proxy not needed
@@ -87,6 +148,27 @@ function serveProxiedImage() {
         die('Invalid URL format');
     }
 
+    $parsedUrl = parse_url($imageUrl);
+    $scheme = $parsedUrl['scheme'] ?? '';
+    $host = $parsedUrl['host'] ?? '';
+
+    $allowInsecure = defined('CORS_PROXY_ALLOW_INSECURE_HTTP') && CORS_PROXY_ALLOW_INSECURE_HTTP;
+    if (!in_array($scheme, ['https', 'http'], true) || (!$allowInsecure && $scheme !== 'https')) {
+        header('HTTP/1.1 400 Bad Request');
+        die('Invalid URL scheme');
+    }
+
+    if (empty($host)) {
+        header('HTTP/1.1 400 Bad Request');
+        die('Invalid URL host');
+    }
+
+    $resolved = resolvePublicIps($host);
+    if (!$resolved['allowed']) {
+        header('HTTP/1.1 400 Bad Request');
+        die('URL host not allowed');
+    }
+
     // Check if URL points to an allowed image type
     if (!isValidImageUrl($imageUrl)) {
         header('HTTP/1.1 400 Bad Request');
@@ -97,6 +179,7 @@ function serveProxiedImage() {
     $cacheEnabled = defined('CORS_PROXY_ENABLED') && CORS_PROXY_ENABLED;
     $cacheDir = defined('CORS_CACHE_DIR') ? CORS_CACHE_DIR : __DIR__ . '/../../../cache/cors/';
     $cacheLifetime = defined('CORS_CACHE_LIFETIME') ? CORS_CACHE_LIFETIME : 86400; // 24 hours
+    $maxFileSize = defined('CORS_MAX_FILE_SIZE') ? CORS_MAX_FILE_SIZE : 10485760;
 
     if ($cacheEnabled) {
         $cacheKey = md5($imageUrl);
@@ -120,24 +203,51 @@ function serveProxiedImage() {
         }
     }
 
+    $headers = @get_headers($imageUrl, 1);
+    if ($headers && isset($headers['Content-Length'])) {
+        $contentLength = is_array($headers['Content-Length'])
+            ? end($headers['Content-Length'])
+            : $headers['Content-Length'];
+        if (is_numeric($contentLength) && (int) $contentLength > $maxFileSize) {
+            header('HTTP/1.1 413 Payload Too Large');
+            die('Image exceeds max size');
+        }
+    }
+
     // Fetch image from remote URL
+    $sslVerify = !defined('CORS_PROXY_SSL_VERIFY') || CORS_PROXY_SSL_VERIFY;
+    $maxRedirects = defined('CORS_PROXY_MAX_REDIRECTS') ? CORS_PROXY_MAX_REDIRECTS : 3;
     $context = stream_context_create([
         'http' => [
             'method' => 'GET',
             'header' => 'User-Agent: CodedArt CORS Proxy/1.0\r\n',
-            'timeout' => 30
+            'timeout' => 30,
+            'follow_location' => 1,
+            'max_redirects' => $maxRedirects
         ],
         'ssl' => [
-            'verify_peer' => false,
-            'verify_peer_name' => false
+            'verify_peer' => $sslVerify,
+            'verify_peer_name' => $sslVerify
         ]
     ]);
 
-    $imageData = @file_get_contents($imageUrl, false, $context);
+    $handle = @fopen($imageUrl, 'rb', false, $context);
+    if (!$handle) {
+        header('HTTP/1.1 404 Not Found');
+        die('Failed to fetch image');
+    }
+
+    $imageData = stream_get_contents($handle, $maxFileSize + 1);
+    fclose($handle);
 
     if ($imageData === false) {
         header('HTTP/1.1 404 Not Found');
         die('Failed to fetch image');
+    }
+
+    if (strlen($imageData) > $maxFileSize) {
+        header('HTTP/1.1 413 Payload Too Large');
+        die('Image exceeds max size');
     }
 
     // Validate that we actually got an image

@@ -197,6 +197,38 @@ $sql = "CREATE TABLE IF NOT EXISTS activity_log (
 createTable('activity_log', $sql);
 $pdo->exec("CREATE INDEX IF NOT EXISTS idx_activity_user ON activity_log(user_id)");
 
+// Create auth_log
+output("\n📋 Creating table: auth_log", 'info');
+$sql = "CREATE TABLE IF NOT EXISTS auth_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER,
+    email VARCHAR(255),
+    event_type VARCHAR(50) NOT NULL,
+    ip_address VARCHAR(45),
+    user_agent VARCHAR(255),
+    metadata TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+)";
+createTable('auth_log', $sql);
+$pdo->exec("CREATE INDEX IF NOT EXISTS idx_auth_user ON auth_log(user_id)");
+$pdo->exec("CREATE INDEX IF NOT EXISTS idx_auth_email ON auth_log(email)");
+$pdo->exec("CREATE INDEX IF NOT EXISTS idx_auth_event ON auth_log(event_type)");
+
+// Create auth_rate_limits
+output("\n📋 Creating table: auth_rate_limits", 'info');
+$sql = "CREATE TABLE IF NOT EXISTS auth_rate_limits (
+    identifier VARCHAR(255) PRIMARY KEY,
+    attempt_count INTEGER NOT NULL DEFAULT 0,
+    first_attempt DATETIME,
+    last_attempt DATETIME,
+    locked_until DATETIME,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+)";
+createTable('auth_rate_limits', $sql);
+$pdo->exec("CREATE INDEX IF NOT EXISTS idx_auth_rate_last ON auth_rate_limits(last_attempt)");
+$pdo->exec("CREATE INDEX IF NOT EXISTS idx_auth_rate_locked ON auth_rate_limits(locked_until)");
+
 // Insert default settings
 output("\n⚙️  Inserting default settings...", 'info');
 $settings = [
