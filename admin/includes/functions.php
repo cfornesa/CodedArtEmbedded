@@ -338,16 +338,28 @@ function validateArtPieceData($type, $data, $existingId = null) {
             break;
 
         case 'p5':
-            // P5-specific validation if needed
+            if (!empty($data['background_image_url']) && !isValidImageUrl($data['background_image_url'])) {
+                return [
+                    'valid' => false,
+                    'message' => 'Background image URL must be a valid image link (jpg, jpeg, png, webp, or gif). Please enter a full URL.'
+                ];
+            }
             break;
 
         case 'threejs':
+            if (!empty($data['background_image_url']) && !isValidImageUrl($data['background_image_url'])) {
+                return [
+                    'valid' => false,
+                    'message' => 'Background image URL must be a valid image link (jpg, jpeg, png, webp, or gif). Please enter a full URL.'
+                ];
+            }
             if (!empty($data['texture_urls']) && is_array($data['texture_urls'])) {
-                foreach ($data['texture_urls'] as $textureUrl) {
+                foreach ($data['texture_urls'] as $index => $textureUrl) {
                     if (!empty($textureUrl) && !isValidImageUrl($textureUrl)) {
+                        $position = $index + 1;
                         return [
                             'valid' => false,
-                            'message' => 'Invalid background image URL format.'
+                            'message' => "Texture URL #{$position} must be a valid image link (jpg, jpeg, png, webp, or gif). Please enter a full URL."
                         ];
                     }
                 }
