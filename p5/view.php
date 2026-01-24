@@ -64,11 +64,66 @@ if (empty($backgroundImageUrl) && !empty($piece['image_urls'])) {
         // Configuration from database
         const config = <?php echo json_encode($config); ?>;
 
+        // Backward compatibility normalization (match preview behavior)
+        if (config.animation) {
+            const animationConfig = config.animation;
+            const isAnimated = animationConfig.animated ||
+                animationConfig.rotation?.enabled ||
+                animationConfig.scale?.enabled ||
+                animationConfig.translation?.enabled ||
+                animationConfig.color?.enabled;
+
+            config.animation.animated = isAnimated;
+
+            if (isAnimated && !config.animation.speed) {
+                if (animationConfig.rotation?.enabled) {
+                    config.animation.speed = animationConfig.rotation.speed || 1;
+                    config.animation.loop = animationConfig.rotation.loop !== false;
+                } else if (animationConfig.scale?.enabled) {
+                    config.animation.speed = animationConfig.scale.speed || 1;
+                    config.animation.loop = animationConfig.scale.loop !== false;
+                } else if (animationConfig.translation?.enabled) {
+                    config.animation.speed = animationConfig.translation.speed || 1;
+                    config.animation.loop = animationConfig.translation.loop !== false;
+                } else if (animationConfig.color?.enabled) {
+                    config.animation.speed = animationConfig.color.speed || 1;
+                    config.animation.loop = animationConfig.color.loop !== false;
+                }
+            }
+        }
+
         // P5.js sketch in instance mode
         const sketch = (p) => {
             let backgroundImage = null;
             let elements = [];
             let animationFrame = 0;
+            const interactionConfig = config.interaction || {};
+            const legacyInteractionEnabled = interactionConfig.enabled === true;
+            const mouseConfig = interactionConfig.mouse || {};
+            const keyboardConfig = interactionConfig.keyboard || {};
+            const mouseEnabled = mouseConfig.enabled !== undefined ? mouseConfig.enabled : legacyInteractionEnabled;
+            const keyboardEnabled = keyboardConfig.enabled !== undefined ? keyboardConfig.enabled : legacyInteractionEnabled;
+            const rawMouseType = mouseConfig.type || interactionConfig.mouseType;
+            const normalizeMouseType = (type) => {
+                const value = String(type).toLowerCase();
+                if (['move', 'moved', 'mousemove', 'mousemoved', 'hover'].includes(value)) {
+                    return 'move';
+                }
+                if (['press', 'pressed', 'click', 'mousepressed', 'mousedown'].includes(value)) {
+                    return 'press';
+                }
+                if (['drag', 'dragged', 'mousedragged'].includes(value)) {
+                    return 'drag';
+                }
+                return value;
+            };
+            const mouseTypeList = Array.isArray(rawMouseType)
+                ? rawMouseType.map(normalizeMouseType)
+                : rawMouseType
+                    ? [normalizeMouseType(rawMouseType)]
+                    : ['move'];
+            const allowedMouseTypes = new Set(mouseTypeList);
+            const shouldHandleMouse = (type) => mouseEnabled && allowedMouseTypes.has(type);
 
             // Preload background image
             p.preload = function() {
@@ -109,6 +164,8 @@ if (empty($backgroundImageUrl) && !empty($piece['image_urls'])) {
                 const randomSeed = patternConfig.randomSeed;
                 const noiseScale = patternConfig.noiseScale || 0.01;
                 const noiseDetail = patternConfig.noiseDetail || 4;
+                // Palette rendering: if enabled, use per-shape palette colors; otherwise use single configured shape/style.
+                const usePalette = config.usePalette || drawingConfig.usePalette || false;
 
                 // Set random seed if specified
                 if (randomSeed !== undefined) {
@@ -117,6 +174,9 @@ if (empty($backgroundImageUrl) && !empty($piece['image_urls'])) {
 
                 // Get shapes/colors (backward compatibility)
                 const shapes = config.shapes || (config.colors ? config.colors.map(c => ({ shape: 'ellipse', color: c })) : [{ shape: 'ellipse', color: '#ED225D' }]);
+                const defaultShapeType = drawingConfig.shapeType || drawingConfig.shape || 'ellipse';
+                const defaultFillColor = drawingConfig.fillColor || '#ED225D';
+                const shapes = config.shapes || (config.colors ? config.colors.map(c => ({ shape: 'ellipse', color: c })) : [{ shape: 'ellipse' }]);
 
                 // Create pattern elements based on pattern type
                 if (patternType === 'grid') {
@@ -129,12 +189,12 @@ if (empty($backgroundImageUrl) && !empty($piece['image_urls'])) {
                     let count = 0;
                     for (let row = 0; row < rows && count < shapeCount; row++) {
                         for (let col = 0; col < cols && count < shapeCount; col++) {
-                            const shape = shapes[count % shapes.length];
+                            const shape = usePalette ? shapes[count % shapes.length] : { shape: defaultShapeType, color: defaultFillColor };
                             elements.push({
                                 x: col * spacing + offsetX,
                                 y: row * spacing + offsetY,
                                 size: shapeSize,
-                                color: shape.color || '#ED225D',
+                                color: shape.color ?? null,
                                 shapeType: shape.shape || 'ellipse',
                                 rotation: 0,
                                 vx: p.random(-2, 2),
@@ -177,12 +237,12 @@ if (empty($backgroundImageUrl) && !empty($piece['image_urls'])) {
                 } else {
                     // Random positioning (default)
                     for (let i = 0; i < shapeCount; i++) {
-                        const shape = shapes[i % shapes.length];
+                        const shape = usePalette ? shapes[i % shapes.length] : { shape: defaultShapeType, color: defaultFillColor };
                         elements.push({
                             x: p.random(width),
                             y: p.random(height),
                             size: shapeSize + p.random(-shapeSize * 0.3, shapeSize * 0.3),
-                            color: shape.color || '#ED225D',
+                            color: shape.color ?? null,
                             shapeType: shape.shape || 'ellipse',
                             rotation: p.random(p.TWO_PI),
                             vx: p.random(-2, 2),
@@ -197,6 +257,10 @@ if (empty($backgroundImageUrl) && !empty($piece['image_urls'])) {
                 const canvasConfig = config.canvas || {};
                 const animationConfig = config.animation || {};
                 const drawingConfig = config.drawing || {};
+                const usePalette = config.usePalette || drawingConfig.usePalette || false;
+                const strokeEnabled = drawingConfig.useStroke !== undefined ? drawingConfig.useStroke : !drawingConfig.noStroke;
+                const strokeColor = drawingConfig.strokeColor || '#000000';
+                const noFillEnabled = drawingConfig.noFill || false;
 
                 // Check if animated (backward compatibility)
                 const animated = animationConfig.animated ||
@@ -220,16 +284,47 @@ if (empty($backgroundImageUrl) && !empty($piece['image_urls'])) {
                 elements.forEach((el, idx) => {
                     p.push();
 
-                    // Set color with opacity
+                    // Fill/stroke precedence rules:
+                    // 1) If drawingConfig.noFill is true, skip filling entirely.
+                    // 2) Otherwise, palette/shape colors (el.color) drive the fill when provided.
+                    // 3) If no palette/shape color exists, fall back to drawingConfig.fillColor (or a default).
+                    // 4) For stroke, drawingConfig.noStroke overrides everything.
+                    // 5) If stroke is enabled, drawingConfig.strokeColor takes precedence; otherwise use the fill color.
                     const fillOpacity = drawingConfig.fillOpacity !== undefined ? drawingConfig.fillOpacity : 255;
-                    const c = p.color(el.color);
-                    c.setAlpha(fillOpacity);
-                    p.fill(c);
+                    if (noFillEnabled) {
+                        p.noFill();
+                    } else {
+                        const c = p.color(el.color);
+                        c.setAlpha(fillOpacity);
+                        p.fill(c);
+                    }
 
-                    if (drawingConfig.useStroke) {
+                    if (strokeEnabled) {
+                    const noFill = drawingConfig.noFill === true;
+                    const defaultFill = drawingConfig.fillColor || '#ED225D';
+                    const paletteFill = el.color || null;
+                    const resolvedFill = paletteFill || defaultFill;
+
+                    if (!noFill) {
+                        const c = p.color(resolvedFill);
+                        c.setAlpha(fillOpacity);
+                        p.fill(c);
+                    } else {
+                        p.noFill();
+                    }
+
+                    const noStroke = drawingConfig.noStroke === true;
+                    const useStroke = drawingConfig.useStroke === true || drawingConfig.strokeColor !== undefined;
+                    if (!noStroke && useStroke) {
+                    const noStroke = drawingConfig.noStroke !== undefined
+                        ? drawingConfig.noStroke
+                        : (drawingConfig.useStroke !== undefined ? !drawingConfig.useStroke : false);
+
+                    if (!noStroke) {
                         const strokeWeight = drawingConfig.strokeWeight || 1;
+                        const strokeColor = drawingConfig.strokeColor || resolvedFill;
                         p.strokeWeight(strokeWeight);
-                        p.stroke(el.color);
+                        p.stroke(strokeColor);
                     } else {
                         p.noStroke();
                     }
@@ -293,20 +388,44 @@ if (empty($backgroundImageUrl) && !empty($piece['image_urls'])) {
             };
 
             // Mouse interaction
-            p.mouseMoved = function() {
-                const interactionConfig = config.interaction || {};
-                if (interactionConfig.enabled) {
-                    // Simple repel effect
-                    elements.forEach(el => {
-                        const d = p.dist(p.mouseX, p.mouseY, el.x, el.y);
-                        if (d < 100) {
-                            const angle = p.atan2(el.y - p.mouseY, el.x - p.mouseX);
-                            el.x += p.cos(angle) * 2;
-                            el.y += p.sin(angle) * 2;
-                        }
-                    });
-                }
+            const applyMouseInteraction = () => {
+                // Simple repel effect
+                elements.forEach(el => {
+                    const d = p.dist(p.mouseX, p.mouseY, el.x, el.y);
+                    if (d < 100) {
+                        const angle = p.atan2(el.y - p.mouseY, el.x - p.mouseX);
+                        el.x += p.cos(angle) * 2;
+                        el.y += p.sin(angle) * 2;
+                    }
+                });
             };
+
+            p.mouseMoved = function() {
+                if (!shouldHandleMouse('move')) {
+                    return;
+                }
+                applyMouseInteraction();
+            };
+
+            p.mousePressed = function() {
+                if (!shouldHandleMouse('press')) {
+                    return;
+                }
+                applyMouseInteraction();
+            };
+
+            p.mouseDragged = function() {
+                if (!shouldHandleMouse('drag')) {
+                    return;
+                }
+                applyMouseInteraction();
+            };
+
+            if (keyboardEnabled) {
+                p.keyPressed = function() {
+                    return;
+                };
+            }
         };
 
         // Create P5.js instance

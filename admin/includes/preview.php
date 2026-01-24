@@ -1040,8 +1040,9 @@ const sketch = (p) => {
     <?php endif; ?>
 
     // Shapes palette (backward compatible with old colors)
+    // When usePalette is enabled, shapes are filled with their palette colors; otherwise use the single configured shape/style.
     const shapes = <?php echo json_encode($shapes); ?>;
-    const usePalette = config.usePalette || false;
+    const usePalette = config.usePalette || config.drawing?.usePalette || false;
 
     // Animation variables
     let animationFrame = 0;
@@ -1349,15 +1350,21 @@ new p5(sketch);
 function renderThreeJSPreview($piece) {
     $config = is_array($piece['configuration']) ? $piece['configuration'] : [];
 
-    // Extract background image URL (new standardized field)
-    $backgroundImageUrl = $piece['background_image_url'] ?? null;
-
-    // Backward compatibility: fallback to first image in old texture_urls array
-    if (empty($backgroundImageUrl) && !empty($piece['texture_urls'])) {
+    // Extract background image URL (prefer texture_urls array)
+    $backgroundImageUrl = null;
+    if (!empty($piece['texture_urls'])) {
         $textureUrls = is_array($piece['texture_urls']) ? $piece['texture_urls'] : json_decode($piece['texture_urls'], true);
-        if (is_array($textureUrls) && !empty($textureUrls)) {
-            $backgroundImageUrl = $textureUrls[0];
+        if (is_array($textureUrls)) {
+            $textureUrls = array_values(array_filter($textureUrls));
+            if (!empty($textureUrls)) {
+                $backgroundImageUrl = $textureUrls[array_rand($textureUrls)];
+            }
         }
+    }
+
+    // Backward compatibility: fallback to background_image_url
+    if (empty($backgroundImageUrl) && !empty($piece['background_image_url'])) {
+        $backgroundImageUrl = $piece['background_image_url'];
     }
 
     // Extract configuration sections
@@ -1439,7 +1446,7 @@ container.appendChild(renderer.domElement);
 // Add background image if specified
 <?php if (!empty($backgroundImageUrl)): ?>
 const backgroundTextureLoader = new THREE.TextureLoader();
-backgroundTextureLoader.load('<?php echo htmlspecialchars($backgroundImageUrl, ENT_QUOTES); ?>', function(texture) {
+backgroundTextureLoader.load('<?php echo htmlspecialchars(proxifyImageUrl($backgroundImageUrl), ENT_QUOTES); ?>', function(texture) {
     scene.background = texture;
 });
 <?php endif; ?>

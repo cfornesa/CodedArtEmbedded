@@ -342,7 +342,16 @@ function validateArtPieceData($type, $data, $existingId = null) {
             break;
 
         case 'threejs':
-            // Three.js-specific validation if needed
+            if (!empty($data['texture_urls']) && is_array($data['texture_urls'])) {
+                foreach ($data['texture_urls'] as $textureUrl) {
+                    if (!empty($textureUrl) && !isValidImageUrl($textureUrl)) {
+                        return [
+                            'valid' => false,
+                            'message' => 'Invalid background image URL format.'
+                        ];
+                    }
+                }
+            }
             break;
     }
 
@@ -443,7 +452,22 @@ function prepareArtPieceData($type, $data, $userId, $isUpdate = false) {
 
         case 'threejs':
             $prepared['background_color'] = !empty($data['background_color']) ? sanitize($data['background_color']) : '#000000';
-            $prepared['background_image_url'] = !empty($data['background_image_url']) ? sanitize($data['background_image_url']) : null;
+            $textureUrls = [];
+            if (!empty($data['texture_urls']) && is_array($data['texture_urls'])) {
+                $textureUrls = array_values(array_filter($data['texture_urls']));
+            }
+
+            $prepared['texture_urls'] = !empty($textureUrls)
+                ? jsonEncode($textureUrls)
+                : null;
+
+            if (!empty($data['background_image_url'])) {
+                $prepared['background_image_url'] = sanitize($data['background_image_url']);
+            } elseif (!empty($textureUrls)) {
+                $prepared['background_image_url'] = sanitize($textureUrls[0]);
+            } else {
+                $prepared['background_image_url'] = null;
+            }
             $prepared['configuration'] = !empty($data['configuration'])
                 ? jsonEncode($data['configuration'])
                 : null;
