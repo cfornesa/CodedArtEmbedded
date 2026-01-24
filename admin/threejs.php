@@ -239,7 +239,19 @@ require_once(__DIR__ . '/includes/header.php');
             <h2><?php echo $action === 'create' ? 'Add New' : 'Edit'; ?> Three.js Piece</h2>
         </div>
 
-        <form method="POST" action="" data-validate id="art-form">
+        <form method="POST" action="" data-validate id="art-form"
+              data-slug-check-url="<?php echo url('admin/includes/check-slug.php'); ?>"
+              data-slug-type="threejs"
+              data-slug-exclude-id="<?php echo $editPiece ? $editPiece['id'] : ''; ?>"
+              data-slug-auto-init="<?php echo $action === 'create' ? '1' : '0'; ?>"
+              data-live-preview="true"
+              data-live-preview-url="<?php echo url('admin/includes/preview.php'); ?>"
+              data-live-preview-debounce="500"
+              data-live-preview-initial-delay="1000"
+              data-live-preview-section="#live-preview-section"
+              data-live-preview-iframe="#live-preview-iframe"
+              data-live-preview-loading="#live-preview-loading"
+              data-live-preview-global="true">
             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
 
             <!-- LIVE PREVIEW SECTION (matching A-Frame/P5.js pattern) -->
@@ -249,7 +261,7 @@ require_once(__DIR__ . '/includes/header.php');
                         🎨 LIVE PREVIEW
                     </h3>
                     <div>
-                        <button type="button" class="btn btn-sm btn-secondary" id="toggle-preview-btn" onclick="toggleLivePreview()">
+                        <button type="button" class="btn btn-sm btn-secondary" id="toggle-preview-btn" data-live-preview-toggle>
                             Hide Preview
                         </button>
                     </div>
@@ -278,7 +290,6 @@ require_once(__DIR__ . '/includes/header.php');
                     class="form-control"
                     required
                     value="<?php echo $formData ? htmlspecialchars($formData['title']) : ($editPiece ? htmlspecialchars($editPiece['title']) : ''); ?>"
-                    onkeyup="updateSlugPreview()"
                 >
             </div>
 
@@ -294,8 +305,6 @@ require_once(__DIR__ . '/includes/header.php');
                         value="<?php echo $formData ? htmlspecialchars($formData['slug']) : ($editPiece ? htmlspecialchars($editPiece['slug']) : ''); ?>"
                         pattern="[a-z0-9-]+"
                         title="Only lowercase letters, numbers, and hyphens"
-                        onkeyup="checkSlugAvailability()"
-                        onblur="checkSlugAvailability()"
                     >
                     <span id="slug-status" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); display: none;"></span>
                 </div>
@@ -385,7 +394,13 @@ require_once(__DIR__ . '/includes/header.php');
 
             <div class="form-group">
                 <label class="form-label">Background Image URLs (optional)</label>
-                <div id="texture-urls-container" style="display: flex; flex-direction: column; gap: 10px;">
+                <div id="texture-urls-container"
+                     style="display: flex; flex-direction: column; gap: 10px;"
+                     data-dynamic-list="texture-urls"
+                     data-row-class="texture-url-row"
+                     data-input-name="texture_urls[]"
+                     data-input-placeholder="https://example.com/background.png"
+                     data-add-button-selector="[data-dynamic-list-add]">
                     <?php foreach ($textureUrls as $index => $textureUrl): ?>
                         <div class="texture-url-row" style="display: flex; gap: 10px; align-items: center;">
                             <input
@@ -395,13 +410,13 @@ require_once(__DIR__ . '/includes/header.php');
                                 placeholder="https://example.com/background.png"
                                 value="<?php echo htmlspecialchars($textureUrl); ?>"
                             >
-                            <button type="button" class="btn btn-sm btn-danger" onclick="removeTextureUrlField(this)">
+                            <button type="button" class="btn btn-sm btn-danger" data-dynamic-list-remove>
                                 Remove
                             </button>
                         </div>
                     <?php endforeach; ?>
                 </div>
-                <button type="button" class="btn btn-sm btn-success" style="margin-top: 10px;" onclick="addTextureUrlField()">
+                <button type="button" class="btn btn-sm btn-success" style="margin-top: 10px;" data-dynamic-list-add>
                     + Add Background Image
                 </button>
                 <small class="form-help">Multiple URLs allowed; one is randomly selected each time the scene loads. Individual geometry textures are configured in the Geometry Builder below.</small>
@@ -624,49 +639,6 @@ require_once(__DIR__ . '/includes/header.php');
     let geometryCount = 0;
     const MAX_GEOMETRIES = 40;
     const geometries = [];
-
-    function addTextureUrlField(value = '') {
-        const container = document.getElementById('texture-urls-container');
-        const row = document.createElement('div');
-        row.className = 'texture-url-row';
-        row.style.display = 'flex';
-        row.style.gap = '10px';
-        row.style.alignItems = 'center';
-        row.innerHTML = `
-            <input
-                type="url"
-                name="texture_urls[]"
-                class="form-control"
-                placeholder="https://example.com/background.png"
-                value="${value}"
-            >
-            <button type="button" class="btn btn-sm btn-danger" onclick="removeTextureUrlField(this)">
-                Remove
-            </button>
-        `;
-        container.appendChild(row);
-        updateTextureUrlRemoveButtons();
-    }
-
-    function removeTextureUrlField(button) {
-        const row = button.closest('.texture-url-row');
-        if (row) {
-            row.remove();
-        }
-        updateTextureUrlRemoveButtons();
-    }
-
-    function updateTextureUrlRemoveButtons() {
-        const rows = document.querySelectorAll('.texture-url-row');
-        rows.forEach((row) => {
-            const removeButton = row.querySelector('button');
-            if (removeButton) {
-                removeButton.style.display = rows.length > 1 ? 'inline-flex' : 'none';
-            }
-        });
-    }
-
-    document.addEventListener('DOMContentLoaded', updateTextureUrlRemoveButtons);
 
     // Three.js geometry types
     const geometryTypes = {
@@ -1523,185 +1495,7 @@ require_once(__DIR__ . '/includes/header.php');
     });
     <?php endif; ?>
 
-    function updateSlugPreview() {
-        const titleInput = document.getElementById('title');
-        const slugInput = document.getElementById('slug');
-        const slugPreview = document.getElementById('slug-preview');
-
-        if (!titleInput.value) {
-            slugPreview.style.display = 'none';
-            return;
-        }
-
-        // Only show preview if slug field is empty (auto-generation mode)
-        if (!slugInput.value) {
-            const previewSlug = titleInput.value
-                .toLowerCase()
-                .replace(/[^a-z0-9]+/g, '-')
-                .replace(/^-+|-+$/g, '')
-                .substring(0, 200);
-
-            if (previewSlug) {
-                slugPreview.style.display = 'inline';
-                slugPreview.querySelector('code').textContent = previewSlug;
-            } else {
-                slugPreview.style.display = 'none';
-            }
-        } else {
-            slugPreview.style.display = 'none';
-        }
-    }
-
-    // Real-time slug availability checking
-    let slugCheckTimeout = null;
-    function checkSlugAvailability() {
-        const slugInput = document.getElementById('slug');
-        const slugStatus = document.getElementById('slug-status');
-        const slugFeedback = document.getElementById('slug-feedback');
-        const slug = slugInput.value.trim();
-
-        // Clear previous timeout
-        if (slugCheckTimeout) {
-            clearTimeout(slugCheckTimeout);
-        }
-
-        // Empty slug is valid (will be auto-generated)
-        if (slug === '') {
-            slugStatus.style.display = 'none';
-            slugFeedback.style.display = 'none';
-            slugInput.style.borderColor = '';
-            return;
-        }
-
-        // Show checking indicator
-        slugStatus.innerHTML = '⏳';
-        slugStatus.style.display = 'block';
-        slugStatus.style.color = '#6c757d';
-        slugFeedback.style.display = 'none';
-
-        // Debounce the AJAX request
-        slugCheckTimeout = setTimeout(() => {
-            const excludeId = <?php echo $editPiece ? $editPiece['id'] : 'null'; ?>;
-            const url = '<?php echo url('admin/includes/check-slug.php'); ?>?slug=' +
-                        encodeURIComponent(slug) +
-                        '&type=threejs' +
-                        (excludeId ? '&exclude_id=' + excludeId : '');
-
-            fetch(url)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.valid && data.available) {
-                        // Slug is available
-                        slugStatus.innerHTML = '✓';
-                        slugStatus.style.color = '#28a745';
-                        slugFeedback.textContent = data.message;
-                        slugFeedback.style.color = '#28a745';
-                        slugFeedback.style.display = 'inline';
-                        slugInput.style.borderColor = '#28a745';
-                    } else {
-                        // Slug is not available or invalid
-                        slugStatus.innerHTML = '✗';
-                        slugStatus.style.color = '#dc3545';
-                        slugFeedback.textContent = data.message;
-                        slugFeedback.style.color = '#dc3545';
-                        slugFeedback.style.display = 'inline';
-                        slugInput.style.borderColor = '#dc3545';
-                    }
-                })
-                .catch(error => {
-                    console.error('Slug check error:', error);
-                    slugStatus.style.display = 'none';
-                    slugFeedback.style.display = 'none';
-                    slugInput.style.borderColor = '';
-                });
-        }, 500); // 500ms debounce delay
-    }
-
-    // Initialize slug preview on page load if creating new piece
-    <?php if ($action === 'create'): ?>
     document.addEventListener('DOMContentLoaded', function() {
-        updateSlugPreview();
-    });
-    <?php endif; ?>
-
-    // ============================================
-    // LIVE PREVIEW SYSTEM
-    // ============================================
-
-    const previewIframe = document.getElementById('live-preview-iframe');
-    const previewSection = document.getElementById('live-preview-section');
-    const loadingIndicator = document.getElementById('live-preview-loading');
-    let livePreviewTimeout = null;
-    let livePreviewHidden = false;
-
-    /**
-     * Update live preview with current form data
-     * Debounced to 500ms to prevent excessive requests
-     */
-    function updateLivePreview() {
-        if (livePreviewHidden) return;
-
-        if (livePreviewTimeout) {
-            clearTimeout(livePreviewTimeout);
-        }
-
-        livePreviewTimeout = setTimeout(() => {
-            if (loadingIndicator) loadingIndicator.style.display = 'block';
-
-            const formData = new FormData(document.getElementById('art-form'));
-
-            fetch('<?php echo url('admin/includes/preview.php'); ?>', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded'
-                },
-                body: new URLSearchParams(formData)
-            })
-            .then(response => response.text())
-            .then(html => {
-                if (loadingIndicator) loadingIndicator.style.display = 'none';
-
-                // Create Blob URL for iframe content
-                const blob = new Blob([html], { type: 'text/html' });
-                const blobUrl = URL.createObjectURL(blob);
-                previewIframe.src = blobUrl;
-            })
-            .catch(error => {
-                console.error('Live preview error:', error);
-                if (loadingIndicator) loadingIndicator.style.display = 'none';
-            });
-        }, 500); // 500ms debounce
-    }
-
-    /**
-     * Toggle live preview visibility
-     * Stops animations when hidden
-     */
-    function toggleLivePreview() {
-        livePreviewHidden = !livePreviewHidden;
-
-        if (livePreviewHidden) {
-            previewSection.style.display = 'none';
-            previewIframe.src = ''; // Stop animations
-        } else {
-            previewSection.style.display = 'block';
-            updateLivePreview(); // Refresh preview
-        }
-    }
-
-    /**
-     * Scroll to live preview section
-     */
-    function scrollToLivePreview() {
-        previewSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-
-    // Initialize live preview on page load (after geometry configuration loads)
-    document.addEventListener('DOMContentLoaded', function() {
-        setTimeout(() => {
-            updateLivePreview();
-        }, 1000); // Wait 1 second for configuration to initialize
-
         // Add event listener for background color changes
         const backgroundColorField = document.getElementById('background_color');
         if (backgroundColorField) {

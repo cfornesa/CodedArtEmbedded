@@ -9,6 +9,9 @@ document.addEventListener('DOMContentLoaded', function() {
     initFormValidation();
     initImagePreview();
     initSortable();
+    initSlugHelpers();
+    initLivePreview();
+    initDynamicListInputs();
 });
 
 /**
@@ -299,6 +302,276 @@ function initSortable() {
         });
 
         table.parentNode.insertBefore(saveButton, table.nextSibling);
+    });
+}
+
+/**
+ * Initialize slug preview and availability checking.
+ */
+function initSlugHelpers() {
+    const slugForms = document.querySelectorAll('[data-slug-check-url]');
+
+    slugForms.forEach(form => {
+        const titleInput = form.querySelector(form.dataset.slugTitleSelector || '#title');
+        const slugInput = form.querySelector(form.dataset.slugInputSelector || '#slug');
+        const slugPreview = form.querySelector(form.dataset.slugPreviewSelector || '#slug-preview');
+        const slugStatus = form.querySelector(form.dataset.slugStatusSelector || '#slug-status');
+        const slugFeedback = form.querySelector(form.dataset.slugFeedbackSelector || '#slug-feedback');
+        const slugType = form.dataset.slugType || '';
+        const checkUrl = form.dataset.slugCheckUrl;
+        const excludeId = form.dataset.slugExcludeId || '';
+        let slugCheckTimeout = null;
+
+        if (!titleInput || !slugInput || !slugPreview || !slugStatus || !slugFeedback || !checkUrl) {
+            return;
+        }
+
+        const updateSlugPreview = () => {
+            if (!titleInput.value) {
+                slugPreview.style.display = 'none';
+                return;
+            }
+
+            if (!slugInput.value) {
+                const previewSlug = titleInput.value
+                    .toLowerCase()
+                    .replace(/[^a-z0-9]+/g, '-')
+                    .replace(/^-+|-+$/g, '')
+                    .substring(0, 200);
+
+                if (previewSlug) {
+                    slugPreview.style.display = 'inline';
+                    slugPreview.querySelector('code').textContent = previewSlug;
+                } else {
+                    slugPreview.style.display = 'none';
+                }
+            } else {
+                slugPreview.style.display = 'none';
+            }
+        };
+
+        const checkSlugAvailability = () => {
+            const slug = slugInput.value.trim();
+
+            if (slugCheckTimeout) {
+                clearTimeout(slugCheckTimeout);
+            }
+
+            if (slug === '') {
+                slugStatus.style.display = 'none';
+                slugFeedback.style.display = 'none';
+                slugInput.style.borderColor = '';
+                return;
+            }
+
+            slugStatus.innerHTML = '⏳';
+            slugStatus.style.display = 'block';
+            slugStatus.style.color = '#6c757d';
+            slugFeedback.style.display = 'none';
+
+            slugCheckTimeout = setTimeout(() => {
+                const url = `${checkUrl}?slug=${encodeURIComponent(slug)}&type=${encodeURIComponent(slugType)}${excludeId ? `&exclude_id=${encodeURIComponent(excludeId)}` : ''}`;
+
+                fetch(url)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.valid && data.available) {
+                            slugStatus.innerHTML = '✓';
+                            slugStatus.style.color = '#28a745';
+                            slugFeedback.textContent = data.message;
+                            slugFeedback.style.color = '#28a745';
+                            slugFeedback.style.display = 'inline';
+                            slugInput.style.borderColor = '#28a745';
+                        } else {
+                            slugStatus.innerHTML = '✗';
+                            slugStatus.style.color = '#dc3545';
+                            slugFeedback.textContent = data.message;
+                            slugFeedback.style.color = '#dc3545';
+                            slugFeedback.style.display = 'inline';
+                            slugInput.style.borderColor = '#dc3545';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Slug check error:', error);
+                        slugStatus.style.display = 'none';
+                        slugFeedback.style.display = 'none';
+                        slugInput.style.borderColor = '';
+                    });
+            }, 500);
+        };
+
+        titleInput.addEventListener('input', updateSlugPreview);
+        titleInput.addEventListener('keyup', updateSlugPreview);
+        slugInput.addEventListener('input', () => {
+            updateSlugPreview();
+            checkSlugAvailability();
+        });
+        slugInput.addEventListener('blur', checkSlugAvailability);
+
+        if (form.dataset.slugAutoInit === '1') {
+            updateSlugPreview();
+        }
+    });
+}
+
+/**
+ * Initialize live preview iframe debounced updates.
+ */
+function initLivePreview() {
+    const previewForms = document.querySelectorAll('[data-live-preview]');
+
+    previewForms.forEach(form => {
+        const previewSection = document.querySelector(form.dataset.livePreviewSection || '#live-preview-section');
+        const previewIframe = document.querySelector(form.dataset.livePreviewIframe || '#live-preview-iframe');
+        const loadingIndicator = document.querySelector(form.dataset.livePreviewLoading || '#live-preview-loading');
+        const toggleButton = form.querySelector('[data-live-preview-toggle]');
+        const scrollButton = form.querySelector('[data-live-preview-scroll]');
+        const url = form.dataset.livePreviewUrl;
+        const debounceDelay = parseInt(form.dataset.livePreviewDebounce, 10) || 500;
+        const initialDelay = parseInt(form.dataset.livePreviewInitialDelay, 10) || 1000;
+        let livePreviewTimeout = null;
+        let livePreviewHidden = false;
+
+        if (!previewSection || !previewIframe || !url) {
+            return;
+        }
+
+        const updateLivePreview = () => {
+            if (livePreviewHidden) return;
+
+            if (livePreviewTimeout) {
+                clearTimeout(livePreviewTimeout);
+            }
+
+            livePreviewTimeout = setTimeout(() => {
+                if (loadingIndicator) loadingIndicator.style.display = 'block';
+
+                const formData = new FormData(form);
+
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: new URLSearchParams(formData)
+                })
+                    .then(response => response.text())
+                    .then(html => {
+                        if (loadingIndicator) loadingIndicator.style.display = 'none';
+
+                        const blob = new Blob([html], { type: 'text/html' });
+                        const blobUrl = URL.createObjectURL(blob);
+                        previewIframe.src = blobUrl;
+                    })
+                    .catch(error => {
+                        console.error('Live preview error:', error);
+                        if (loadingIndicator) loadingIndicator.style.display = 'none';
+                    });
+            }, debounceDelay);
+        };
+
+        const toggleLivePreview = () => {
+            livePreviewHidden = !livePreviewHidden;
+
+            if (livePreviewHidden) {
+                previewSection.style.display = 'none';
+                previewIframe.src = '';
+            } else {
+                previewSection.style.display = 'block';
+                updateLivePreview();
+            }
+        };
+
+        const scrollToLivePreview = () => {
+            previewSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        };
+
+        if (toggleButton) {
+            toggleButton.addEventListener('click', toggleLivePreview);
+        }
+
+        if (scrollButton) {
+            scrollButton.addEventListener('click', scrollToLivePreview);
+        }
+
+        if (form.dataset.livePreviewGlobal === 'true') {
+            window.updateLivePreview = updateLivePreview;
+            window.toggleLivePreview = toggleLivePreview;
+            window.scrollToLivePreview = scrollToLivePreview;
+        }
+
+        setTimeout(() => {
+            updateLivePreview();
+        }, initialDelay);
+    });
+}
+
+/**
+ * Initialize dynamic list inputs (add/remove rows).
+ */
+function initDynamicListInputs() {
+    const listContainers = document.querySelectorAll('[data-dynamic-list]');
+
+    listContainers.forEach(container => {
+        const rowClass = container.dataset.rowClass || 'dynamic-list-row';
+        const inputName = container.dataset.inputName;
+        const inputPlaceholder = container.dataset.inputPlaceholder || '';
+        const addButton = document.querySelector(container.dataset.addButtonSelector);
+
+        if (!inputName) {
+            return;
+        }
+
+        const buildRow = (value = '') => {
+            const row = document.createElement('div');
+            row.className = rowClass;
+            row.style.display = 'flex';
+            row.style.gap = '10px';
+            row.style.alignItems = 'center';
+            row.innerHTML = `
+                <input
+                    type="url"
+                    name="${inputName}"
+                    class="form-control"
+                    placeholder="${inputPlaceholder}"
+                    value="${value}"
+                >
+                <button type="button" class="btn btn-sm btn-danger" data-dynamic-list-remove>
+                    Remove
+                </button>
+            `;
+            return row;
+        };
+
+        const updateRemoveButtons = () => {
+            const rows = container.querySelectorAll(`.${rowClass}`);
+            rows.forEach(row => {
+                const removeButton = row.querySelector('[data-dynamic-list-remove]');
+                if (removeButton) {
+                    removeButton.style.display = rows.length > 1 ? 'inline-flex' : 'none';
+                }
+            });
+        };
+
+        if (addButton) {
+            addButton.addEventListener('click', () => {
+                container.appendChild(buildRow());
+                updateRemoveButtons();
+            });
+        }
+
+        container.addEventListener('click', event => {
+            const removeButton = event.target.closest('[data-dynamic-list-remove]');
+            if (!removeButton) return;
+
+            const row = removeButton.closest(`.${rowClass}`);
+            if (row) {
+                row.remove();
+                updateRemoveButtons();
+            }
+        });
+
+        updateRemoveButtons();
     });
 }
 
