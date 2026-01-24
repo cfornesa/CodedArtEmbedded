@@ -1349,16 +1349,8 @@ new p5(sketch);
 function renderThreeJSPreview($piece) {
     $config = is_array($piece['configuration']) ? $piece['configuration'] : [];
 
-    // Extract background image URL (new standardized field)
+    // Extract background image URL (standardized field)
     $backgroundImageUrl = $piece['background_image_url'] ?? null;
-
-    // Backward compatibility: fallback to first image in old texture_urls array
-    if (empty($backgroundImageUrl) && !empty($piece['texture_urls'])) {
-        $textureUrls = is_array($piece['texture_urls']) ? $piece['texture_urls'] : json_decode($piece['texture_urls'], true);
-        if (is_array($textureUrls) && !empty($textureUrls)) {
-            $backgroundImageUrl = $textureUrls[0];
-        }
-    }
 
     // Extract configuration sections
     $geometries = $config['geometries'] ?? [];

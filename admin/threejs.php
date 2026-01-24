@@ -52,15 +52,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array($action, ['create', 'edit'
             'slug' => $_POST['slug'] ?? '',  // Optional: auto-generated if empty
             'description' => $_POST['description'] ?? '',
             'thumbnail_url' => $_POST['thumbnail_url'] ?? '',
+            'background_color' => $_POST['background_color'] ?? '',
+            'background_image_url' => $_POST['background_image_url'] ?? '',
             'tags' => $_POST['tags'] ?? '',
             'status' => $_POST['status'] ?? 'active',
             'sort_order' => $_POST['sort_order'] ?? 0
         ];
-
-        // Handle texture URLs (array input)
-        if (isset($_POST['texture_urls']) && is_array($_POST['texture_urls'])) {
-            $data['texture_urls'] = array_filter($_POST['texture_urls']);
-        }
 
         // Handle configuration JSON if provided
         if (!empty($_POST['configuration_json'])) {
@@ -83,10 +80,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array($action, ['create', 'edit'
             $error = $result['message'];
             // Preserve form data so user doesn't lose their work
             $formData = $data;
-            // Also preserve array inputs in original format
-            if (isset($_POST['texture_urls'])) {
-                $formData['texture_urls_raw'] = $_POST['texture_urls'];
-            }
             // Preserve configuration JSON
             if (isset($_POST['configuration_json'])) {
                 $formData['configuration_json_raw'] = $_POST['configuration_json'];
