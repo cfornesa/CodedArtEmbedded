@@ -114,7 +114,7 @@ if (empty($backgroundImageUrl) && !empty($piece['image_urls'])) {
                 }
 
                 // Get shapes/colors (backward compatibility)
-                const shapes = config.shapes || (config.colors ? config.colors.map(c => ({ shape: 'ellipse', color: c })) : [{ shape: 'ellipse', color: '#ED225D' }]);
+                const shapes = config.shapes || (config.colors ? config.colors.map(c => ({ shape: 'ellipse', color: c })) : [{ shape: 'ellipse' }]);
 
                 // Create pattern elements based on pattern type
                 if (patternType === 'grid') {
@@ -132,7 +132,7 @@ if (empty($backgroundImageUrl) && !empty($piece['image_urls'])) {
                                 x: col * spacing + offsetX,
                                 y: row * spacing + offsetY,
                                 size: shapeSize,
-                                color: shape.color || '#ED225D',
+                                color: shape.color ?? null,
                                 shapeType: shape.shape || 'ellipse',
                                 rotation: 0,
                                 vx: p.random(-2, 2),
@@ -149,7 +149,7 @@ if (empty($backgroundImageUrl) && !empty($piece['image_urls'])) {
                             x: p.random(width),
                             y: p.random(height),
                             size: shapeSize + p.random(-shapeSize * 0.3, shapeSize * 0.3),
-                            color: shape.color || '#ED225D',
+                            color: shape.color ?? null,
                             shapeType: shape.shape || 'ellipse',
                             rotation: p.random(p.TWO_PI),
                             vx: p.random(-2, 2),
@@ -187,16 +187,33 @@ if (empty($backgroundImageUrl) && !empty($piece['image_urls'])) {
                 elements.forEach((el, idx) => {
                     p.push();
 
-                    // Set color with opacity
+                    // Fill/stroke precedence rules:
+                    // 1) If drawingConfig.noFill is true, skip filling entirely.
+                    // 2) Otherwise, palette/shape colors (el.color) drive the fill when provided.
+                    // 3) If no palette/shape color exists, fall back to drawingConfig.fillColor (or a default).
+                    // 4) For stroke, drawingConfig.noStroke overrides everything.
+                    // 5) If stroke is enabled, drawingConfig.strokeColor takes precedence; otherwise use the fill color.
                     const fillOpacity = drawingConfig.fillOpacity !== undefined ? drawingConfig.fillOpacity : 255;
-                    const c = p.color(el.color);
-                    c.setAlpha(fillOpacity);
-                    p.fill(c);
+                    const noFill = drawingConfig.noFill === true;
+                    const defaultFill = drawingConfig.fillColor || '#ED225D';
+                    const paletteFill = el.color || null;
+                    const resolvedFill = paletteFill || defaultFill;
 
-                    if (drawingConfig.useStroke) {
+                    if (!noFill) {
+                        const c = p.color(resolvedFill);
+                        c.setAlpha(fillOpacity);
+                        p.fill(c);
+                    } else {
+                        p.noFill();
+                    }
+
+                    const noStroke = drawingConfig.noStroke === true;
+                    const useStroke = drawingConfig.useStroke === true || drawingConfig.strokeColor !== undefined;
+                    if (!noStroke && useStroke) {
                         const strokeWeight = drawingConfig.strokeWeight || 1;
+                        const strokeColor = drawingConfig.strokeColor || resolvedFill;
                         p.strokeWeight(strokeWeight);
-                        p.stroke(el.color);
+                        p.stroke(strokeColor);
                     } else {
                         p.noStroke();
                     }
