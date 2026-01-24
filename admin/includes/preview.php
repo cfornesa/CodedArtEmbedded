@@ -1623,8 +1623,15 @@ if (config.geometries) {
             materialOptions.roughness = geomConfig.roughness;
         }
 
-        // Create material
-        const material = new THREE.MeshStandardMaterial(materialOptions);
+        const materialType = geomConfig.material || 'MeshStandardMaterial';
+        const materialConstructors = {
+            MeshStandardMaterial: THREE.MeshStandardMaterial,
+            MeshBasicMaterial: THREE.MeshBasicMaterial,
+            MeshPhongMaterial: THREE.MeshPhongMaterial,
+            MeshLambertMaterial: THREE.MeshLambertMaterial
+        };
+        const MaterialConstructor = materialConstructors[materialType] || THREE.MeshStandardMaterial;
+        const material = new MaterialConstructor(materialOptions);
 
         // Create mesh
         const mesh = new THREE.Mesh(geometry, material);
