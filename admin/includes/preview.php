@@ -1161,44 +1161,100 @@ const sketch = (p) => {
 
     // Draw using shapes palette
     function drawWithShapesPalette() {
-        const baseSize = animated ? 50 + p.sin(offset * 0.05) * 30 : 50;
+        const baseShapeSize = config.drawing?.shapeSize || 50;
         const scaleFactor = getCurrentScaleFactor();
-        const size = baseSize * scaleFactor;
+        const size = baseShapeSize * scaleFactor;
+        const shapeCount = config.drawing?.shapeCount || 10;
+        const patternType = config.pattern?.type || 'random';
+        const spacing = config.pattern?.spacing || 50;
 
-        for (let i = 0; i < 5; i++) {
-            const x = (i + 1) * (p.width / 6);
-            const y = p.height / 2 + (animated ? p.sin(offset * 0.1 + i) * 50 : 0);
+        if (patternType === 'grid') {
+            // Grid pattern layout
+            const cols = Math.floor(canvasWidth / spacing);
+            const rows = Math.floor(canvasHeight / spacing);
+            const offsetX = (canvasWidth - (cols - 1) * spacing) / 2;
+            const offsetY = (canvasHeight - (rows - 1) * spacing) / 2;
 
-            // Select shape from palette (cycle through)
-            const shapeItem = shapes[i % shapes.length];
+            let count = 0;
+            for (let row = 0; row < rows && count < shapeCount; row++) {
+                for (let col = 0; col < cols && count < shapeCount; col++) {
+                    const x = col * spacing + offsetX;
+                    const y = row * spacing + offsetY;
 
-            // Set stroke
-            if (noStrokeEnabled) {
-                p.noStroke();
-            } else {
-                p.stroke(strokeColor);
-                p.strokeWeight(strokeWeight);
+                    // Select shape from palette (cycle through)
+                    const shapeItem = shapes[count % shapes.length];
+
+                    // Set stroke
+                    if (noStrokeEnabled) {
+                        p.noStroke();
+                    } else {
+                        p.stroke(strokeColor);
+                        p.strokeWeight(strokeWeight);
+                    }
+
+                    // Set fill with shape's color
+                    if (noFillEnabled) {
+                        p.noFill();
+                    } else {
+                        const c = p.color(shapeItem.color);
+                        c.setAlpha(fillOpacity);
+                        p.fill(c);
+                    }
+
+                    // Draw the shape
+                    drawP5Shape(shapeItem.shape, x, y, size);
+                    count++;
+                }
             }
+        } else {
+            // Random or row pattern for preview (limit to reasonable number)
+            const displayCount = Math.min(shapeCount, 20);
+            const itemsPerRow = Math.min(5, displayCount);
+            const rows = Math.ceil(displayCount / itemsPerRow);
 
-            // Set fill with shape's color
-            if (noFillEnabled) {
-                p.noFill();
-            } else {
-                const c = p.color(shapeItem.color);
-                c.setAlpha(fillOpacity);
-                p.fill(c);
+            let count = 0;
+            for (let row = 0; row < rows && count < displayCount; row++) {
+                const itemsInThisRow = Math.min(itemsPerRow, displayCount - count);
+                for (let col = 0; col < itemsInThisRow; col++) {
+                    const x = (col + 1) * (p.width / (itemsInThisRow + 1));
+                    const y = p.height / (rows + 1) * (row + 1) + (animated ? p.sin(offset * 0.1 + count) * 30 : 0);
+
+                    // Select shape from palette (cycle through)
+                    const shapeItem = shapes[count % shapes.length];
+
+                    // Set stroke
+                    if (noStrokeEnabled) {
+                        p.noStroke();
+                    } else {
+                        p.stroke(strokeColor);
+                        p.strokeWeight(strokeWeight);
+                    }
+
+                    // Set fill with shape's color
+                    if (noFillEnabled) {
+                        p.noFill();
+                    } else {
+                        const c = p.color(shapeItem.color);
+                        c.setAlpha(fillOpacity);
+                        p.fill(c);
+                    }
+
+                    // Draw the shape
+                    drawP5Shape(shapeItem.shape, x, y, size);
+                    count++;
+                }
             }
-
-            // Draw the shape
-            drawP5Shape(shapeItem.shape, x, y, size);
         }
     }
 
     // Draw with configured style (single shape type, single color)
     function drawWithConfiguredStyle() {
-        const baseSize = animated ? 50 + p.sin(offset * 0.05) * 30 : 50;
+        const baseShapeSize = config.drawing?.shapeSize || 50;
         const scaleFactor = getCurrentScaleFactor();
-        const size = baseSize * scaleFactor;
+        const size = baseShapeSize * scaleFactor;
+        const shapeCount = config.drawing?.shapeCount || 10;
+        const patternType = config.pattern?.type || 'random';
+        const spacing = config.pattern?.spacing || 50;
 
         // Set stroke
         if (noStrokeEnabled) {
@@ -1217,11 +1273,38 @@ const sketch = (p) => {
             p.fill(c);
         }
 
-        // Draw shapes based on configured drawing mode
-        for (let i = 0; i < 5; i++) {
-            const x = (i + 1) * (p.width / 6);
-            const y = p.height / 2 + (animated ? p.sin(offset * 0.1 + i) * 50 : 0);
-            drawP5Shape(drawingMode, x, y, size);
+        if (patternType === 'grid') {
+            // Grid pattern layout
+            const cols = Math.floor(canvasWidth / spacing);
+            const rows = Math.floor(canvasHeight / spacing);
+            const offsetX = (canvasWidth - (cols - 1) * spacing) / 2;
+            const offsetY = (canvasHeight - (rows - 1) * spacing) / 2;
+
+            let count = 0;
+            for (let row = 0; row < rows && count < shapeCount; row++) {
+                for (let col = 0; col < cols && count < shapeCount; col++) {
+                    const x = col * spacing + offsetX;
+                    const y = row * spacing + offsetY;
+                    drawP5Shape(drawingMode, x, y, size);
+                    count++;
+                }
+            }
+        } else {
+            // Random or row pattern for preview (limit to reasonable number)
+            const displayCount = Math.min(shapeCount, 20);
+            const itemsPerRow = Math.min(5, displayCount);
+            const rows = Math.ceil(displayCount / itemsPerRow);
+
+            let count = 0;
+            for (let row = 0; row < rows && count < displayCount; row++) {
+                const itemsInThisRow = Math.min(itemsPerRow, displayCount - count);
+                for (let col = 0; col < itemsInThisRow; col++) {
+                    const x = (col + 1) * (p.width / (itemsInThisRow + 1));
+                    const y = p.height / (rows + 1) * (row + 1) + (animated ? p.sin(offset * 0.1 + count) * 30 : 0);
+                    drawP5Shape(drawingMode, x, y, size);
+                    count++;
+                }
+            }
         }
     }
 

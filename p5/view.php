@@ -104,23 +104,58 @@ if (empty($backgroundImageUrl) && !empty($piece['image_urls'])) {
                 const patternConfig = config.pattern || {};
                 const shapeCount = drawingConfig.shapeCount || 10;
                 const shapeSize = drawingConfig.shapeSize || 50;
+                const patternType = patternConfig.type || 'random';
+                const spacing = patternConfig.spacing || 50;
+                const randomSeed = patternConfig.randomSeed;
+
+                // Set random seed if specified
+                if (randomSeed !== undefined) {
+                    p.randomSeed(randomSeed);
+                }
 
                 // Get shapes/colors (backward compatibility)
                 const shapes = config.shapes || (config.colors ? config.colors.map(c => ({ shape: 'ellipse', color: c })) : [{ shape: 'ellipse', color: '#ED225D' }]);
 
-                // Create pattern elements
-                for (let i = 0; i < shapeCount; i++) {
-                    const shape = shapes[i % shapes.length];
-                    elements.push({
-                        x: p.random(width),
-                        y: p.random(height),
-                        size: shapeSize + p.random(-shapeSize * 0.3, shapeSize * 0.3),
-                        color: shape.color || '#ED225D',
-                        shapeType: shape.shape || 'ellipse',
-                        rotation: p.random(p.TWO_PI),
-                        vx: p.random(-2, 2),
-                        vy: p.random(-2, 2)
-                    });
+                // Create pattern elements based on pattern type
+                if (patternType === 'grid') {
+                    // Grid pattern layout
+                    const cols = Math.floor(width / spacing);
+                    const rows = Math.floor(height / spacing);
+                    const offsetX = (width - (cols - 1) * spacing) / 2;
+                    const offsetY = (height - (rows - 1) * spacing) / 2;
+
+                    let count = 0;
+                    for (let row = 0; row < rows && count < shapeCount; row++) {
+                        for (let col = 0; col < cols && count < shapeCount; col++) {
+                            const shape = shapes[count % shapes.length];
+                            elements.push({
+                                x: col * spacing + offsetX,
+                                y: row * spacing + offsetY,
+                                size: shapeSize,
+                                color: shape.color || '#ED225D',
+                                shapeType: shape.shape || 'ellipse',
+                                rotation: 0,
+                                vx: p.random(-2, 2),
+                                vy: p.random(-2, 2)
+                            });
+                            count++;
+                        }
+                    }
+                } else {
+                    // Random positioning (default)
+                    for (let i = 0; i < shapeCount; i++) {
+                        const shape = shapes[i % shapes.length];
+                        elements.push({
+                            x: p.random(width),
+                            y: p.random(height),
+                            size: shapeSize + p.random(-shapeSize * 0.3, shapeSize * 0.3),
+                            color: shape.color || '#ED225D',
+                            shapeType: shape.shape || 'ellipse',
+                            rotation: p.random(p.TWO_PI),
+                            vx: p.random(-2, 2),
+                            vy: p.random(-2, 2)
+                        });
+                    }
                 }
             };
 
