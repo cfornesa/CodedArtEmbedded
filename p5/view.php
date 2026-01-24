@@ -210,6 +210,11 @@ if (empty($backgroundImageUrl) && !empty($piece['image_urls'])) {
                     const noStroke = drawingConfig.noStroke === true;
                     const useStroke = drawingConfig.useStroke === true || drawingConfig.strokeColor !== undefined;
                     if (!noStroke && useStroke) {
+                    const noStroke = drawingConfig.noStroke !== undefined
+                        ? drawingConfig.noStroke
+                        : (drawingConfig.useStroke !== undefined ? !drawingConfig.useStroke : false);
+
+                    if (!noStroke) {
                         const strokeWeight = drawingConfig.strokeWeight || 1;
                         const strokeColor = drawingConfig.strokeColor || resolvedFill;
                         p.strokeWeight(strokeWeight);
