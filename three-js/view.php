@@ -96,9 +96,10 @@ if (empty($backgroundImageUrl) && !empty($piece['background_image_url'])) {
         const geometries = <?php echo json_encode($geometries); ?>;
 
         geometries.forEach(geomConfig => {
+            const geometryType = geomConfig.type || geomConfig.geometryType;
             // Create geometry based on type
             let geometry;
-            switch (geomConfig.geometryType) {
+            switch (geometryType) {
                 case 'BoxGeometry':
                     geometry = new THREE.BoxGeometry(
                         geomConfig.width || 1,
