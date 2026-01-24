@@ -54,10 +54,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array($action, ['create', 'edit'
             'thumbnail_url' => $_POST['thumbnail_url'] ?? '',
             'background_color' => $_POST['background_color'] ?? '',
             'background_image_url' => $_POST['background_image_url'] ?? '',
+            'background_color' => $_POST['background_color'] ?? '#000000',
             'tags' => $_POST['tags'] ?? '',
             'status' => $_POST['status'] ?? 'active',
             'sort_order' => $_POST['sort_order'] ?? 0
         ];
+
+        if (!empty($_POST['background_image_url'])) {
+            $data['background_image_url'] = $_POST['background_image_url'];
+        }
+
+        // Handle texture URLs (array input)
+        if (isset($_POST['texture_urls']) && is_array($_POST['texture_urls'])) {
+            $data['texture_urls'] = array_filter($_POST['texture_urls']);
+        }
 
         // Handle configuration JSON if provided
         if (!empty($_POST['configuration_json'])) {
@@ -350,17 +360,44 @@ require_once(__DIR__ . '/includes/header.php');
                 <small class="form-help">Scene background color (used when no background image is set)</small>
             </div>
 
+            <?php
+            $textureUrls = [];
+            if ($formData && isset($formData['texture_urls_raw'])) {
+                $textureUrls = $formData['texture_urls_raw'];
+            } elseif ($editPiece && !empty($editPiece['texture_urls'])) {
+                $decodedTextureUrls = json_decode($editPiece['texture_urls'], true);
+                if (is_array($decodedTextureUrls)) {
+                    $textureUrls = $decodedTextureUrls;
+                }
+            }
+
+            if (empty($textureUrls)) {
+                $textureUrls = [''];
+            }
+            ?>
+
             <div class="form-group">
-                <label class="form-label">Background Image URL (optional)</label>
-                <input
-                    type="url"
-                    id="background_image_url"
-                    name="background_image_url"
-                    class="form-control"
-                    placeholder="https://example.com/background.png"
-                    value="<?php echo $formData ? htmlspecialchars($formData['background_image_url'] ?? '') : ($editPiece ? htmlspecialchars($editPiece['background_image_url'] ?? '') : ''); ?>"
-                >
-                <small class="form-help">Optional background image for the scene. Overrides background color if set. Individual geometry textures are configured in the Geometry Builder below.</small>
+                <label class="form-label">Background Image URLs (optional)</label>
+                <div id="texture-urls-container" style="display: flex; flex-direction: column; gap: 10px;">
+                    <?php foreach ($textureUrls as $index => $textureUrl): ?>
+                        <div class="texture-url-row" style="display: flex; gap: 10px; align-items: center;">
+                            <input
+                                type="url"
+                                name="texture_urls[]"
+                                class="form-control"
+                                placeholder="https://example.com/background.png"
+                                value="<?php echo htmlspecialchars($textureUrl); ?>"
+                            >
+                            <button type="button" class="btn btn-sm btn-danger" onclick="removeTextureUrlField(this)">
+                                Remove
+                            </button>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+                <button type="button" class="btn btn-sm btn-success" style="margin-top: 10px;" onclick="addTextureUrlField()">
+                    + Add Background Image
+                </button>
+                <small class="form-help">Multiple URLs allowed; one is randomly selected each time the scene loads. Individual geometry textures are configured in the Geometry Builder below.</small>
             </div>
 
             <div class="form-group">
@@ -580,6 +617,49 @@ require_once(__DIR__ . '/includes/header.php');
     let geometryCount = 0;
     const MAX_GEOMETRIES = 40;
     const geometries = [];
+
+    function addTextureUrlField(value = '') {
+        const container = document.getElementById('texture-urls-container');
+        const row = document.createElement('div');
+        row.className = 'texture-url-row';
+        row.style.display = 'flex';
+        row.style.gap = '10px';
+        row.style.alignItems = 'center';
+        row.innerHTML = `
+            <input
+                type="url"
+                name="texture_urls[]"
+                class="form-control"
+                placeholder="https://example.com/background.png"
+                value="${value}"
+            >
+            <button type="button" class="btn btn-sm btn-danger" onclick="removeTextureUrlField(this)">
+                Remove
+            </button>
+        `;
+        container.appendChild(row);
+        updateTextureUrlRemoveButtons();
+    }
+
+    function removeTextureUrlField(button) {
+        const row = button.closest('.texture-url-row');
+        if (row) {
+            row.remove();
+        }
+        updateTextureUrlRemoveButtons();
+    }
+
+    function updateTextureUrlRemoveButtons() {
+        const rows = document.querySelectorAll('.texture-url-row');
+        rows.forEach((row) => {
+            const removeButton = row.querySelector('button');
+            if (removeButton) {
+                removeButton.style.display = rows.length > 1 ? 'inline-flex' : 'none';
+            }
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', updateTextureUrlRemoveButtons);
 
     // Three.js geometry types
     const geometryTypes = {

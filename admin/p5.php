@@ -543,12 +543,12 @@ require_once(__DIR__ . '/includes/header.php');
                             <div class="sketch-field-group">
                                 <label class="sketch-field-label">Noise Scale</label>
                                 <input type="number" id="p5-noise-scale" class="sketch-field-input" value="0.01" step="0.001" min="0.001">
-                                <small class="form-help">Controls noise smoothness</small>
+                                <small class="form-help">Controls Perlin noise smoothness when Pattern Type is set to Noise.</small>
                             </div>
                             <div class="sketch-field-group">
                                 <label class="sketch-field-label">Noise Detail</label>
                                 <input type="number" id="p5-noise-detail" class="sketch-field-input" value="4" step="1" min="1" max="8">
-                                <small class="form-help">Level of detail (octaves)</small>
+                                <small class="form-help">Sets Perlin noise octaves for the Noise pattern.</small>
                             </div>
                         </div>
                     </div>

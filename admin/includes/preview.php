@@ -852,6 +852,7 @@ function renderP5Preview($piece) {
     $colorsConfig = $config['colors'] ?? [];  // For backward compatibility
     $animationConfig = $config['animation'] ?? [];
     $advancedConfig = $config['advanced'] ?? [];
+    $interactionConfig = $config['interaction'] ?? [];
 
     // Support both new shapes format and old colors format (backward compatibility)
     if (!empty($shapesConfig)) {
@@ -914,10 +915,20 @@ function renderP5Preview($piece) {
         }
     }
 
-    // Advanced settings
-    $mouseInteraction = !empty($advancedConfig['mouseInteraction']);
-    $keyboardInteraction = !empty($advancedConfig['keyboardInteraction']);
-    $clearBackground = isset($advancedConfig['clearBackground']) ? (bool)$advancedConfig['clearBackground'] : true;
+    // Interaction settings (new) with backward-compatible advanced.* keys
+    $mouseInteraction = !empty($interactionConfig['mouse'])
+        || (!empty($advancedConfig['mouseInteraction']));
+    $keyboardInteraction = !empty($interactionConfig['keyboard'])
+        || (!empty($advancedConfig['keyboardInteraction']));
+
+    // Animation settings (new) with backward-compatible advanced.* keys
+    if (array_key_exists('clearBackground', $animationConfig)) {
+        $clearBackground = (bool)$animationConfig['clearBackground'];
+    } elseif (array_key_exists('clearBackground', $advancedConfig)) {
+        $clearBackground = (bool)$advancedConfig['clearBackground'];
+    } else {
+        $clearBackground = true;
+    }
     $randomSeed = isset($advancedConfig['randomSeed']) ? (int)$advancedConfig['randomSeed'] : null;
 
     // Color palette
@@ -1040,8 +1051,9 @@ const sketch = (p) => {
     <?php endif; ?>
 
     // Shapes palette (backward compatible with old colors)
+    // When usePalette is enabled, shapes are filled with their palette colors; otherwise use the single configured shape/style.
     const shapes = <?php echo json_encode($shapes); ?>;
-    const usePalette = config.usePalette || false;
+    const usePalette = config.usePalette || config.drawing?.usePalette || false;
 
     // Animation variables
     let animationFrame = 0;
@@ -1351,6 +1363,22 @@ function renderThreeJSPreview($piece) {
 
     // Extract background image URL (standardized field)
     $backgroundImageUrl = $piece['background_image_url'] ?? null;
+    // Extract background image URL (prefer texture_urls array)
+    $backgroundImageUrl = null;
+    if (!empty($piece['texture_urls'])) {
+        $textureUrls = is_array($piece['texture_urls']) ? $piece['texture_urls'] : json_decode($piece['texture_urls'], true);
+        if (is_array($textureUrls)) {
+            $textureUrls = array_values(array_filter($textureUrls));
+            if (!empty($textureUrls)) {
+                $backgroundImageUrl = $textureUrls[array_rand($textureUrls)];
+            }
+        }
+    }
+
+    // Backward compatibility: fallback to background_image_url
+    if (empty($backgroundImageUrl) && !empty($piece['background_image_url'])) {
+        $backgroundImageUrl = $piece['background_image_url'];
+    }
 
     // Extract configuration sections
     $geometries = $config['geometries'] ?? [];
@@ -1431,7 +1459,7 @@ container.appendChild(renderer.domElement);
 // Add background image if specified
 <?php if (!empty($backgroundImageUrl)): ?>
 const backgroundTextureLoader = new THREE.TextureLoader();
-backgroundTextureLoader.load('<?php echo htmlspecialchars($backgroundImageUrl, ENT_QUOTES); ?>', function(texture) {
+backgroundTextureLoader.load('<?php echo htmlspecialchars(proxifyImageUrl($backgroundImageUrl), ENT_QUOTES); ?>', function(texture) {
     scene.background = texture;
 });
 <?php endif; ?>
@@ -1597,8 +1625,15 @@ if (config.geometries) {
             materialOptions.roughness = geomConfig.roughness;
         }
 
-        // Create material
-        const material = new THREE.MeshStandardMaterial(materialOptions);
+        const materialType = geomConfig.material || 'MeshStandardMaterial';
+        const materialConstructors = {
+            MeshStandardMaterial: THREE.MeshStandardMaterial,
+            MeshBasicMaterial: THREE.MeshBasicMaterial,
+            MeshPhongMaterial: THREE.MeshPhongMaterial,
+            MeshLambertMaterial: THREE.MeshLambertMaterial
+        };
+        const MaterialConstructor = materialConstructors[materialType] || THREE.MeshStandardMaterial;
+        const material = new MaterialConstructor(materialOptions);
 
         // Create mesh
         const mesh = new THREE.Mesh(geometry, material);

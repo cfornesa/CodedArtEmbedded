@@ -43,6 +43,22 @@ $backgroundColor = $piece['background_color'] ?? ($config['sceneSettings']['back
 
 // Get background image URL if specified (standardized field)
 $backgroundImageUrl = $piece['background_image_url'] ?? null;
+// Get background image URL if specified (prefer texture_urls array)
+$backgroundImageUrl = null;
+if (!empty($piece['texture_urls'])) {
+    $textureUrls = json_decode($piece['texture_urls'], true);
+    if (is_array($textureUrls)) {
+        $textureUrls = array_values(array_filter($textureUrls));
+        if (!empty($textureUrls)) {
+            $backgroundImageUrl = $textureUrls[array_rand($textureUrls)];
+        }
+    }
+}
+
+// Backward compatibility: fallback to background_image_url
+if (empty($backgroundImageUrl) && !empty($piece['background_image_url'])) {
+    $backgroundImageUrl = $piece['background_image_url'];
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -82,9 +98,10 @@ $backgroundImageUrl = $piece['background_image_url'] ?? null;
         const geometries = <?php echo json_encode($geometries); ?>;
 
         geometries.forEach(geomConfig => {
+            const geometryType = geomConfig.type || geomConfig.geometryType;
             // Create geometry based on type
             let geometry;
-            switch (geomConfig.geometryType) {
+            switch (geometryType) {
                 case 'BoxGeometry':
                     geometry = new THREE.BoxGeometry(
                         geomConfig.width || 1,
@@ -152,7 +169,15 @@ $backgroundImageUrl = $piece['background_image_url'] ?? null;
                 });
             }
 
-            const material = new THREE.MeshStandardMaterial(materialOptions);
+            const materialType = geomConfig.material || 'MeshStandardMaterial';
+            const materialConstructors = {
+                MeshStandardMaterial: THREE.MeshStandardMaterial,
+                MeshBasicMaterial: THREE.MeshBasicMaterial,
+                MeshPhongMaterial: THREE.MeshPhongMaterial,
+                MeshLambertMaterial: THREE.MeshLambertMaterial
+            };
+            const MaterialConstructor = materialConstructors[materialType] || THREE.MeshStandardMaterial;
+            const material = new MaterialConstructor(materialOptions);
             const mesh = new THREE.Mesh(geometry, material);
 
             // Position
