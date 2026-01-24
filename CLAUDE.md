@@ -2,7 +2,7 @@
 
 ## Project Status: ✅ PRODUCTION READY
 
-**Last Updated:** 2026-01-23 (v1.0.26 - ARCHITECTURAL PIVOT)
+**Last Updated:** 2026-01-23 (v1.0.27 - LOGIN SETUP VALIDATION FIX)
 **Agent:** Claude (Sonnet 4.5)
 **Environment:** Replit Development / Hostinger Production
 
@@ -1490,6 +1490,13 @@ mysqldump -u username -p codedart_db > backup_$(date +%Y%m%d).sql
   - ✅ "Please investigate where each view gets its configuration" - DONE (diagnostic tool created)
   - ✅ "Determine which matches actual configuration" - DONE (both now match)
   - ✅ "Implement the solution" - COMPLETE (grid pattern implemented in both)
+
+**v1.0.27** - 2026-01-23 (Login Setup Validation Fix)
+- 🐛 **FIX:** Updated setup-database table checks to include auth tables required for login
+- ✅ **Result:** Database setup helper now flags missing auth tables instead of reporting a false "fully initialized" state
+- 📖 **Lessons Learned:**
+  - Keep setup helpers and health checks aligned with evolving schema requirements
+  - Authentication dependencies must be included in initialization verification paths
 
 **v1.0.26** - 2026-01-23 (CRITICAL ARCHITECTURAL PIVOT: Wrong Problem, Wrong Solution)
 - 🚨 **SEVERITY:** ARCHITECTURAL - Everything since v1.0.23 has been solving the WRONG problems
