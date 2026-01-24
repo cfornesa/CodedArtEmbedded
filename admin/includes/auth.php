@@ -208,14 +208,18 @@ function login($email, $password) {
         ];
     }
 
-    // Check if email is verified
+    // Check if email is verified (enforced in production)
     if (!$user['email_verified']) {
-        logAuthEvent('login_failure', $user['id'], $email, ['reason' => 'email_unverified']);
-        return [
-            'success' => false,
-            'message' => 'Please verify your email address before logging in. Check your inbox for the verification link.',
-            'user' => null
-        ];
+        if (isProduction()) {
+            logAuthEvent('login_failure', $user['id'], $email, ['reason' => 'email_unverified']);
+            return [
+                'success' => false,
+                'message' => 'Please verify your email address before logging in. Check your inbox for the verification link.',
+                'user' => null
+            ];
+        }
+
+        logAuthEvent('login_unverified_bypass', $user['id'], $email, ['environment' => getEnvironment()]);
     }
 
     // Check account status
@@ -362,6 +366,12 @@ function registerUser($data) {
     // Check if this is the first user (auto-verify and activate)
     $userCount = dbFetchOne("SELECT COUNT(*) as count FROM users");
     if ($userCount && $userCount['count'] == 0) {
+        $userData['email_verified'] = true;
+        $userData['verification_token'] = null;
+    }
+
+    // Auto-verify all users outside production to keep Replit/local setups usable
+    if (!$userData['email_verified'] && !isProduction()) {
         $userData['email_verified'] = true;
         $userData['verification_token'] = null;
     }
