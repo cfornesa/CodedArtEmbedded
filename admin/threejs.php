@@ -52,6 +52,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array($action, ['create', 'edit'
             'slug' => $_POST['slug'] ?? '',  // Optional: auto-generated if empty
             'description' => $_POST['description'] ?? '',
             'thumbnail_url' => $_POST['thumbnail_url'] ?? '',
+            'background_color' => $_POST['background_color'] ?? '',
+            'background_image_url' => $_POST['background_image_url'] ?? '',
             'background_color' => $_POST['background_color'] ?? '#000000',
             'tags' => $_POST['tags'] ?? '',
             'status' => $_POST['status'] ?? 'active',
@@ -88,10 +90,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array($action, ['create', 'edit'
             $error = $result['message'];
             // Preserve form data so user doesn't lose their work
             $formData = $data;
-            // Also preserve array inputs in original format
-            if (isset($_POST['texture_urls'])) {
-                $formData['texture_urls_raw'] = $_POST['texture_urls'];
-            }
             // Preserve configuration JSON
             if (isset($_POST['configuration_json'])) {
                 $formData['configuration_json_raw'] = $_POST['configuration_json'];

@@ -41,6 +41,8 @@ try {
 // Get background color (from database field or config, with fallback)
 $backgroundColor = $piece['background_color'] ?? ($config['sceneSettings']['background'] ?? '#000000');
 
+// Get background image URL if specified (standardized field)
+$backgroundImageUrl = $piece['background_image_url'] ?? null;
 // Get background image URL if specified (prefer texture_urls array)
 $backgroundImageUrl = null;
 if (!empty($piece['texture_urls'])) {

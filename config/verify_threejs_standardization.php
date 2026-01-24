@@ -51,8 +51,8 @@ try {
     $checkColumn = $pdo->query("PRAGMA table_info(threejs_art)");
     $columns = $checkColumn->fetchAll(PDO::FETCH_ASSOC);
 
-    $requiredColumns = ['thumbnail_url', 'texture_urls', 'configuration'];
-    $deprecatedColumns = ['embedded_path', 'js_file']; // Will be hidden from forms
+    $requiredColumns = ['thumbnail_url', 'background_color', 'background_image_url', 'configuration'];
+    $deprecatedColumns = ['embedded_path', 'js_file', 'texture_urls']; // Legacy fields kept for backward data
 
     echo "Checking threejs_art table schema...\n\n";
 
@@ -71,7 +71,7 @@ try {
         }
     }
 
-    echo "\nDeprecated columns (will be hidden from admin forms):\n";
+    echo "\nDeprecated columns (legacy only):\n";
     foreach ($deprecatedColumns as $colName) {
         $exists = false;
         foreach ($columns as $column) {

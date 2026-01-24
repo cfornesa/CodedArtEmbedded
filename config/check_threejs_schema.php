@@ -50,7 +50,7 @@ try {
 
     if (!in_array('background_image_url', $columnNames)) {
         echo "⚠️  WARNING: background_image_url column is MISSING!" . PHP_EOL;
-        echo "   Using old texture_urls field instead." . PHP_EOL . PHP_EOL;
+        echo "   Three.js views now require background_image_url for scene images." . PHP_EOL . PHP_EOL;
     }
 
     if (in_array('configuration', $columnNames)) {
