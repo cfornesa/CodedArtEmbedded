@@ -689,3 +689,68 @@ function proxifyImageUrl($url) {
     // Return CORS proxy URL for external images
     return url('admin/includes/cors-proxy.php') . '?url=' . urlencode($url);
 }
+
+/**
+ * Resolve P5 background image URL from piece data.
+ *
+ * @param array $piece Piece data
+ * @return string|null Background image URL if present
+ */
+function getP5BackgroundImageUrl(array $piece) {
+    $backgroundImageUrl = $piece['background_image_url'] ?? null;
+
+    if (empty($backgroundImageUrl) && !empty($piece['image_urls'])) {
+        $imageUrls = is_array($piece['image_urls']) ? $piece['image_urls'] : json_decode($piece['image_urls'], true);
+        if (is_array($imageUrls) && !empty($imageUrls)) {
+            $backgroundImageUrl = $imageUrls[0];
+        }
+    }
+
+    return $backgroundImageUrl ?: null;
+}
+
+/**
+ * Resolve Three.js background image URL from piece data.
+ *
+ * @param array $piece Piece data
+ * @return string|null Background image URL if present
+ */
+function getThreeJsBackgroundImageUrl(array $piece) {
+    $backgroundImageUrl = null;
+
+    if (!empty($piece['texture_urls'])) {
+        $textureUrls = is_array($piece['texture_urls']) ? $piece['texture_urls'] : json_decode($piece['texture_urls'], true);
+        if (is_array($textureUrls)) {
+            $textureUrls = array_values(array_filter($textureUrls));
+            if (!empty($textureUrls)) {
+                $backgroundImageUrl = $textureUrls[array_rand($textureUrls)];
+            }
+        }
+    }
+
+    if (empty($backgroundImageUrl) && !empty($piece['background_image_url'])) {
+        $backgroundImageUrl = $piece['background_image_url'];
+    }
+
+    return $backgroundImageUrl ?: null;
+}
+
+/**
+ * Resolve Three.js background color from piece data and configuration.
+ *
+ * @param array $piece Piece data
+ * @param array $config Configuration data
+ * @param string $default Default background color
+ * @return string Background color
+ */
+function getThreeJsBackgroundColor(array $piece, array $config, $default = '#000000') {
+    if (!empty($piece['background_color'])) {
+        return $piece['background_color'];
+    }
+
+    if (!empty($config['sceneSettings']['background'])) {
+        return $config['sceneSettings']['background'];
+    }
+
+    return $default;
+}
