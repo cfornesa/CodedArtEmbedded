@@ -2,6 +2,7 @@
 
 ## Project Status: ✅ PRODUCTION READY
 
+**Last Updated:** 2026-01-23 (v1.0.29 - SETUP TABLE CHECK SYNC)
 **Last Updated:** 2026-01-23 (v1.0.28 - REPLIT LOGIN BYPASS)
 **Last Updated:** 2026-01-23 (v1.0.27 - LOGIN SETUP VALIDATION FIX)
 **Agent:** Claude (Sonnet 4.5)
@@ -1491,6 +1492,13 @@ mysqldump -u username -p codedart_db > backup_$(date +%Y%m%d).sql
   - ✅ "Please investigate where each view gets its configuration" - DONE (diagnostic tool created)
   - ✅ "Determine which matches actual configuration" - DONE (both now match)
   - ✅ "Implement the solution" - COMPLETE (grid pattern implemented in both)
+
+**v1.0.29** - 2026-01-23 (Setup Table Check Sync)
+- 🐛 **FIX:** Centralized required table list in database config so setup and admin checks stay in sync
+- ✅ **Result:** `setup-database.php` now reports auth table gaps consistently with the admin UI
+- 📖 **Lessons Learned:**
+  - Shared schema checks should live in one place to avoid divergent diagnostics
+  - Duplicate lists drift quickly when new tables are added
 
 **v1.0.28** - 2026-01-23 (Replit Login Verification Bypass)
 - 🐛 **FIX:** Allow login and auto-verify registration in non-production environments (Replit/local) when email verification is unavailable
