@@ -2,7 +2,9 @@
 
 ## Project Status: ✅ PRODUCTION READY
 
-**Last Updated:** 2026-01-23 (v1.0.30 - REPLIT BASE URL FIX)
+**Last Updated:** 2026-01-23 (v1.0.29 - SETUP TABLE CHECK SYNC)
+**Last Updated:** 2026-01-23 (v1.0.28 - REPLIT LOGIN BYPASS)
+**Last Updated:** 2026-01-23 (v1.0.27 - LOGIN SETUP VALIDATION FIX)
 **Agent:** Claude (Sonnet 4.5)
 **Environment:** Replit Development / Hostinger Production
 
@@ -1490,13 +1492,6 @@ mysqldump -u username -p codedart_db > backup_$(date +%Y%m%d).sql
   - ✅ "Please investigate where each view gets its configuration" - DONE (diagnostic tool created)
   - ✅ "Determine which matches actual configuration" - DONE (both now match)
   - ✅ "Implement the solution" - COMPLETE (grid pattern implemented in both)
-
-**v1.0.30** - 2026-01-23 (Replit Base URL Fix)
-- 🐛 **FIX:** Prefer the runtime-detected base URL on Replit so redirects and asset links don’t point to localhost
-- ✅ **Result:** Admin redirects stay on the active Replit host instead of hitting the “app not running” page
-- 📖 **Lessons Learned:**
-  - Replit-hosted apps need dynamic base URLs even when SITE_URL is defined
-  - Environment-aware URL helpers prevent redirect loops and dead links
 
 **v1.0.29** - 2026-01-23 (Setup Table Check Sync)
 - 🐛 **FIX:** Centralized required table list in database config so setup and admin checks stay in sync
