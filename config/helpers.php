@@ -436,6 +436,32 @@ function validatePassword($password) {
     ];
 }
 
+/**
+ * Get password requirement hints
+ *
+ * @return array List of requirement strings
+ */
+function getPasswordRequirementHints() {
+    $requirements = [];
+    $minLength = defined('PASSWORD_MIN_LENGTH') ? PASSWORD_MIN_LENGTH : 8;
+    $requirements[] = "At least {$minLength} characters";
+
+    if (defined('PASSWORD_REQUIRE_UPPERCASE') && PASSWORD_REQUIRE_UPPERCASE) {
+        $requirements[] = 'One uppercase letter';
+    }
+    if (defined('PASSWORD_REQUIRE_LOWERCASE') && PASSWORD_REQUIRE_LOWERCASE) {
+        $requirements[] = 'One lowercase letter';
+    }
+    if (defined('PASSWORD_REQUIRE_NUMBER') && PASSWORD_REQUIRE_NUMBER) {
+        $requirements[] = 'One number';
+    }
+    if (defined('PASSWORD_REQUIRE_SPECIAL') && PASSWORD_REQUIRE_SPECIAL) {
+        $requirements[] = 'One special character';
+    }
+
+    return $requirements;
+}
+
 // ==========================================
 // STRING HELPERS
 // ==========================================

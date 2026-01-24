@@ -28,6 +28,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!isset($_POST['csrf_token']) || !verifyCsrfToken($_POST['csrf_token'])) {
         $error = 'Invalid request. Please try again.';
     } else {
+        $email = $_POST['email'] ?? '';
+        $rateLimitResult = checkRegistrationRateLimit($email);
+        if (!$rateLimitResult['allowed']) {
+            $error = $rateLimitResult['message'];
+            logAuthEvent('register_blocked', null, $email, ['reason' => $rateLimitResult['message']]);
+        }
+    }
+
+    if (empty($error)) {
         // Verify RECAPTCHA v3 if enabled
         $recaptchaValid = true;
         if (defined('RECAPTCHA_SECRET_KEY') && !empty(RECAPTCHA_SECRET_KEY)) {
@@ -97,9 +106,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Validate password confirmation
             if ($_POST['password'] !== $_POST['password_confirm']) {
                 $error = 'Passwords do not match.';
+                recordRegistrationAttempt($email, getClientIp(), false);
             } else {
                 $registrationData = [
-                    'email' => $_POST['email'] ?? '',
+                    'email' => $email,
                     'password' => $_POST['password'] ?? '',
                     'first_name' => $_POST['first_name'] ?? '',
                     'last_name' => $_POST['last_name'] ?? ''
@@ -133,13 +143,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $_SESSION['registration_email'] = $registrationData['email'];
                     $_SESSION['registration_name'] = $registrationData['first_name'];
 
+                    recordRegistrationAttempt($email, getClientIp(), true);
+
                     // Redirect to thank-you page
                     redirect(url('admin/thank-you.php'));
                     exit;
                 } else {
                     $error = $result['message'];
+                    recordRegistrationAttempt($email, getClientIp(), false);
                 }
             }
+        } elseif (!empty($error)) {
+            recordRegistrationAttempt($email, getClientIp(), false);
         }
     }
 }
@@ -150,6 +165,7 @@ $csrfToken = generateCsrfToken();
 // Get RECAPTCHA site key
 $recaptchaSiteKey = defined('RECAPTCHA_SITE_KEY') ? RECAPTCHA_SITE_KEY : '';
 $recaptchaEnabled = !empty($recaptchaSiteKey);
+$passwordRequirements = getPasswordRequirementHints();
 
 ?>
 <!DOCTYPE html>
@@ -237,9 +253,16 @@ $recaptchaEnabled = !empty($recaptchaSiteKey);
                         autocomplete="new-password"
                         minlength="<?php echo defined('PASSWORD_MIN_LENGTH') ? PASSWORD_MIN_LENGTH : 8; ?>"
                     >
-                    <small class="form-help">
-                        Minimum <?php echo defined('PASSWORD_MIN_LENGTH') ? PASSWORD_MIN_LENGTH : 8; ?> characters, including uppercase, lowercase, and numbers
-                    </small>
+                    <?php if (!empty($passwordRequirements)): ?>
+                        <small class="form-help">
+                            Password requirements:
+                            <ul class="form-help-list">
+                                <?php foreach ($passwordRequirements as $requirement): ?>
+                                    <li><?php echo htmlspecialchars($requirement); ?></li>
+                                <?php endforeach; ?>
+                            </ul>
+                        </small>
+                    <?php endif; ?>
                 </div>
 
                 <div class="form-group">

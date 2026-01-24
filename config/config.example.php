@@ -100,6 +100,10 @@ define('PASSWORD_REQUIRE_NUMBER', true); // Require number
 define('PASSWORD_REQUIRE_SPECIAL', false); // Require special character
 define('MAX_LOGIN_ATTEMPTS', 5); // Max failed login attempts before lockout
 define('LOGIN_LOCKOUT_TIME', 900); // Lockout duration in seconds (15 minutes)
+define('MAX_REGISTRATION_ATTEMPTS', 3); // Max registration attempts before lockout
+define('REGISTRATION_LOCKOUT_TIME', 1800); // Registration lockout duration in seconds (30 minutes)
+define('MAX_PASSWORD_RESET_ATTEMPTS', 5); // Max password reset attempts before lockout
+define('PASSWORD_RESET_LOCKOUT_TIME', 900); // Password reset lockout duration in seconds (15 minutes)
 
 // CSRF Token Settings
 define('CSRF_TOKEN_LENGTH', 32); // Length of CSRF tokens
@@ -112,6 +116,10 @@ define('CORS_PROXY_ENABLED', true); // Enable/disable CORS proxy
 define('CORS_CACHE_DIR', __DIR__ . '/../cache/cors/'); // Cache directory for proxied images
 define('CORS_CACHE_LIFETIME', 86400); // Cache lifetime in seconds (24 hours)
 define('CORS_MAX_FILE_SIZE', 10485760); // Max file size in bytes (10 MB)
+define('CORS_PROXY_ALLOW_INSECURE_HTTP', false); // Allow http:// images (not recommended)
+define('CORS_PROXY_ALLOW_PRIVATE_IPS', false); // Allow private/reserved IP ranges
+define('CORS_PROXY_SSL_VERIFY', true); // Verify SSL certificates for proxied images
+define('CORS_PROXY_MAX_REDIRECTS', 3); // Max redirects when fetching images
 define('ALLOWED_IMAGE_TYPES', ['image/jpeg', 'image/png', 'image/webp', 'image/jpg']);
 define('ALLOWED_IMAGE_EXTENSIONS', ['jpg', 'jpeg', 'png', 'webp']);
 
@@ -156,6 +164,8 @@ define('TABLE_THREEJS_ART', 'threejs_art');
 define('TABLE_USERS', 'users');
 define('TABLE_SITE_CONFIG', 'site_config');
 define('TABLE_ACTIVITY_LOG', 'activity_log');
+define('TABLE_AUTH_LOG', 'auth_log');
+define('TABLE_AUTH_RATE_LIMITS', 'auth_rate_limits');
 
 // ==========================================
 // ERROR HANDLING & LOGGING

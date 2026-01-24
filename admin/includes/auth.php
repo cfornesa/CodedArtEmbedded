@@ -22,6 +22,49 @@ require_once(__DIR__ . '/../../config/helpers.php');
 require_once(__DIR__ . '/../../config/database.php');
 
 /**
+ * Get client IP address
+ * @return string
+ */
+function getClientIp() {
+    return $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+}
+
+/**
+ * Get user agent string
+ * @return string
+ */
+function getUserAgent() {
+    return $_SERVER['HTTP_USER_AGENT'] ?? 'unknown';
+}
+
+/**
+ * Log authentication events for auditing
+ *
+ * @param string $eventType
+ * @param int|null $userId
+ * @param string|null $email
+ * @param array $metadata
+ * @return void
+ */
+function logAuthEvent($eventType, $userId = null, $email = null, $metadata = []) {
+    $payload = empty($metadata) ? null : json_encode($metadata);
+
+    try {
+        dbInsert('auth_log', [
+            'user_id' => $userId,
+            'email' => $email,
+            'event_type' => $eventType,
+            'ip_address' => getClientIp(),
+            'user_agent' => substr(getUserAgent(), 0, 255),
+            'metadata' => $payload,
+            'created_at' => date('Y-m-d H:i:s')
+        ]);
+    } catch (Exception $e) {
+        error_log('Auth log error: ' . $e->getMessage());
+    }
+}
+
+/**
  * Initialize secure session
  * Sets secure session parameters and starts session if not already started
  */
@@ -128,6 +171,7 @@ function login($email, $password) {
     // Check rate limiting
     $rateLimitResult = checkLoginRateLimit($email);
     if (!$rateLimitResult['allowed']) {
+        logAuthEvent('login_blocked', null, $email, ['reason' => $rateLimitResult['message']]);
         return [
             'success' => false,
             'message' => $rateLimitResult['message'],
@@ -140,7 +184,8 @@ function login($email, $password) {
 
     if (!$user) {
         // Record failed attempt
-        recordLoginAttempt($email, false);
+        recordLoginAttempt($email, getClientIp(), false);
+        logAuthEvent('login_failure', null, $email, ['reason' => 'user_not_found']);
 
         // Generic error message to prevent user enumeration
         return [
@@ -153,7 +198,8 @@ function login($email, $password) {
     // Verify password
     if (!verifyPassword($password, $user['password_hash'])) {
         // Record failed attempt
-        recordLoginAttempt($email, false);
+        recordLoginAttempt($email, getClientIp(), false);
+        logAuthEvent('login_failure', $user['id'], $email, ['reason' => 'invalid_password']);
 
         return [
             'success' => false,
@@ -164,6 +210,7 @@ function login($email, $password) {
 
     // Check if email is verified
     if (!$user['email_verified']) {
+        logAuthEvent('login_failure', $user['id'], $email, ['reason' => 'email_unverified']);
         return [
             'success' => false,
             'message' => 'Please verify your email address before logging in. Check your inbox for the verification link.',
@@ -178,6 +225,7 @@ function login($email, $password) {
             'pending' => 'Your account is pending approval. You will be notified when approved.'
         ];
 
+        logAuthEvent('login_failure', $user['id'], $email, ['reason' => 'status_' . $user['status']]);
         return [
             'success' => false,
             'message' => $statusMessages[$user['status']] ?? 'Your account is not active.',
@@ -202,7 +250,8 @@ function login($email, $password) {
     );
 
     // Record successful attempt
-    recordLoginAttempt($email, true);
+    recordLoginAttempt($email, getClientIp(), true);
+    logAuthEvent('login_success', $user['id'], $email);
 
     // Clear rate limiting data for this user
     clearLoginAttempts($email);
@@ -221,6 +270,9 @@ function login($email, $password) {
 function logout() {
     initSession();
 
+    $userId = $_SESSION['user_id'] ?? null;
+    $userEmail = $_SESSION['user_email'] ?? null;
+
     // Unset all session variables
     $_SESSION = [];
 
@@ -231,6 +283,7 @@ function logout() {
 
     // Destroy session
     session_destroy();
+    logAuthEvent('logout', $userId, $userEmail);
 }
 
 /**
@@ -245,6 +298,7 @@ function registerUser($data) {
     $requiredFields = ['email', 'password', 'first_name', 'last_name'];
     foreach ($requiredFields as $field) {
         if (empty($data[$field])) {
+            logAuthEvent('register_failure', null, $data['email'] ?? null, ['reason' => 'missing_fields']);
             return [
                 'success' => false,
                 'message' => 'All fields are required.',
@@ -256,6 +310,7 @@ function registerUser($data) {
     // Validate email
     $email = sanitizeEmail($data['email']);
     if (!isValidEmail($email)) {
+        logAuthEvent('register_failure', null, $email, ['reason' => 'invalid_email']);
         return [
             'success' => false,
             'message' => 'Invalid email format.',
@@ -266,6 +321,7 @@ function registerUser($data) {
     // Check if email already exists
     $existingUser = dbFetchOne("SELECT id FROM users WHERE email = ?", [$email]);
     if ($existingUser) {
+        logAuthEvent('register_failure', $existingUser['id'], $email, ['reason' => 'email_exists']);
         return [
             'success' => false,
             'message' => 'An account with this email already exists.',
@@ -276,9 +332,10 @@ function registerUser($data) {
     // Validate password strength
     $passwordValidation = validatePassword($data['password']);
     if (!$passwordValidation['valid']) {
+        logAuthEvent('register_failure', null, $email, ['reason' => 'weak_password']);
         return [
             'success' => false,
-            'message' => $passwordValidation['message'],
+            'message' => implode('. ', $passwordValidation['errors']),
             'user_id' => null
         ];
     }
@@ -313,6 +370,7 @@ function registerUser($data) {
         // Insert user
         $userId = dbInsert('users', $userData);
 
+        logAuthEvent('register_success', $userId, $email);
         return [
             'success' => true,
             'message' => $userData['email_verified']
@@ -323,6 +381,7 @@ function registerUser($data) {
         ];
     } catch (Exception $e) {
         error_log("Registration error: " . $e->getMessage());
+        logAuthEvent('register_failure', null, $email, ['reason' => 'exception']);
         return [
             'success' => false,
             'message' => 'An error occurred during registration. Please try again.',
@@ -347,6 +406,7 @@ function verifyEmail($token) {
     $user = dbFetchOne("SELECT * FROM users WHERE verification_token = ?", [$token]);
 
     if (!$user) {
+        logAuthEvent('verify_email_failure', null, null, ['reason' => 'invalid_token']);
         return [
             'success' => false,
             'message' => 'Invalid or expired verification token.'
@@ -354,6 +414,7 @@ function verifyEmail($token) {
     }
 
     if ($user['email_verified']) {
+        logAuthEvent('verify_email_already', $user['id'], $user['email']);
         return [
             'success' => true,
             'message' => 'Email already verified. You can log in now.'
@@ -371,6 +432,7 @@ function verifyEmail($token) {
         [$user['id']]
     );
 
+    logAuthEvent('verify_email_success', $user['id'], $user['email']);
     return [
         'success' => true,
         'message' => 'Email verified successfully! You can now log in.'
@@ -388,31 +450,20 @@ function checkLoginRateLimit($email) {
     $maxAttempts = defined('MAX_LOGIN_ATTEMPTS') ? MAX_LOGIN_ATTEMPTS : 5;
     $lockoutTime = defined('LOGIN_LOCKOUT_TIME') ? LOGIN_LOCKOUT_TIME : 900; // 15 minutes
 
-    $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
-
-    // Check attempts from this IP
-    $ipAttempts = getLoginAttempts($ip);
-
-    // Check attempts for this email
-    $emailAttempts = getLoginAttempts($email);
-
-    if ($ipAttempts >= $maxAttempts) {
+    $ip = getClientIp();
+    $ipResult = checkRateLimit('login_ip', $ip, $maxAttempts, $lockoutTime);
+    if (!$ipResult['allowed']) {
         return [
             'allowed' => false,
-            'message' => sprintf(
-                'Too many login attempts from your IP address. Please try again in %d minutes.',
-                ceil($lockoutTime / 60)
-            )
+            'message' => $ipResult['message']
         ];
     }
 
-    if ($emailAttempts >= $maxAttempts) {
+    $emailResult = checkRateLimit('login_email', $email, $maxAttempts, $lockoutTime);
+    if (!$emailResult['allowed']) {
         return [
             'allowed' => false,
-            'message' => sprintf(
-                'Too many login attempts for this account. Please try again in %d minutes.',
-                ceil($lockoutTime / 60)
-            )
+            'message' => $emailResult['message']
         ];
     }
 
@@ -423,66 +474,135 @@ function checkLoginRateLimit($email) {
 }
 
 /**
- * Get number of failed login attempts
- * @param string $identifier IP address or email
- * @return int Number of attempts
+ * Check registration rate limiting for IP and email
+ *
+ * @param string $email User email
+ * @return array ['allowed' => bool, 'message' => string]
  */
-function getLoginAttempts($identifier) {
-    initSession();
+function checkRegistrationRateLimit($email) {
+    $maxAttempts = defined('MAX_REGISTRATION_ATTEMPTS') ? MAX_REGISTRATION_ATTEMPTS : 3;
+    $lockoutTime = defined('REGISTRATION_LOCKOUT_TIME') ? REGISTRATION_LOCKOUT_TIME : 1800;
 
-    $key = 'login_attempts_' . md5($identifier);
-
-    if (!isset($_SESSION[$key])) {
-        return 0;
-    }
-
-    $data = $_SESSION[$key];
-    $lockoutTime = defined('LOGIN_LOCKOUT_TIME') ? LOGIN_LOCKOUT_TIME : 900;
-
-    // Clear old attempts
-    if (time() - $data['timestamp'] > $lockoutTime) {
-        unset($_SESSION[$key]);
-        return 0;
-    }
-
-    return $data['count'];
-}
-
-/**
- * Record login attempt (success or failure)
- * @param string $identifier IP address or email
- * @param bool $success Whether login was successful
- */
-function recordLoginAttempt($identifier, $success) {
-    initSession();
-
-    $key = 'login_attempts_' . md5($identifier);
-
-    if ($success) {
-        // Clear attempts on successful login
-        unset($_SESSION[$key]);
-        return;
-    }
-
-    // Record failed attempt
-    if (!isset($_SESSION[$key])) {
-        $_SESSION[$key] = [
-            'count' => 0,
-            'timestamp' => time()
+    $ip = getClientIp();
+    $ipResult = checkRateLimit('register_ip', $ip, $maxAttempts, $lockoutTime);
+    if (!$ipResult['allowed']) {
+        return [
+            'allowed' => false,
+            'message' => $ipResult['message']
         ];
     }
 
-    $_SESSION[$key]['count']++;
+    if (isValidEmail($email)) {
+        $emailResult = checkRateLimit('register_email', $email, $maxAttempts, $lockoutTime);
+        if (!$emailResult['allowed']) {
+            return [
+                'allowed' => false,
+                'message' => $emailResult['message']
+            ];
+        }
+    }
+
+    return [
+        'allowed' => true,
+        'message' => ''
+    ];
+}
+
+/**
+ * Check password reset rate limiting for IP and email
+ *
+ * @param string $email User email
+ * @return array ['allowed' => bool, 'message' => string]
+ */
+function checkPasswordResetRateLimit($email) {
+    $maxAttempts = defined('MAX_PASSWORD_RESET_ATTEMPTS') ? MAX_PASSWORD_RESET_ATTEMPTS : 5;
+    $lockoutTime = defined('PASSWORD_RESET_LOCKOUT_TIME') ? PASSWORD_RESET_LOCKOUT_TIME : 900;
+
+    $ip = getClientIp();
+    $ipResult = checkRateLimit('reset_ip', $ip, $maxAttempts, $lockoutTime);
+    if (!$ipResult['allowed']) {
+        return [
+            'allowed' => false,
+            'message' => $ipResult['message']
+        ];
+    }
+
+    if (isValidEmail($email)) {
+        $emailResult = checkRateLimit('reset_email', $email, $maxAttempts, $lockoutTime);
+        if (!$emailResult['allowed']) {
+            return [
+                'allowed' => false,
+                'message' => $emailResult['message']
+            ];
+        }
+    }
+
+    return [
+        'allowed' => true,
+        'message' => ''
+    ];
+}
+
+/**
+ * Record login attempt (success or failure) for both IP and email
+ * @param string $email User email
+ * @param string $ip Client IP
+ * @param bool $success Whether login was successful
+ */
+function recordLoginAttempt($email, $ip, $success) {
+    if ($success) {
+        clearRateLimit('login_email', $email);
+        clearRateLimit('login_ip', $ip);
+        return;
+    }
+
+    recordRateLimitFailure('login_email', $email);
+    recordRateLimitFailure('login_ip', $ip);
+}
+
+/**
+ * Record registration attempt
+ *
+ * @param string $email User email
+ * @param string $ip Client IP
+ * @param bool $success Whether registration succeeded
+ * @return void
+ */
+function recordRegistrationAttempt($email, $ip, $success) {
+    if ($success) {
+        if (isValidEmail($email)) {
+            clearRateLimit('register_email', $email);
+        }
+        clearRateLimit('register_ip', $ip);
+        return;
+    }
+
+    if (isValidEmail($email)) {
+        recordRateLimitFailure('register_email', $email);
+    }
+    recordRateLimitFailure('register_ip', $ip);
+}
+
+/**
+ * Record password reset attempt
+ *
+ * @param string $email User email
+ * @param string $ip Client IP
+ * @return void
+ */
+function recordPasswordResetAttempt($email, $ip) {
+    if (isValidEmail($email)) {
+        recordRateLimitFailure('reset_email', $email);
+    }
+    recordRateLimitFailure('reset_ip', $ip);
 }
 
 /**
  * Clear login attempts for identifier
- * @param string $identifier IP address or email
+ * @param string $email User email
  */
-function clearLoginAttempts($identifier) {
-    initSession();
-    $key = 'login_attempts_' . md5($identifier);
-    unset($_SESSION[$key]);
+function clearLoginAttempts($email) {
+    clearRateLimit('login_email', $email);
 }
 
 /**
@@ -525,6 +645,7 @@ function initiatePasswordReset($email) {
     $email = sanitizeEmail($email);
 
     if (!isValidEmail($email)) {
+        logAuthEvent('password_reset_failure', null, $email, ['reason' => 'invalid_email']);
         return [
             'success' => false,
             'message' => 'Invalid email format.',
@@ -536,6 +657,7 @@ function initiatePasswordReset($email) {
 
     // Don't reveal whether email exists (security)
     if (!$user) {
+        logAuthEvent('password_reset_request', null, $email, ['result' => 'user_not_found']);
         return [
             'success' => true,
             'message' => 'If an account with that email exists, a password reset link has been sent.',
@@ -558,6 +680,7 @@ function initiatePasswordReset($email) {
         [$user['id']]
     );
 
+    logAuthEvent('password_reset_request', $user['id'], $email, ['result' => 'token_generated']);
     return [
         'success' => true,
         'message' => 'If an account with that email exists, a password reset link has been sent.',
@@ -573,6 +696,7 @@ function initiatePasswordReset($email) {
  */
 function resetPassword($token, $newPassword) {
     if (empty($token)) {
+        logAuthEvent('password_reset_failure', null, null, ['reason' => 'missing_token']);
         return [
             'success' => false,
             'message' => 'Invalid reset token.'
@@ -585,6 +709,7 @@ function resetPassword($token, $newPassword) {
     );
 
     if (!$user) {
+        logAuthEvent('password_reset_failure', null, null, ['reason' => 'invalid_token']);
         return [
             'success' => false,
             'message' => 'Invalid or expired reset token.'
@@ -594,9 +719,10 @@ function resetPassword($token, $newPassword) {
     // Validate new password
     $passwordValidation = validatePassword($newPassword);
     if (!$passwordValidation['valid']) {
+        logAuthEvent('password_reset_failure', $user['id'], $user['email'], ['reason' => 'weak_password']);
         return [
             'success' => false,
-            'message' => $passwordValidation['message']
+            'message' => implode('. ', $passwordValidation['errors'])
         ];
     }
 
@@ -615,8 +741,136 @@ function resetPassword($token, $newPassword) {
         [$user['id']]
     );
 
+    logAuthEvent('password_reset_success', $user['id'], $user['email']);
     return [
         'success' => true,
         'message' => 'Password reset successfully! You can now log in with your new password.'
     ];
+}
+
+/**
+ * Build rate limit identifier key
+ *
+ * @param string $type Rate limit type
+ * @param string $identifier Identifier value (email or IP)
+ * @return string
+ */
+function buildRateLimitKey($type, $identifier) {
+    return strtolower($type . ':' . trim($identifier));
+}
+
+/**
+ * Check rate limit for identifier
+ *
+ * @param string $type Rate limit type
+ * @param string $identifier Identifier value
+ * @param int $maxAttempts Maximum attempts
+ * @param int $lockoutTime Lockout duration in seconds
+ * @return array ['allowed' => bool, 'message' => string]
+ */
+function checkRateLimit($type, $identifier, $maxAttempts, $lockoutTime) {
+    $key = buildRateLimitKey($type, $identifier);
+    $record = dbFetchOne("SELECT * FROM auth_rate_limits WHERE identifier = ?", [$key]);
+    $now = time();
+
+    if ($record && !empty($record['locked_until'])) {
+        $lockedUntil = strtotime($record['locked_until']);
+        if ($lockedUntil > $now) {
+            return [
+                'allowed' => false,
+                'message' => sprintf(
+                    'Too many requests. Please try again in %d minutes.',
+                    ceil(($lockedUntil - $now) / 60)
+                )
+            ];
+        }
+    }
+
+    if ($record && !empty($record['last_attempt'])) {
+        $lastAttempt = strtotime($record['last_attempt']);
+        if ($now - $lastAttempt > $lockoutTime) {
+            clearRateLimitKey($key);
+        }
+    }
+
+    return [
+        'allowed' => true,
+        'message' => ''
+    ];
+}
+
+/**
+ * Record a failed rate limit attempt
+ *
+ * @param string $type Rate limit type
+ * @param string $identifier Identifier value
+ * @return void
+ */
+function recordRateLimitFailure($type, $identifier) {
+    $maxAttempts = match ($type) {
+        'login_email', 'login_ip' => defined('MAX_LOGIN_ATTEMPTS') ? MAX_LOGIN_ATTEMPTS : 5,
+        'register_email', 'register_ip' => defined('MAX_REGISTRATION_ATTEMPTS') ? MAX_REGISTRATION_ATTEMPTS : 3,
+        'reset_email', 'reset_ip' => defined('MAX_PASSWORD_RESET_ATTEMPTS') ? MAX_PASSWORD_RESET_ATTEMPTS : 5,
+        default => 5
+    };
+
+    $lockoutTime = match ($type) {
+        'login_email', 'login_ip' => defined('LOGIN_LOCKOUT_TIME') ? LOGIN_LOCKOUT_TIME : 900,
+        'register_email', 'register_ip' => defined('REGISTRATION_LOCKOUT_TIME') ? REGISTRATION_LOCKOUT_TIME : 1800,
+        'reset_email', 'reset_ip' => defined('PASSWORD_RESET_LOCKOUT_TIME') ? PASSWORD_RESET_LOCKOUT_TIME : 900,
+        default => 900
+    };
+
+    $key = buildRateLimitKey($type, $identifier);
+    $record = dbFetchOne("SELECT * FROM auth_rate_limits WHERE identifier = ?", [$key]);
+    $now = date('Y-m-d H:i:s');
+
+    if (!$record) {
+        dbInsert('auth_rate_limits', [
+            'identifier' => $key,
+            'attempt_count' => 1,
+            'first_attempt' => $now,
+            'last_attempt' => $now,
+            'locked_until' => null,
+            'created_at' => $now,
+            'updated_at' => $now
+        ]);
+        return;
+    }
+
+    $count = (int) $record['attempt_count'] + 1;
+    $lockedUntil = $count >= $maxAttempts ? date('Y-m-d H:i:s', strtotime('+' . $lockoutTime . ' seconds')) : null;
+
+    dbUpdate('auth_rate_limits',
+        [
+            'attempt_count' => $count,
+            'last_attempt' => $now,
+            'locked_until' => $lockedUntil,
+            'updated_at' => $now
+        ],
+        'identifier = ?',
+        [$key]
+    );
+}
+
+/**
+ * Clear rate limit data for a specific identifier
+ *
+ * @param string $type Rate limit type
+ * @param string $identifier Identifier value
+ * @return void
+ */
+function clearRateLimit($type, $identifier) {
+    $key = buildRateLimitKey($type, $identifier);
+    clearRateLimitKey($key);
+}
+
+/**
+ * Clear rate limit data by key
+ *
+ * @param string $key Identifier key
+ * @return void
+ */
+function clearRateLimitKey($key) {
+    dbDelete('auth_rate_limits', 'identifier = ?', [$key]);
 }

@@ -18,7 +18,9 @@ function checkDatabaseInitialized() {
         'threejs_art',
         'site_config',
         'activity_log',
-        'slug_redirects'
+        'slug_redirects',
+        'auth_log',
+        'auth_rate_limits'
     ];
 
     $pdo = getDBConnection();
